@@ -1,0 +1,1 @@
+pycache*.pyc *.pyo *.pyd .venv .pytest_cache *.log tests/ docs/ scripts/ .git .gitignore .vscode .idea Dockerfile.local docker-compose.local.yml

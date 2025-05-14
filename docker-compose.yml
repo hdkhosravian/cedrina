@@ -1,0 +1,18 @@
+version: '3.9'
+services:
+  api:
+    build:
+      context: .
+      target: builder
+    volumes:
+      - ./src:/app/src
+      - ./locales:/app/locales
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./poetry.lock:/app/poetry.lock
+      - ./.env:/app/.env
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=development
+      - PYTHONPATH=/app
+    command: bash -c "pybabel compile -d locales -D messages && uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"

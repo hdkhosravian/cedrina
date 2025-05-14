@@ -1,0 +1,30 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.local.*
+
+# IDE
+.vscode/
+.idea/
+
+# Testing
+.pytest_cache/
+coverage/
+*.xml
+
+# Logs
+*.log
+
+# Docker
+Dockerfile.local
+docker-compose.local.yml
