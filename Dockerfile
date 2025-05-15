@@ -4,10 +4,11 @@ FROM python:3.12-slim AS builder
 # Set working directory
 WORKDIR /app
 
-# Install build dependencies (minimal set)
+# Install build dependencies (minimal set, including PostgreSQL client libraries)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libc-dev \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv for faster dependency installation
@@ -16,8 +17,10 @@ RUN pip install --no-cache-dir uv==0.4.27
 # Copy Poetry files
 COPY pyproject.toml poetry.lock ./
 
-# Install dependencies using uv, excluding dev dependencies
-RUN uv pip install --system --no-cache-dir -r <(poetry export --without-hashes --without dev)
+# Export Poetry dependencies to a temporary requirements file and install with uv
+RUN poetry export --without-hashes --without dev -o requirements.txt && \
+    uv pip install --system --no-cache-dir -r requirements.txt && \
+    rm requirements.txt
 
 # Copy locales for translation compilation
 COPY locales/ ./locales/
@@ -46,7 +49,7 @@ FROM python:3.12-slim AS runtime
 # Metadata
 LABEL maintainer="Architecture Team <architecture@example.com>"
 LABEL version="0.1.0"
-LABEL description="FastAPI Cedrina - Enterprise-grade FastAPI template"
+LABEL description="Cedrina - Enterprise-grade FastAPI template"
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -64,9 +67,10 @@ RUN useradd -m -u 1000 appuser && \
 # Set working directory
 WORKDIR /app
 
-# Install runtime dependencies (minimal)
+# Install runtime dependencies (minimal, including PostgreSQL client)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tini \
+    libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy precompiled dependencies and code
