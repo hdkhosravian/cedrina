@@ -113,7 +113,6 @@ def get_translated_message(key: str, locale: str = settings.DEFAULT_LANGUAGE) ->
         if translated == key:
             logger.warning("translation_key_not_found", key=key, locale=locale)
         
-        logger.debug("translation_fetched", key=key, locale=locale, result=translated)
         return translated
     except Exception as e:
         logger.error("translation_failed", key=key, locale=locale, error=str(e))

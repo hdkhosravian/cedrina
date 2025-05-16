@@ -17,13 +17,20 @@ RUN pip install --no-cache-dir uv==0.4.27
 # Install Poetry for dependency management
 RUN pip install --no-cache-dir poetry==1.8.3
 
+# Install poetry-plugin-export explicitly
+RUN poetry self add poetry-plugin-export
+
 # Copy Poetry files
 COPY pyproject.toml poetry.lock ./
 
 # Export Poetry dependencies to a temporary requirements file and install with uv
-RUN poetry export --without-hashes --without dev -o requirements.txt && \
+RUN poetry config warnings.export false && \
+    cat pyproject.toml && \
+    poetry export --without-hashes -o requirements.txt && \
+    cat requirements.txt && \
     uv pip install --system --no-cache-dir -r requirements.txt && \
-    rm requirements.txt
+    rm requirements.txt && \
+    python3 -c "import sqlmodel; print('sqlmodel version:', sqlmodel.__version__)" && echo "sqlmodel installed successfully" || (echo "sqlmodel installation failed" && exit 1)
 
 # Copy locales for translation compilation
 COPY locales/ ./locales/
