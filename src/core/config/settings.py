@@ -10,9 +10,14 @@ different environments (development, staging, production).
 """
 
 import os
+import logging
 from typing import List
-from pydantic import AnyHttpUrl, Field, field_validator, ValidationError
+from pydantic import AnyHttpUrl, Field, field_validator, ValidationError, ValidationInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
     """
@@ -42,6 +47,9 @@ class Settings(BaseSettings):
         DEFAULT_LANGUAGE (str): Default language code
         POSTGRES_*: Database connection parameters
         DATABASE_URL (str): Complete database connection URL
+        REDIS_*: Redis connection parameters
+        REDIS_URL (str): Complete Redis connection URL
+        ENABLE_LOCAL_*: Flags for local service usage
     """
     
     PROJECT_NAME: str = "cedrina"
@@ -58,46 +66,56 @@ class Settings(BaseSettings):
     LOG_JSON: bool = True
 
     SECRET_KEY: str = Field(..., min_length=32)
-    ALLOWED_ORIGINS: List[AnyHttpUrl]
+    ALLOWED_ORIGINS: str = Field(default="http://0.0.0.0:8000")
     SUPPORTED_LANGUAGES: List[str] = ["en", "fa", "ar"]
     DEFAULT_LANGUAGE: str = "en"
 
+    # Database settings - all required from environment
     POSTGRES_USER: str
-    POSTGRES_PASSWORD: str = Field(..., min_length=12)
+    POSTGRES_PASSWORD: str
     POSTGRES_DB: str
     POSTGRES_HOST: str
-    POSTGRES_PORT: int = Field(ge=1, le=65535, default=5432)
-    POSTGRES_SSL_MODE: str = Field(default="prefer", regex="^(disable|allow|prefer|require|verify-ca|verify-full)$")
-    POSTGRES_POOL_SIZE: int = Field(ge=1, default=5)
-    POSTGRES_MAX_OVERFLOW: int = Field(ge=0, default=10)
-    POSTGRES_POOL_TIMEOUT: float = Field(ge=1.0, default=30.0)
+    POSTGRES_PORT: int = Field(ge=1, le=65535)
+    POSTGRES_SSL_MODE: str = Field(pattern="^(disable|allow|prefer|require|verify-ca|verify-full)$")
+    POSTGRES_POOL_SIZE: int = Field(ge=1)
+    POSTGRES_MAX_OVERFLOW: int = Field(ge=0)
+    POSTGRES_POOL_TIMEOUT: float = Field(ge=1.0)
     DATABASE_URL: str
 
-    @field_validator("ALLOWED_ORIGINS", mode="before")
+    # Redis settings
+    REDIS_HOST: str
+    REDIS_PORT: int = Field(ge=1, le=65535)
+    REDIS_PASSWORD: str
+    REDIS_SSL: bool = False
+    REDIS_URL: str
+
+    # Local service flags
+    ENABLE_LOCAL_POSTGRES: bool = False
+    ENABLE_LOCAL_REDIS: bool = False
+
+    @field_validator("ALLOWED_ORIGINS", mode="after")
     @classmethod
-    def parse_allowed_origins(cls, value: str) -> List[str]:
+    def parse_allowed_origins(cls, value: str) -> List[AnyHttpUrl]:
         """
         Validates and parses the ALLOWED_ORIGINS setting.
         
         This validator:
-        1. Handles both string and list inputs
-        2. Parses comma-separated URLs from string
-        3. Strips whitespace from URLs
-        4. Filters out empty values
+        1. Splits the input string by comma
+        2. Strips whitespace from each URL
+        3. Validates each URL as an AnyHttpUrl
         
         Args:
-            value (str): The input value to parse
+            value (str): Comma-separated list of URLs
             
         Returns:
-            List[str]: List of parsed and validated URLs
+            List[AnyHttpUrl]: List of validated URLs
         """
-        if isinstance(value, str):
-            return [url.strip() for url in value.strip('[]').split(",") if url.strip()]
-        return value
+        urls = [url.strip() for url in value.split(",") if url.strip()]
+        return [AnyHttpUrl(url) for url in urls]
 
     @field_validator("DATABASE_URL")
     @classmethod
-    def validate_database_url(cls, value: str, values: dict) -> str:
+    def validate_database_url(cls, value: str, info: ValidationInfo) -> str:
         """
         Validates that DATABASE_URL matches other POSTGRES_* settings.
         
@@ -107,7 +125,7 @@ class Settings(BaseSettings):
         
         Args:
             value (str): The DATABASE_URL to validate
-            values (dict): Dictionary containing other settings
+            info (ValidationInfo): Validation info containing other field values
             
         Returns:
             str: The validated DATABASE_URL
@@ -115,10 +133,15 @@ class Settings(BaseSettings):
         Raises:
             ValidationError: If DATABASE_URL doesn't match POSTGRES_* settings
         """
+        data = info.data
+        
         expected_url = (
-            f"postgresql+psycopg2://{values.get('POSTGRES_USER')}:{values.get('POSTGRES_PASSWORD')}@"
-            f"{values.get('POSTGRES_HOST')}:{values.get('POSTGRES_PORT')}/{values.get('POSTGRES_DB')}?sslmode={values.get('POSTGRES_SSL_MODE')}"
+            f"postgresql+psycopg2://{data['POSTGRES_USER']}:{data['POSTGRES_PASSWORD']}@"
+            f"{data['POSTGRES_HOST']}:{data['POSTGRES_PORT']}/{data['POSTGRES_DB']}?sslmode={data['POSTGRES_SSL_MODE']}"
         )
+        logger.debug(f"Expected DATABASE_URL: {expected_url}")
+        logger.debug(f"Provided DATABASE_URL: {value}")
+        
         if value != expected_url:
             raise ValidationError(f"DATABASE_URL must match POSTGRES_* settings. Expected: {expected_url}")
         return value

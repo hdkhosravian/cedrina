@@ -15,18 +15,23 @@ build:
 # Run development environment with Docker Compose, using profiles based on ENABLE_LOCAL_* settings
 run-dev:
 	@echo "Starting development environment..."
-	@if [ "$$(grep -E '^ENABLE_LOCAL_POSTGRES=true' .env 2>/dev/null || echo false)" = "true" ] && [ "$$(grep -E '^ENABLE_LOCAL_REDIS=true' .env 2>/dev/null || echo false)" = "true" ]; then \
-		echo "Using local PostgreSQL and Redis instances (ENABLE_LOCAL_POSTGRES=true, ENABLE_LOCAL_REDIS=true)"; \
-		docker-compose up --build; \
-	elif [ "$$(grep -E '^ENABLE_LOCAL_POSTGRES=true' .env 2>/dev/null || echo false)" = "true" ]; then \
-		echo "Using local PostgreSQL and Dockerized Redis (ENABLE_LOCAL_POSTGRES=true, ENABLE_LOCAL_REDIS=false)"; \
-		COMPOSE_PROFILES=redis docker-compose up --build; \
-	elif [ "$$(grep -E '^ENABLE_LOCAL_REDIS=true' .env 2>/dev/null || echo false)" = "true" ]; then \
-		echo "Using Dockerized PostgreSQL and local Redis (ENABLE_LOCAL_POSTGRES=false, ENABLE_LOCAL_REDIS=true)"; \
-		COMPOSE_PROFILES=postgres docker-compose up --build; \
+	@PROFILES=""; \
+	if [ "$$(grep -E '^ENABLE_LOCAL_POSTGRES=false' .env 2>/dev/null || echo false)" = "false" ]; then \
+		echo "Using local PostgreSQL instance (ENABLE_LOCAL_POSTGRES=true)"; \
 	else \
-		echo "Using Dockerized PostgreSQL and Redis (ENABLE_LOCAL_POSTGRES=false, ENABLE_LOCAL_REDIS=false)"; \
-		COMPOSE_PROFILES=postgres,redis docker-compose up --build; \
+		echo "Using Dockerized PostgreSQL (ENABLE_LOCAL_POSTGRES=false)"; \
+		PROFILES="postgres"; \
+	fi; \
+	if [ "$$(grep -E '^ENABLE_LOCAL_REDIS=false' .env 2>/dev/null || echo false)" = "false" ]; then \
+		echo "Using local Redis instance (ENABLE_LOCAL_REDIS=true)"; \
+	else \
+		echo "Using Dockerized Redis (ENABLE_LOCAL_REDIS=false)"; \
+		PROFILES="$$PROFILES$${PROFILES:+,}redis"; \
+	fi; \
+	if [ -z "$$PROFILES" ]; then \
+		docker-compose up --build; \
+	else \
+		COMPOSE_PROFILES=$$PROFILES docker-compose up --build; \
 	fi
 
 # Run development environment locally without Docker
@@ -37,18 +42,23 @@ run-dev-local:
 # Run test environment with Docker Compose, using profiles based on ENABLE_LOCAL_* settings
 run-test:
 	@echo "Starting test environment..."
-	@if [ "$$(grep -E '^ENABLE_LOCAL_POSTGRES=true' .env.test 2>/dev/null || echo false)" = "true" ] && [ "$$(grep -E '^ENABLE_LOCAL_REDIS=true' .env.test 2>/dev/null || echo false)" = "true" ]; then \
-		echo "Using local PostgreSQL and Redis instances for tests (ENABLE_LOCAL_POSTGRES=true, ENABLE_LOCAL_REDIS=true)"; \
-		poetry run bash -c "export PYTHONPATH=\$$PWD && pytest --cov=src --cov-report=html"; \
-	elif [ "$$(grep -E '^ENABLE_LOCAL_POSTGRES=true' .env.test 2>/dev/null || echo false)" = "true" ]; then \
-		echo "Using local PostgreSQL and Dockerized Redis for tests (ENABLE_LOCAL_POSTGRES=true, ENABLE_LOCAL_REDIS=false)"; \
-		COMPOSE_PROFILES=redis poetry run bash -c "export PYTHONPATH=\$$PWD && pytest --cov=src --cov-report=html"; \
-	elif [ "$$(grep -E '^ENABLE_LOCAL_REDIS=true' .env.test 2>/dev/null || echo false)" = "true" ]; then \
-		echo "Using Dockerized PostgreSQL and local Redis for tests (ENABLE_LOCAL_POSTGRES=false, ENABLE_LOCAL_REDIS=true)"; \
-		COMPOSE_PROFILES=postgres poetry run bash -c "export PYTHONPATH=\$$PWD && pytest --cov=src --cov-report=html"; \
+	@PROFILES=""; \
+	if [ "$$(grep -E '^ENABLE_LOCAL_POSTGRES=false' .env.test 2>/dev/null || echo false)" = "false" ]; then \
+		echo "Using local PostgreSQL instance for tests (ENABLE_LOCAL_POSTGRES=true)"; \
 	else \
-		echo "Using Dockerized PostgreSQL and Redis for tests (ENABLE_LOCAL_POSTGRES=false, ENABLE_LOCAL_REDIS=false)"; \
-		COMPOSE_PROFILES=postgres,redis poetry run bash -c "export PYTHONPATH=\$$PWD && pytest --cov=src --cov-report=html"; \
+		echo "Using Dockerized PostgreSQL for tests (ENABLE_LOCAL_POSTGRES=false)"; \
+		PROFILES="postgres"; \
+	fi; \
+	if [ "$$(grep -E '^ENABLE_LOCAL_REDIS=false' .env.test 2>/dev/null || echo false)" = "false" ]; then \
+		echo "Using local Redis instance for tests (ENABLE_LOCAL_REDIS=true)"; \
+	else \
+		echo "Using Dockerized Redis for tests (ENABLE_LOCAL_REDIS=false)"; \
+		PROFILES="$$PROFILES$${PROFILES:+,}redis"; \
+	fi; \
+	if [ -z "$$PROFILES" ]; then \
+		poetry run bash -c "export PYTHONPATH=\$$PWD && pytest --cov=src --cov-report=html"; \
+	else \
+		COMPOSE_PROFILES=$$PROFILES poetry run bash -c "export PYTHONPATH=\$$PWD && pytest --cov=src --cov-report=html"; \
 	fi
 
 # Run staging environment with external PostgreSQL and Redis servers

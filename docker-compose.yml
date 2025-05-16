@@ -15,8 +15,8 @@ services:
     environment:
       - APP_ENV=${APP_ENV:-development}
       - PYTHONPATH=/app
-      - ENABLE_LOCAL_POSTGRES=${ENABLE_LOCAL_POSTGRES:-false}
-      - ENABLE_LOCAL_REDIS=${ENABLE_LOCAL_REDIS:-false}
+      - ENABLE_LOCAL_POSTGRES=${ENABLE_LOCAL_POSTGRES:-true}
+      - ENABLE_LOCAL_REDIS=${ENABLE_LOCAL_REDIS:-true}
     command: bash -c "pybabel compile -d locales -D messages && uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"
     depends_on:
       postgres:
@@ -82,18 +82,8 @@ services:
 volumes:
   cedrina_postgres_data:
     name: cedrina_postgres_data
-    driver: local
-    driver_opts:
-      type: none
-      device: ${POSTGRES_DATA_PATH:-./data/postgres}
-      o: bind
   cedrina_redis_data:
     name: cedrina_redis_data
-    driver: local
-    driver_opts:
-      type: none
-      device: ${REDIS_DATA_PATH:-./data/redis}
-      o: bind
 
 networks:
   cedrina-network:

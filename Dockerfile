@@ -14,6 +14,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install uv for faster dependency installation
 RUN pip install --no-cache-dir uv==0.4.27
 
+# Install Poetry for dependency management
+RUN pip install --no-cache-dir poetry==1.8.3
+
 # Copy Poetry files
 COPY pyproject.toml poetry.lock ./
 

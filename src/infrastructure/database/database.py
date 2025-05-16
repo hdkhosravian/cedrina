@@ -1,18 +1,5 @@
-"""
-Database infrastructure module for managing PostgreSQL connections and operations.
-
-This module provides the core database functionality including:
-- Database engine configuration with connection pooling
-- Health check mechanisms
-- Table creation with retry logic
-- Session management
-- Error handling and logging
-
-The module uses SQLModel for ORM functionality and implements best practices for
-database connection management in a production environment.
-"""
-
 from sqlmodel import create_engine, SQLModel, Session
+from sqlalchemy.sql import text
 from src.core.config.settings import settings
 from src.core.logging import logger
 from sqlalchemy.exc import OperationalError
@@ -42,7 +29,7 @@ def check_database_health() -> bool:
     """
     try:
         with Session(engine) as session:
-            session.exec("SELECT 1")
+            session.exec(text("SELECT 1"))
         return True
     except Exception as e:
         logger.error("database_health_check_failed", error=str(e))
