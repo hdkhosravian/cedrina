@@ -22,9 +22,9 @@
 ### Prerequisites
 - **Python 3.12.7**: Verify with `python --version`.
 - **Poetry 1.8.3**: Install with `pip install poetry`.
-- **Docker**: Latest Docker Desktop or CLI (optional for development/test if using local PostgreSQL/Redis).
-- **PostgreSQL**: Version 16 for external servers (staging/production) or local instances (development/test).
-- **Redis**: Version 7.2 for external servers (staging/production) or local instances (development/test).
+- **Docker**: Latest Docker Desktop or CLI (required for development/test; optional for staging/production with external services).
+- **PostgreSQL**: Version 16 for external servers (staging/production) or Dockerized instances (development/test).
+- **Redis**: Version 7.2 for external servers (staging/production) or Dockerized instances (development/test).
 - **Git**: Latest version (verify with `git --version`).
 - **Editor**: VS Code for live code changes.
 
@@ -41,13 +41,13 @@
    ```
 
 3. **Set Up Environment**:
-   - For local development, copy `.env.development` to `.env`:
+   - For development/test, ensure `.env.development` or `.env.test` is configured with Dockerized service credentials:
      ```bash
      cp .env.development .env
      ```
-   - Update `.env` with a unique `SECRET_KEY` (at least 32 characters, e.g., generated with `openssl rand -base64 32`), PostgreSQL credentials (`POSTGRES_*`), and Redis credentials (`REDIS_*`).
-   - Set `ENABLE_LOCAL_POSTGRES=true` and `ENABLE_LOCAL_REDIS=true` to use local PostgreSQL and Redis instances (e.g., `POSTGRES_HOST=localhost`, `REDIS_HOST=localhost`), or set to `false` to use Dockerized containers.
-   - Other environments (`staging`, `production`, `test`) use `.env.<env>` files included in the repository.
+     - Update with a unique `SECRET_KEY` (generate with `openssl rand -base64 32`), PostgreSQL credentials (`POSTGRES_*`), Redis credentials (`REDIS_*`), and `CEDRINA_DEV_PASSWORD`.
+     - Use `POSTGRES_HOST=postgres` and `REDIS_HOST=redis` for Dockerized services.
+   - For staging/production, configure `.env.staging` or `.env.production` with external PostgreSQL and Redis server credentials (e.g., AWS RDS, ElastiCache).
 
 4. **Compile Translations**:
    ```bash
@@ -55,21 +55,11 @@
    ```
 
 5. **Initialize Database and Cache**:
-   - For development/test with `ENABLE_LOCAL_POSTGRES=true` and `ENABLE_LOCAL_REDIS=true`, ensure local PostgreSQL and Redis instances are running and configured in `.env` or `.env.test`:
-     ```bash
-     psql -U postgres -c "CREATE DATABASE cedrina_dev;"
-     psql -U postgres -c "CREATE DATABASE cedrina_test;"
-     redis-cli -h localhost -p 6379 ping
-     ```
-     Run without Dockerized services:
+   - For development/test, Docker Compose manages PostgreSQL and Redis containers:
      ```bash
      make run-dev
      ```
-   - For development/test with `ENABLE_LOCAL_POSTGRES=false` and `ENABLE_LOCAL_REDIS=false`, Docker Compose manages PostgreSQL and Redis containers with persistent storage. Enable the `postgres` and `redis` profiles:
-     ```bash
-     COMPOSE_PROFILES=postgres,redis make run-dev
-     ```
-   - For staging/production, configure external PostgreSQL and Redis servers (e.g., AWS RDS, ElastiCache) with SSL and update `.env.<env>` with credentials:
+   - For staging/production, set up external servers and update `.env.<env>`:
      ```bash
      psql -U postgres -h staging-postgres.example.com -c "CREATE DATABASE cedrina_staging;"
      ```
@@ -86,71 +76,210 @@
 ## Running the Application
 
 ### Local Development (Without Docker)
-1. Ensure PostgreSQL and Redis are running locally (if `ENABLE_LOCAL_POSTGRES=true` or `ENABLE_LOCAL_REDIS=true`).
-2. Activate the Poetry environment:
-   ```bash
-   poetry shell
-   ```
-3. Ensure `.env` is set up with valid PostgreSQL and Redis credentials.
-4. Run the application:
-   ```bash
-   make run-local
-   ```
-   - This sets `PYTHONPATH` automatically.
-5. Access:
-   - REST: `http://localhost:8000/api/v1/health` (returns `{"status":"ok","env":"development","message":"System is operational"}` in English)
-   - With language: `http://localhost:8000/api/v1/health?lang=fa` (returns Persian message)
-   - WebSocket: `ws://localhost:8000/ws/health?lang=ar` (returns Arabic message)
-   - Docs (if `DEBUG=true`): `http://localhost:8000/docs`
+This mode runs the application locally using Uvicorn, suitable for quick iteration without Docker overhead. Note that PostgreSQL and Redis must be available locally or accessible remotely.
+
+1. **Configure Environment**:
+   - Copy `.env.development` to `.env`:
+     ```bash
+     cp .env.development .env
+     ```
+   - Update `.env` with:
+     - `SECRET_KEY`: Generate with `openssl rand -base64 32`.
+     - `POSTGRES_HOST`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB=cedrina_dev` (e.g., `localhost` for local PostgreSQL).
+     - `REDIS_HOST`, `REDIS_PORT=6379` (e.g., `localhost` for local Redis).
+     - `CEDRINA_DEV_PASSWORD` for the `cedrina_dev` database role.
+     - Example `DATABASE_URL`: `postgresql+psycopg2://postgres:postgres@localhost:5432/cedrina_dev?sslmode=disable`
+
+2. **Set Up Local Services**:
+   - Start local PostgreSQL and Redis instances:
+     ```bash
+     psql -U postgres -c "CREATE DATABASE cedrina_dev;"
+     redis-cli -h localhost -p 6379 ping
+     ```
+   - Verify connectivity:
+     ```bash
+     psql -U postgres -d cedrina_dev -h localhost
+     redis-cli -h localhost -p 6379 ping
+     ```
+
+3. **Run the Application**:
+   - Activate the Poetry environment:
+     ```bash
+     poetry shell
+     ```
+   - Start the server:
+     ```bash
+     make run-dev-local
+     ```
+     - Uses Uvicorn with hot reloading for live code updates.
+     - Sets `PYTHONPATH=/app` automatically.
+
+4. **Access Endpoints**:
+   - REST: `http://localhost:8000/api/v1/health` (returns `{"status":"ok","env":"development","message":"System is operational"}`)
+   - With language: `http://localhost:8000/api/v1/health?lang=fa` (Persian message)
+   - WebSocket: `ws://localhost:8000/ws/health?lang=ar` (Arabic message)
+   - Docs: `http://localhost:8000/docs` (if `DEBUG=true`)
 
 ### Development with Docker
-1. Ensure `.env` is set up.
-2. Set `ENABLE_LOCAL_POSTGRES=false` and `ENABLE_LOCAL_REDIS=false` in `.env` to use Dockerized PostgreSQL and Redis containers, or set to `true` and configure `POSTGRES_HOST` and `REDIS_HOST` for local instances.
-3. Run Docker Compose:
-   - With Dockerized PostgreSQL and Redis containers:
+This mode uses Docker Compose to run the application, PostgreSQL, and Redis containers, providing a consistent development environment with live reloading.
+
+1. **Configure Environment**:
+   - Ensure `.env.development` is configured with:
+     - `SECRET_KEY`: Generate with `openssl rand -base64 32`.
+     - `POSTGRES_HOST=postgres`, `POSTGRES_PORT=5432`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB=cedrina_dev`.
+     - `REDIS_HOST=redis`, `REDIS_PORT=6379`.
+     - `CEDRINA_DEV_PASSWORD` for the `cedrina_dev` database role.
+     - Example `DATABASE_URL`: `postgresql+psycopg2://postgres:postgres@postgres:5432/cedrina_dev?sslmode=disable`
+
+2. **Build and Run**:
+   - Build the development Docker image:
      ```bash
-     COMPOSE_PROFILES=postgres,redis make run-dev
+     make build
      ```
-   - With local instances:
+   - Start the application and services:
      ```bash
      make run-dev
      ```
-   - Mounts `src/` and `locales/` for live reloading.
-   - Uses persistent volumes (`cedrina_postgres_data`, `cedrina_redis_data`) if Dockerized services are enabled.
-   - Edit code in `src/` or `locales/`, and recompile translations if needed (`make compile-translations`).
-4. Access the same endpoints as above.
+     - Uses `docker-compose.yml` to start `app`, `postgres`, and `redis` services.
+     - Mounts `src/` for live code updates (edit files in `src/` to see changes instantly).
+     - Uses persistent volumes (`cedrina_postgres_data`, `cedrina_redis_data`).
+
+3. **Access Endpoints**:
+   - Same as Local Development (REST, WebSocket, Docs).
+   - Verify container status:
+     ```bash
+     docker ps
+     ```
+
+4. **Update Translations**:
+   - If `locales/` changes, recompile translations:
+     ```bash
+     make compile-translations
+     ```
+
+### Testing
+This mode runs unit and integration tests to ensure application reliability, using Dockerized PostgreSQL and Redis for consistency.
+
+1. **Configure Environment**:
+   - Ensure `.env.test` is configured with:
+     - `SECRET_KEY`, `POSTGRES_*`, `REDIS_*`, `CEDRINA_DEV_PASSWORD`.
+     - `POSTGRES_HOST=postgres`, `REDIS_HOST=redis` for Dockerized services.
+     - Example `DATABASE_URL`: `postgresql+psycopg2://postgres:postgres@postgres:5432/cedrina_test?sslmode=disable`
+
+2. **Set Up Test Database**:
+   - Docker Compose manages the test database:
+     ```bash
+     APP_ENV=test make run-dev
+     ```
+
+3. **Run Tests**:
+   - Start Dockerized services and run tests:
+     ```bash
+     APP_ENV=test make run-dev
+     make test
+     ```
+     - Uses `pytest` with coverage, testing translations, database, and Redis connectivity.
+     - View coverage report: `htmlcov/index.html`.
+
+4. **Verify**:
+   - Check test output for failures.
+   - Ensure `tests/unit/` and `tests/integration/` run successfully.
 
 ### Staging
-1. Configure `.env.staging` with credentials for external PostgreSQL and Redis servers (e.g., AWS RDS, ElastiCache). Do not use `docker-compose.yml` for staging.
-2. Build the Docker image:
+This mode deploys the application to a staging environment, connecting to external PostgreSQL and Redis servers with secure configurations.
+
+1. **Configure Environment**:
+   - Edit `.env.staging` with credentials for external PostgreSQL and Redis servers (e.g., AWS RDS, ElastiCache):
+     - `SECRET_KEY`: Generate with `openssl rand -base64 32`.
+     - `POSTGRES_HOST`, `POSTGRES_PORT=5432`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB=cedrina_staging`, `POSTGRES_SSL_MODE=require`.
+     - `REDIS_HOST`, `REDIS_PORT=6379`, `REDIS_PASSWORD`, `REDIS_SSL=true`.
+     - `CEDRINA_DEV_PASSWORD` for the `cedrina_dev` database role.
+     - Example:
+       ```plaintext
+       DATABASE_URL=postgresql+psycopg2://postgres:your_staging_password@staging.db.example.com:5432/cedrina_staging?sslmode=require
+       REDIS_URL=rediss://:your_staging_redis_password@staging.redis.example.com:6379/0
+       ```
+
+2. **Set Up External Services**:
+   - Create the staging database:
+     ```bash
+     psql -U postgres -h staging.db.example.com -c "CREATE DATABASE cedrina_staging;"
+     ```
+   - Verify Redis connectivity:
+     ```bash
+     redis-cli -h staging.redis.example.com -p 6379 -a your_staging_redis_password --tls ping
+     ```
+
+3. **Build and Run**:
+   - Build the production-optimized image:
+     ```bash
+     make build-prod
+     ```
+   - Start the application:
+     ```bash
+     make run-staging
+     ```
+     - Uses `docker-compose.prod.yml` and `Dockerfile.prod` for a secure, minimal image with non-root user and Gunicorn workers.
+
+4. **Access Endpoints**:
+   - REST: `https://staging.example.com/api/v1/health` (configure DNS/load balancer).
+   - WebSocket: `wss://staging.example.com/ws/health?lang=ar`.
+   - Docs: `https://staging.example.com/docs` (if enabled).
+
+5. **Apply Migrations**:
    ```bash
-   make build
+   make db-migrate
    ```
-3. Run the container:
-   ```bash
-   make run-staging
-   ```
-4. Access at `https://staging.example.com/api/v1/health` (configure DNS/load balancer).
 
 ### Production
-1. Configure `.env.production` with credentials for external PostgreSQL and Redis servers. Do not use `docker-compose.yml` for production.
-2. Build the Docker image:
+This mode deploys the application to a production environment, using secure configurations for external PostgreSQL and Redis servers.
+
+1. **Configure Environment**:
+   - Edit `.env.production` with credentials for external PostgreSQL and Redis servers:
+     - Same fields as `.env.staging` but with production values (e.g., `POSTGRES_DB=cedrina_production`).
+     - Example:
+       ```plaintext
+       DATABASE_URL=postgresql+psycopg2://postgres:your_production_password@prod.db.example.com:5432/cedrina_production?sslmode=require
+       REDIS_URL=rediss://:your_production_redis_password@prod.redis.example.com:6379/0
+       ```
+
+2. **Set Up External Services**:
+   - Create the production database:
+     ```bash
+     psql -U postgres -h prod.db.example.com -c "CREATE DATABASE cedrina_production;"
+     ```
+   - Verify Redis connectivity:
+     ```bash
+     redis-cli -h prod.redis.example.com -p 6379 -a your_production_redis_password --tls ping
+     ```
+
+3. **Build and Run**:
+   - Build the production-optimized image:
+     ```bash
+     make build-prod
+     ```
+   - Start the application:
+     ```bash
+     make run-prod
+     ```
+     - Uses `docker-compose.prod.yml` and `Dockerfile.prod`.
+
+4. **Access Endpoints**:
+   - REST: `https://example.com/api/v1/health` (configure DNS/load balancer).
+   - WebSocket: `wss://example.com/ws/health?lang=ar`.
+   - Docs: `https://example.com/docs` (if enabled).
+
+5. **Apply Migrations**:
    ```bash
-   make build
+   make db-migrate
    ```
-3. Run the container:
-   ```bash
-   make run-prod
-   ```
-4. Access at `https://example.com/api/v1/health` (configure DNS/load balancer).
 
 ## Testing
 Unit and integration tests ensure reliability, including database and cache connectivity.
 
 ### Running Tests
 1. Ensure `.env.test` exists with valid PostgreSQL and Redis credentials.
-2. Set `ENABLE_LOCAL_POSTGRES=true` and `ENABLE_LOCAL_REDIS=true` in `.env.test` for local test instances, or set to `false` for Dockerized test databases.
-3. Run tests with coverage:
+2. Run tests with coverage:
    - With Dockerized PostgreSQL and Redis containers:
      ```bash
      COMPOSE_PROFILES=postgres,redis make test
@@ -214,13 +343,11 @@ Unit and integration tests ensure reliability, including database and cache conn
 - **PostgreSQL**: Version 16, used for all environments with persistent storage and secure connections.
 - **Redis**: Version 7.2, used for caching or messaging with persistent storage and secure TLS connections.
 - **Development**:
-  - Local instances (enable with `ENABLE_LOCAL_POSTGRES=true` and `ENABLE_LOCAL_REDIS=true`, using `POSTGRES_HOST=localhost`, `REDIS_HOST=localhost`).
-  - Dockerized containers (enable with `ENABLE_LOCAL_POSTGRES=false` and `ENABLE_LOCAL_REDIS=false`, using `COMPOSE_PROFILES=postgres,redis`).
-  - Persistent volumes (`cedrina_postgres_data`, `cedrina_redis_data`) retain data when using containers.
+  - Dockerized containers (`POSTGRES_HOST=postgres`, `REDIS_HOST=redis`) via `docker-compose.yml`.
+  - Persistent volumes (`cedrina_postgres_data`, `cedrina_redis_data`) retain data.
 - **Test**:
-  - Local instances (default with `ENABLE_LOCAL_POSTGRES=true` and `ENABLE_LOCAL_REDIS=true`).
-  - Dockerized test databases (enable with `ENABLE_LOCAL_POSTGRES=false` and `ENABLE_LOCAL_REDIS=false`).
-- **Staging/Production**: Connects to external PostgreSQL and Redis servers (e.g., AWS RDS, ElastiCache) with SSL, backups, and high availability. Use `.env.staging` or `.env.production` without `docker-compose.yml`.
+  - Dockerized test databases (`POSTGRES_HOST=postgres`, `REDIS_HOST=redis`).
+- **Staging/Production**: Connects to external PostgreSQL and Redis servers (e.g., AWS RDS, ElastiCache) with SSL, backups, and high availability. Use `.env.staging` or `.env.production` with `docker-compose.prod.yml`.
 - **Migrations**:
   - Apply migrations:
     ```bash
@@ -231,18 +358,11 @@ Unit and integration tests ensure reliability, including database and cache conn
     make db-rollback
     ```
 - **Setup**:
-  - For development/test with local instances:
+  - For development/test, Docker Compose creates databases:
     ```bash
-    psql -U postgres -c "CREATE DATABASE cedrina_dev;"
-    psql -U postgres -c "CREATE DATABASE cedrina_test;"
-    redis-cli -h localhost -p 6379 ping
     make run-dev
     ```
-  - For development/test with Dockerized containers:
-    ```bash
-    COMPOSE_PROFILES=postgres,redis make run-dev
-    ```
-  - For staging/production, configure external servers and update `.env.<env>`:
+  - For staging/production, configure external servers:
     ```bash
     psql -U postgres -h staging-postgres.example.com -c "CREATE DATABASE cedrina_staging;"
     ```
@@ -269,12 +389,17 @@ Unit and integration tests ensure reliability, including database and cache conn
    make compile-translations
    ```
 3. Build the Docker image:
-   ```bash
-   make build
-   ```
+   - Development:
+     ```bash
+     make build
+     ```
+   - Staging/Production:
+     ```bash
+     make build-prod
+     ```
 4. Tag the image:
    ```bash
-   docker tag cedrina:latest <registry>/cedrina:0.2.0
+   docker tag cedrina:${APP_ENV:-production} <registry>/cedrina:0.2.0
    ```
 
 ### Releasing
@@ -313,62 +438,46 @@ Unit and integration tests ensure reliability, including database and cache conn
 - **.env.<env>**: `development`, `staging`, `production`, `test`.
 
 ## Environment Configuration
-- **.env.development**: Local development, copy to `.env`, includes PostgreSQL and Redis credentials with `ENABLE_LOCAL_POSTGRES` and `ENABLE_LOCAL_REDIS`.
-- **.env.staging**: Staging, connects to external PostgreSQL and Redis servers with SSL.
-- **.env.production**: Production, connects to external PostgreSQL and Redis servers with SSL.
-- **.env.test**: Testing, local or Dockerized databases.
-- Update `SECRET_KEY` (minimum 32 characters), `ALLOWED_ORIGINS`, `POSTGRES_*`, and `REDIS_*` fields in each file.
-- Example `SECRET_KEY` or `POSTGRES_PASSWORD`/`REDIS_PASSWORD` generation:
+- **.env.development**: Development, includes Dockerized PostgreSQL/Redis credentials.
+- **.env.staging**: Staging, connects to external PostgreSQL/Redis with SSL.
+- **.env.production**: Production, connects to external PostgreSQL/Redis with SSL.
+- **.env.test**: Testing, uses Dockerized databases.
+- Update `SECRET_KEY` (minimum 32 characters), `ALLOWED_ORIGINS`, `POSTGRES_*`, `REDIS_*`, and `CEDRINA_DEV_PASSWORD` in each file.
+- Example `SECRET_KEY` or password generation:
   ```bash
   openssl rand -base64 32
   ```
 
 ## Troubleshooting
 - **ValidationError (SECRET_KEY, POSTGRES_PASSWORD, REDIS_PASSWORD)**:
-  - Ensure `SECRET_KEY` (32+ characters), `POSTGRES_PASSWORD` (12+ characters), and `REDIS_PASSWORD` (12+ characters) in `.env` or `.env.<env>`.
+  - Ensure `SECRET_KEY` (32+ characters), `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, and `CEDRINA_DEV_PASSWORD` are set in `.env.*`.
 - **ModuleNotFoundError**:
-  - Use `make run-local` or `make test` to set `PYTHONPATH`.
+  - Use `make run-dev-local` or `make test` to set `PYTHONPATH`.
   - In Docker, `PYTHONPATH=/app` is set automatically.
 - **Database Connectivity**:
-  - For `ENABLE_LOCAL_POSTGRES=true`, ensure the local PostgreSQL server is running:
-    ```bash
-    psql -U cedrina_dev -d cedrina_dev -h localhost
-    ```
-  - For `ENABLE_LOCAL_POSTGRES=false`, verify the Dockerized PostgreSQL container:
+  - Development/Test: Verify Dockerized PostgreSQL container:
     ```bash
     docker ps
+    docker logs cedrina_postgres_1
     ```
-  - Check logs:
+  - Staging/Production: Verify external server:
     ```bash
-    docker logs <postgres_container_id>
+    psql -U postgres -h staging  -d cedrina_staging
     ```
 - **Cache Connectivity**:
-  - For `ENABLE_LOCAL_REDIS=true`, ensure the local Redis server is running:
-    ```bash
-    redis-cli -h localhost -p 6379 ping
-    ```
-  - For `ENABLE_LOCAL_REDIS=false`, verify the Dockerized Redis container:
+  - Development/Test: Verify Dockerized Redis container:
     ```bash
     docker ps
+    docker logs cedrina_redis_1
     ```
-  - Check logs:
+  - Staging/Production: Verify external Redis:
     ```bash
-    docker logs <redis_container_id>
-    ```
-- **Profile Issues**:
-  - If Dockerized services don’t start, verify `ENABLE_LOCAL_POSTGRES=false`, `ENABLE_LOCAL_REDIS=false`, and `COMPOSE_PROFILES`:
-    ```bash
-    cat .env | grep ENABLE_LOCAL
-    echo $COMPOSE_PROFILES
-    ```
-  - Set explicitly if needed:
-    ```bash
-    export COMPOSE_PROFILES=postgres,redis
+    redis-cli -h staging.redis.example.com -p 6379 -a your_staging_redis_password --tls ping
     ```
 - **Translation Issues**:
-  - If `health_status_ok` persists, verify `messages.mo` files in `locales/<lang>/LC_MESSAGES/`.
+  - Verify `messages.mo` in `locales/<lang>/LC_MESSAGES/`.
   - Run `make compile-translations`.
-  - Check logs for `i18n_initialized` and `translation_fetched` entries (share for further debugging).
+  - Check logs for `i18n_initialized`.
 - **Docker Volume Issues**:
   - Verify volumes:
     ```bash
@@ -376,42 +485,40 @@ Unit and integration tests ensure reliability, including database and cache conn
     ```
   - Recreate if corrupted:
     ```bash
-    docker volume rm cedrina_postgres_data cedrina_redis_data
-    COMPOSE_PROFILES=postgres,redis make run-dev
+    make clean-volumes
+    make run-dev
     ```
-- **Docker Issues**: Ensure ports are free (`docker ps`) and volumes are mounted correctly.
 - **Logs**: Check JSON logs (`docker logs <container>`).
 
 ## Development Workflow
-1. Configure `.env` with `ENABLE_LOCAL_POSTGRES=true` and `ENABLE_LOCAL_REDIS=true` for local instances, or `false` for Dockerized PostgreSQL and Redis containers.
-2. Run `make run-dev` or `COMPOSE_PROFILES=postgres,redis make run-dev` as needed.
-3. Edit `src/` or `locales/`; recompile translations if needed (`make compile-translations`).
+1. Configure `.env.development` for Dockerized services.
+2. Run `make run-dev` for development.
+3. Edit `src/` or `locales/`; recompile translations (`make compile-translations`).
 4. Apply migrations (`make db-migrate`) after schema changes.
-5. Run `make test` or `COMPOSE_PROFILES=postgres,redis make test` frequently.
+5. Run `make test` frequently.
 6. Commit with Git, ensuring pre-commit hooks pass.
 7. Push to the repository.
 
 ## Deployment Notes
-- **Staging**: Use a load balancer, monitor logs, and configure external PostgreSQL and Redis servers with SSL, backups, and high availability. Do not use `docker-compose.yml`.
-- **Production**: Implement auto-scaling, health checks, and automated backups for PostgreSQL and Redis servers. Do not use `docker-compose.yml`.
-- **Secrets**: Use a vault (e.g., AWS Secrets Manager) for `SECRET_KEY`, `POSTGRES_PASSWORD`, and `REDIS_PASSWORD`.
+- **Staging**: Use load balancer, monitor logs, and configure external PostgreSQL/Redis with SSL, backups, and high availability.
+- **Production**: Implement auto-scaling, health checks, and automated backups.
+- **Secrets**: Use a vault (e.g., AWS Secrets Manager) for `SECRET_KEY`, `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, and `CEDRINA_DEV_PASSWORD`.
 
 ## Customization
-To adapt **Cedrina** for your project:
-- **Rename the Project**:
+- **Rename Project**:
   - Update `name` in `pyproject.toml`.
-  - Replace `cedrina` in `Dockerfile`, `docker-compose.yml`, and build commands.
-- **Add Endpoints**: Extend `src/adapters/api/v1/` with new routes.
-- **Expand i18n**: Add languages by creating new `locales/<lang>/LC_MESSAGES/messages.po` files and updating `SUPPORTED_LANGUAGES` in `settings.py`.
-- **Integrate Database Models**: Define SQLModel models in `src/domain/entities/` and create migrations with Alembic.
+  - Replace `cedrina` in `Dockerfile`, `docker-compose.yml`, `docker-compose.prod.yml`.
+- **Add Endpoints**: Extend `src/adapters/api/v1/`.
+- **Expand i18n**: Add languages in `SUPPORTED_LANGUAGES` and `locales/<lang>/`.
+- **Database Models**: Define SQLModel models in `src/domain/entities/` and generate migrations.
 
 ## Future Enhancements
-- Database model integration (e.g., User model with SQLModel).
-- Redis-based features (e.g., caching, pub/sub messaging).
+- Database model integration (e.g., User model).
+- Redis pub/sub or caching.
 - JWT authentication.
 - Message broker (Redis, RabbitMQ).
 - Monitoring (Prometheus, Grafana).
-- Additional languages for i18n.
+- Additional i18n languages.
 
 ---
 
