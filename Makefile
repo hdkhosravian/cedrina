@@ -1,81 +1,51 @@
 # Cedrina Makefile
 # Comprehensive tasks for building, running, testing, and maintaining the Cedrina FastAPI project.
-# Supports conditional PostgreSQL and Redis services, i18n, and enterprise-grade deployment.
 
-.PHONY: all build run-dev run-dev-local run-test run-staging run-prod test lint format compile-translations update-translations db-migrate db-rollback db-init clean clean-volumes check-health
+.PHONY: all build build-prod run-dev run-dev-local run-test run-staging run-prod test lint format compile-translations update-translations db-migrate db-rollback db-init clean clean-volumes check-health
 
-# Default target: build, compile translations, and run development
+# Default target: build and run development
 all: build compile-translations run-dev
 
-# Build the Docker image for Cedrina
+# Build the Docker image for development
 build:
-	@echo "Building Cedrina Docker image..."
-	docker build --no-cache -t cedrina:latest .
+	@echo "Building Cedrina development Docker image..."
+	docker build --no-cache -t cedrina:development -f Dockerfile .
 
-# Run development environment with Docker Compose, using profiles based on ENABLE_LOCAL_* settings
+# Build the Docker image for staging/production
+build-prod:
+	@echo "Building Cedrina staging/production Docker image..."
+	docker build --no-cache -t cedrina:${APP_ENV:-production} -f Dockerfile.prod .
+
+# Run development environment with Docker Compose
 run-dev:
 	@echo "Starting development environment..."
-	@PROFILES=""; \
-	if [ "$$(grep -E '^ENABLE_LOCAL_POSTGRES=false' .env 2>/dev/null || echo false)" = "false" ]; then \
-		echo "Using local PostgreSQL instance (ENABLE_LOCAL_POSTGRES=true)"; \
-	else \
-		echo "Using Dockerized PostgreSQL (ENABLE_LOCAL_POSTGRES=false)"; \
-		PROFILES="postgres"; \
-	fi; \
-	if [ "$$(grep -E '^ENABLE_LOCAL_REDIS=false' .env 2>/dev/null || echo false)" = "false" ]; then \
-		echo "Using local Redis instance (ENABLE_LOCAL_REDIS=true)"; \
-	else \
-		echo "Using Dockerized Redis (ENABLE_LOCAL_REDIS=false)"; \
-		PROFILES="$$PROFILES$${PROFILES:+,}redis"; \
-	fi; \
-	if [ -z "$$PROFILES" ]; then \
-		docker-compose up --build; \
-	else \
-		COMPOSE_PROFILES=$$PROFILES docker-compose up --build; \
-	fi
+	APP_ENV=development docker-compose -f docker-compose.yml up --build --force-recreate
 
 # Run development environment locally without Docker
 run-dev-local:
 	@echo "Starting local development server..."
 	poetry run bash -c "export PYTHONPATH=\$$PWD && uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"
 
-# Run test environment with Docker Compose, using profiles based on ENABLE_LOCAL_* settings
+# Run test environment with Docker Compose
 run-test:
 	@echo "Starting test environment..."
-	@PROFILES=""; \
-	if [ "$$(grep -E '^ENABLE_LOCAL_POSTGRES=false' .env.test 2>/dev/null || echo false)" = "false" ]; then \
-		echo "Using local PostgreSQL instance for tests (ENABLE_LOCAL_POSTGRES=true)"; \
-	else \
-		echo "Using Dockerized PostgreSQL for tests (ENABLE_LOCAL_POSTGRES=false)"; \
-		PROFILES="postgres"; \
-	fi; \
-	if [ "$$(grep -E '^ENABLE_LOCAL_REDIS=false' .env.test 2>/dev/null || echo false)" = "false" ]; then \
-		echo "Using local Redis instance for tests (ENABLE_LOCAL_REDIS=true)"; \
-	else \
-		echo "Using Dockerized Redis for tests (ENABLE_LOCAL_REDIS=false)"; \
-		PROFILES="$$PROFILES$${PROFILES:+,}redis"; \
-	fi; \
-	if [ -z "$$PROFILES" ]; then \
-		poetry run bash -c "export PYTHONPATH=\$$PWD && pytest --cov=src --cov-report=html"; \
-	else \
-		COMPOSE_PROFILES=$$PROFILES poetry run bash -c "export PYTHONPATH=\$$PWD && pytest --cov=src --cov-report=html"; \
-	fi
+	poetry run bash -c "export PYTHONPATH=\$$PWD && pytest --cov=src --cov-report=html"
 
-# Run staging environment with external PostgreSQL and Redis servers
+# Run staging environment with external services
 run-staging:
 	@echo "Starting staging environment..."
 	@if [ -f .env.staging ]; then \
-		docker run -d -p 8000:8000 --env-file .env.staging cedrina:latest; \
+		APP_ENV=staging docker-compose -f docker-compose.prod.yml up --build --force-recreate; \
 	else \
 		echo "Error: .env.staging file not found"; \
 		exit 1; \
 	fi
 
-# Run production environment with external PostgreSQL and Redis servers
+# Run production environment with external services
 run-prod:
 	@echo "Starting production environment..."
 	@if [ -f .env.production ]; then \
-		docker run -d -p 8000:8000 --env-file .env.production cedrina:latest; \
+		APP_ENV=production docker-compose -f docker-compose.prod.yml up --build --force-recreate; \
 	else \
 		echo "Error: .env.production file not found"; \
 		exit 1; \
@@ -121,39 +91,18 @@ db-rollback:
 
 # Initialize local PostgreSQL and Redis databases for development/test
 db-init:
-	@echo "Initializing local databases..."
-	@if [ "$$(grep -E '^ENABLE_LOCAL_POSTGRES=true' .env 2>/dev/null || echo false)" = "true" ]; then \
-		echo "Creating PostgreSQL development database..."; \
-		psql -U $${POSTGRES_USER:-cedrina_dev} -h $${POSTGRES_HOST:-localhost} -c "CREATE DATABASE $${POSTGRES_DB:-cedrina_dev};" || echo "Failed to create PostgreSQL database; ensure local server is running"; \
-	else \
-		echo "Skipping PostgreSQL initialization (ENABLE_LOCAL_POSTGRES=false)"; \
-	fi
-	@if [ "$$(grep -E '^ENABLE_LOCAL_REDIS=true' .env 2>/dev/null || echo false)" = "true" ]; then \
-		echo "Checking local Redis instance..."; \
-		redis-cli -h $${REDIS_HOST:-localhost} -p $${REDIS_PORT:-6379} -a $${REDIS_PASSWORD:-dev_redis_secure_password_123456789012} ping || echo "Failed to connect to Redis; ensure local server is running"; \
-	else \
-		echo "Skipping Redis initialization (ENABLE_LOCAL_REDIS=false)"; \
-	fi
-	@if [ "$$(grep -E '^ENABLE_LOCAL_POSTGRES=true' .env.test 2>/dev/null || echo false)" = "true" ]; then \
-		echo "Creating PostgreSQL test database..."; \
-		psql -U $${POSTGRES_USER:-cedrina_test} -h $${POSTGRES_HOST:-localhost} -c "CREATE DATABASE $${POSTGRES_DB:-cedrina_test};" || echo "Failed to create PostgreSQL test database; ensure local server is running"; \
-	else \
-		echo "Skipping PostgreSQL test initialization (ENABLE_LOCAL_POSTGRES=false)"; \
-	fi
-	@if [ "$$(grep -E '^ENABLE_LOCAL_REDIS=true' .env.test 2>/dev/null || echo false)" = "true" ]; then \
-		echo "Checking local Redis test instance..."; \
-		redis-cli -h $${REDIS_HOST:-localhost} -p $${REDIS_PORT:-6379} -a $${REDIS_PASSWORD:-test_redis_secure_password_123456789012} ping || echo "Failed to connect to Redis; ensure local server is running"; \
-	else \
-		echo "Skipping Redis test initialization (ENABLE_LOCAL_REDIS=false)"; \
-	fi
+	@echo "Initializing databases..."
+	@echo "PostgreSQL and Redis are managed by Docker Compose; ensure docker-compose.yml is configured."
 
-# Clean up Docker resources (containers, images, volumes)
+# Clean up Docker resources
 clean:
 	@echo "Cleaning up Docker resources..."
-	docker-compose down --remove-orphans
-	@if [ "$$(docker images -q cedrina:latest)" ]; then \
-		docker rmi cedrina:latest || true; \
-	fi
+	docker-compose -f docker-compose.yml down --remove-orphans --volumes --rmi all
+	docker-compose -f docker-compose.prod.yml down --remove-orphans --rmi all
+	@docker system prune -f --all
+	@docker volume prune -f
+	@docker network prune -f
+	@docker builder prune -f
 
 # Clean up persistent volumes
 clean-volumes:
@@ -165,16 +114,8 @@ clean-volumes:
 		docker volume rm cedrina_redis_data || true; \
 	fi
 
-# Check service health (PostgreSQL and Redis)
+# Check service health (development only)
 check-health:
 	@echo "Checking service health..."
-	@if [ "$$(grep -E '^ENABLE_LOCAL_POSTGRES=false' .env 2>/dev/null || echo false)" = "false" ]; then \
-		echo "Skipping PostgreSQL health check (ENABLE_LOCAL_POSTGRES=true)"; \
-	else \
-		docker inspect --format='{{.State.Health.Status}}' cedrina_postgres_1 || echo "PostgreSQL service not running"; \
-	fi
-	@if [ "$$(grep -E '^ENABLE_LOCAL_REDIS=false' .env 2>/dev/null || echo false)" = "false" ]; then \
-		echo "Skipping Redis health check (ENABLE_LOCAL_REDIS=true)"; \
-	else \
-		docker inspect --format='{{.State.Health.Status}}' cedrina_redis_1 || echo "Redis service not running"; \
-	fi
+	@docker inspect --format='{{.State.Health.Status}}' cedrina_postgres_1 || echo "PostgreSQL service not running"
+	@docker inspect --format='{{.State.Health.Status}}' cedrina_redis_1 || echo "Redis service not running"

@@ -1,90 +1,87 @@
-version: '3.9'
+# Docker Compose configuration for Cedrina development and testing
+# Includes local PostgreSQL and Redis services
+
 services:
-  api:
+  app:
+    image: cedrina:development
     build:
       context: .
-      target: builder
-    volumes:
-      - ./src:/app/src
-      - ./locales:/app/locales
-      - ./pyproject.toml:/app/pyproject.toml
-      - ./poetry.lock:/app/poetry.lock
-      - ./.env:/app/.env
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    env_file:
+      - .env.development
     environment:
-      - APP_ENV=${APP_ENV:-development}
+      - APP_ENV=development
       - PYTHONPATH=/app
-      - ENABLE_LOCAL_POSTGRES=${ENABLE_LOCAL_POSTGRES:-true}
-      - ENABLE_LOCAL_REDIS=${ENABLE_LOCAL_REDIS:-true}
-    command: bash -c "pybabel compile -d locales -D messages && uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"
+      - POSTGRES_HOST=postgres
+      - REDIS_HOST=redis
+    volumes:
+      - ./src:/app/src:rw  # Read-write for hot reloading
+      - ./locales:/app/locales:ro
+      - ./alembic.ini:/app/alembic.ini:ro
+      - ./alembic:/app/alembic:ro
     depends_on:
       postgres:
         condition: service_healthy
-        required: false
       redis:
         condition: service_healthy
-        required: false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    command: >
+      uvicorn src.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --reload-dir /app/src
     networks:
       - cedrina-network
 
   postgres:
     image: postgres:16
-    profiles:
-      - postgres
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-    volumes:
-      - cedrina_postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env.development
     ports:
-      - "5432:5432"
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-postgres}", "-d", "${POSTGRES_DB:-cedrina_dev}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
     networks:
       - cedrina-network
 
   redis:
-    image: redis:7.2
-    profiles:
-      - redis
-    environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-    command: redis-server --requirepass ${REDIS_PASSWORD}
-    volumes:
-      - cedrina_redis_data:/data
+    image: redis:7
+    command: redis-server
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
-    deploy:
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 256M
     networks:
       - cedrina-network
-
-volumes:
-  cedrina_postgres_data:
-    name: cedrina_postgres_data
-  cedrina_redis_data:
-    name: cedrina_redis_data
 
 networks:
   cedrina-network:
     driver: bridge
+    name: cedrina-network
+
+volumes:
+  postgres_data:
+    name: cedrina_postgres_data
+  redis_data:
+    name: cedrina_redis_data

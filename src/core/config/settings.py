@@ -12,8 +12,9 @@ different environments (development, staging, production).
 import os
 import logging
 from typing import List
-from pydantic import AnyHttpUrl, Field, field_validator, ValidationError, ValidationInfo
+from pydantic import AnyHttpUrl, Field, field_validator, ValidationInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_core import PydanticCustomError
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -29,27 +30,6 @@ class Settings(BaseSettings):
     - Handles environment-specific settings
     - Manages database connection parameters
     - Controls application behavior
-    
-    Attributes:
-        PROJECT_NAME (str): Name of the project
-        VERSION (str): Application version
-        APP_ENV (str): Current environment (development/staging/production)
-        DEBUG (bool): Debug mode flag
-        API_HOST (str): Host address for the API
-        API_PORT (int): Port number for the API
-        API_WORKERS (int): Number of worker processes
-        RELOAD (bool): Auto-reload flag for development
-        LOG_LEVEL (str): Logging level
-        LOG_JSON (bool): JSON logging format flag
-        SECRET_KEY (str): Application secret key
-        ALLOWED_ORIGINS (List[AnyHttpUrl]): List of allowed CORS origins
-        SUPPORTED_LANGUAGES (List[str]): List of supported language codes
-        DEFAULT_LANGUAGE (str): Default language code
-        POSTGRES_*: Database connection parameters
-        DATABASE_URL (str): Complete database connection URL
-        REDIS_*: Redis connection parameters
-        REDIS_URL (str): Complete Redis connection URL
-        ENABLE_LOCAL_*: Flags for local service usage
     """
     
     PROJECT_NAME: str = "cedrina"
@@ -85,65 +65,56 @@ class Settings(BaseSettings):
     # Redis settings
     REDIS_HOST: str
     REDIS_PORT: int = Field(ge=1, le=65535)
-    REDIS_PASSWORD: str
+    REDIS_PASSWORD: str = Field(default="", exclude=lambda v, info: info.data.get('APP_ENV') in ['staging', 'production'])
     REDIS_SSL: bool = False
     REDIS_URL: str
-
-    # Local service flags
-    ENABLE_LOCAL_POSTGRES: bool = False
-    ENABLE_LOCAL_REDIS: bool = False
 
     @field_validator("ALLOWED_ORIGINS", mode="after")
     @classmethod
     def parse_allowed_origins(cls, value: str) -> List[AnyHttpUrl]:
         """
         Validates and parses the ALLOWED_ORIGINS setting.
-        
-        This validator:
-        1. Splits the input string by comma
-        2. Strips whitespace from each URL
-        3. Validates each URL as an AnyHttpUrl
-        
-        Args:
-            value (str): Comma-separated list of URLs
-            
-        Returns:
-            List[AnyHttpUrl]: List of validated URLs
         """
         urls = [url.strip() for url in value.split(",") if url.strip()]
         return [AnyHttpUrl(url) for url in urls]
+
+    @field_validator("REDIS_PASSWORD")
+    @classmethod
+    def validate_redis_password(cls, value: str, info: ValidationInfo) -> str:
+        """
+        Ensures REDIS_PASSWORD is set for staging/production.
+        """
+        if info.data.get('APP_ENV') in ['staging', 'production'] and not value:
+            raise PydanticCustomError(
+                'redis_password_required',
+                'REDIS_PASSWORD must be set in staging/production environments'
+            )
+        return value
 
     @field_validator("DATABASE_URL")
     @classmethod
     def validate_database_url(cls, value: str, info: ValidationInfo) -> str:
         """
         Validates that DATABASE_URL matches other POSTGRES_* settings.
-        
-        This validator ensures consistency between the DATABASE_URL and individual
-        PostgreSQL connection parameters. It constructs the expected URL from
-        the individual parameters and compares it with the provided URL.
-        
-        Args:
-            value (str): The DATABASE_URL to validate
-            info (ValidationInfo): Validation info containing other field values
-            
-        Returns:
-            str: The validated DATABASE_URL
-            
-        Raises:
-            ValidationError: If DATABASE_URL doesn't match POSTGRES_* settings
         """
         data = info.data
         
+        # In Docker, use port 5432 internally; locally, use POSTGRES_PORT
+        effective_port = 5432 if data.get('POSTGRES_HOST') == 'postgres' else data['POSTGRES_PORT']
+        
         expected_url = (
             f"postgresql+psycopg2://{data['POSTGRES_USER']}:{data['POSTGRES_PASSWORD']}@"
-            f"{data['POSTGRES_HOST']}:{data['POSTGRES_PORT']}/{data['POSTGRES_DB']}?sslmode={data['POSTGRES_SSL_MODE']}"
+            f"{data['POSTGRES_HOST']}:{effective_port}/{data['POSTGRES_DB']}?sslmode={data['POSTGRES_SSL_MODE']}"
         )
         logger.debug(f"Expected DATABASE_URL: {expected_url}")
         logger.debug(f"Provided DATABASE_URL: {value}")
         
         if value != expected_url:
-            raise ValidationError(f"DATABASE_URL must match POSTGRES_* settings. Expected: {expected_url}")
+            raise PydanticCustomError(
+                'database_url_mismatch',
+                f"DATABASE_URL must match POSTGRES_* settings. Expected: {expected_url}",
+                {'expected_url': expected_url, 'provided_url': value}
+            )
         return value
 
     model_config = SettingsConfigDict(
