@@ -3,6 +3,9 @@
 
 .PHONY: all build build-prod run-dev run-dev-local run-test run-staging run-prod test lint format compile-translations update-translations db-migrate db-rollback db-init clean clean-volumes check-health
 
+# Set PYTHONPATH to include project root for src/ imports
+export PYTHONPATH := $(shell pwd):${PYTHONPATH}
+
 # Default target: build and run development
 all: build compile-translations run-dev
 
@@ -82,12 +85,12 @@ update-translations:
 # Apply database migrations
 db-migrate:
 	@echo "Applying database migrations..."
-	poetry run alembic upgrade head
+	poetry run bash -c "export PYTHONPATH=\$$PWD && alembic upgrade head"
 
 # Roll back the last database migration
 db-rollback:
 	@echo "Rolling back last database migration..."
-	poetry run alembic downgrade -1
+	poetry run bash -c "export PYTHONPATH=\$$PWD && alembic downgrade -1"
 
 # Initialize local PostgreSQL and Redis databases for development/test
 db-init:
