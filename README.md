@@ -41,7 +41,7 @@
    ```
 
 3. **Set Up Environment**:
-   - For development/test, ensure `.env.development` or `.env.test` is configured with Dockerized service credentials:
+   - For development/test, ensure `.env.development` is configured with Dockerized service credentials:
      ```bash
      cp .env.development .env
      ```
@@ -161,7 +161,7 @@ This mode uses Docker Compose to run the application, PostgreSQL, and Redis cont
 This mode runs unit and integration tests to ensure application reliability, using Dockerized PostgreSQL and Redis for consistency.
 
 1. **Configure Environment**:
-   - Ensure `.env.test` is configured with:
+   - Ensure `.env` is configured with:
      - `SECRET_KEY`, `POSTGRES_*`, `REDIS_*`, `CEDRINA_DEV_PASSWORD`.
      - `POSTGRES_HOST=postgres`, `REDIS_HOST=redis` for Dockerized services.
      - Example `DATABASE_URL`: `postgresql+psycopg2://postgres:postgres@postgres:5432/cedrina_test?sslmode=disable`
@@ -278,7 +278,7 @@ This mode deploys the application to a production environment, using secure conf
 Unit and integration tests ensure reliability, including database and cache connectivity.
 
 ### Running Tests
-1. Ensure `.env.test` exists with valid PostgreSQL and Redis credentials.
+1. Ensure `.env` exists with valid PostgreSQL and Redis credentials.
 2. Run tests with coverage:
    - With Dockerized PostgreSQL and Redis containers:
      ```bash
@@ -288,7 +288,7 @@ Unit and integration tests ensure reliability, including database and cache conn
      ```bash
      make test
      ```
-   - Uses `.env.test` for the test environment.
+   - Uses `.env` for the test environment.
    - Tests translations, database, and cache connectivity.
    - View coverage report in `htmlcov/index.html`.
 3. Tests are in:
@@ -296,13 +296,13 @@ Unit and integration tests ensure reliability, including database and cache conn
    - `tests/integration/`: Integration tests (to be added).
 
 ### Test Configuration
-- `pytest.ini` sets `pythonpath = src` for module resolution and loads `.env.test` via `pytest-dotenv`.
+- `pytest.ini` sets `pythonpath = src` for module resolution and loads `.env` via `pytest-dotenv`.
 - Async tests are supported with `pytest-asyncio`.
 
 ### Troubleshooting Tests
 - **ModuleNotFoundError**: Verify `pytest.ini` exists and `pythonpath = src` is set.
-- **Validation Errors**: Ensure `.env.test` has a `SECRET_KEY` with at least 32 characters and valid `POSTGRES_*` and `REDIS_*` settings.
-- **Database Errors**: Check PostgreSQL connectivity and credentials in `.env.test`.
+- **Validation Errors**: Ensure `.env` has a `SECRET_KEY` with at least 32 characters and valid `POSTGRES_*` and `REDIS_*` settings.
+- **Database Errors**: Check PostgreSQL connectivity and credentials in `.env`.
   - For local PostgreSQL, ensure the server is running:
     ```bash
     psql -U cedrina_test -d cedrina_test -h localhost
@@ -441,7 +441,6 @@ Unit and integration tests ensure reliability, including database and cache conn
 - **.env.development**: Development, includes Dockerized PostgreSQL/Redis credentials.
 - **.env.staging**: Staging, connects to external PostgreSQL/Redis with SSL.
 - **.env.production**: Production, connects to external PostgreSQL/Redis with SSL.
-- **.env.test**: Testing, uses Dockerized databases.
 - Update `SECRET_KEY` (minimum 32 characters), `ALLOWED_ORIGINS`, `POSTGRES_*`, `REDIS_*`, and `CEDRINA_DEV_PASSWORD` in each file.
 - Example `SECRET_KEY` or password generation:
   ```bash

@@ -8,8 +8,8 @@ log() {
 
 log "Initializing PostgreSQL database and role..."
 
-# Source .env.development if it exists, with fallback defaults
-ENV_FILE="/app/.env.development"
+# Source .env if it exists, with fallback defaults
+ENV_FILE="/app/.env"
 if [ -f "$ENV_FILE" ]; then
     log "Sourcing environment variables from $ENV_FILE..."
     set -a

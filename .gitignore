@@ -29,3 +29,7 @@ coverage/
 # Docker
 Dockerfile.local
 docker-compose.local.yml
+
+# Secu
+private.pem
+public.pem

@@ -191,8 +191,3 @@ To verify the models are correctly set up:
     make clean-volumes
     make run-dev
     ```
-
-## Next Steps
-- Implement `AuthService` in `src/domain/services/` for authentication logic.
-- Define API endpoints in `src/adapters/api/v1/`.
-- Update this document with model usage in authentication workflows.

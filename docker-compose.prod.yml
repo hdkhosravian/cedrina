@@ -10,7 +10,7 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env.${APP_ENV:-production}
+      - .env
     environment:
       - APP_ENV=${APP_ENV:-production}
       - PYTHONPATH=/app:/app/src

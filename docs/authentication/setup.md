@@ -104,8 +104,3 @@ The Cedrina authentication system uses PostgreSQL to store user data, OAuth prof
     ```bash
     docker logs cedrina_app_1
     ```
-
-## Next Steps
-- Implement authentication logic in `src/domain/services/` using `python-jose` for JWT and `authlib` for OAuth.
-- Add API endpoints in `src/adapters/api/v1/`.
-- Update this document with authentication logic details.

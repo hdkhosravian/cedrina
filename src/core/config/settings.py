@@ -12,7 +12,7 @@ different environments (development, staging, production).
 import os
 import logging
 from typing import List
-from pydantic import AnyHttpUrl, Field, field_validator, ValidationInfo
+from pydantic import AnyHttpUrl, Field, field_validator, ValidationInfo, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic_core import PydanticCustomError
 
@@ -25,11 +25,38 @@ class Settings(BaseSettings):
     Application settings class that defines and validates all configuration parameters.
     
     This class:
-    - Defines default values for all settings
-    - Validates configuration values
-    - Handles environment-specific settings
-    - Manages database connection parameters
-    - Controls application behavior
+        PROJECT_NAME (str): Name of the project.
+        VERSION (str): Application version.
+        APP_ENV (Literal): Environment (development, staging, production, test).
+        DEBUG (bool): Debug mode flag.
+        API_HOST (str): Host for API server.
+        API_PORT (int): Port for API server.
+        SECRET_KEY (SecretStr): Secret key for cryptographic operations.
+        ALLOWED_ORIGINS (List[HttpUrl]): CORS allowed origins.
+        POSTGRES_USER (str): PostgreSQL username.
+        POSTGRES_PASSWORD (SecretStr): PostgreSQL password.
+        POSTGRES_DB (str): PostgreSQL database name.
+        POSTGRES_HOST (str): PostgreSQL host.
+        POSTGRES_PORT (int): PostgreSQL port.
+        POSTGRES_SSL_MODE (str): PostgreSQL SSL mode.
+        DATABASE_URL (str): PostgreSQL connection URL.
+        REDIS_HOST (str): Redis host.
+        REDIS_PORT (int): Redis port.
+        REDIS_SSL (bool): Redis SSL flag.
+        REDIS_URL (str): Redis connection URL.
+        PGCRYPTO_KEY (SecretStr): Key for pgcrypto encryption.
+        GOOGLE_CLIENT_ID (str): Google OAuth client ID.
+        GOOGLE_CLIENT_SECRET (SecretStr): Google OAuth client secret.
+        MICROSOFT_CLIENT_ID (str): Microsoft OAuth client ID.
+        MICROSOFT_CLIENT_SECRET (SecretStr): Microsoft OAuth client secret.
+        FACEBOOK_CLIENT_ID (str): Facebook OAuth client ID.
+        FACEBOOK_CLIENT_SECRET (SecretStr): Facebook OAuth client secret.
+        JWT_PRIVATE_KEY (SecretStr): RSA private key for JWT signing.
+        JWT_PUBLIC_KEY (str): RSA public key for JWT verification.
+        JWT_ISSUER (str): JWT issuer identifier.
+        JWT_AUDIENCE (str): JWT audience identifier.
+        ACCESS_TOKEN_EXPIRE_MINUTES (int): Access token expiration time.
+        REFRESH_TOKEN_EXPIRE_DAYS (int): Refresh token expiration time.
     """
     
     PROJECT_NAME: str = "cedrina"
@@ -54,6 +81,7 @@ class Settings(BaseSettings):
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
+    POSTGRES_DB_TEST: str
     POSTGRES_HOST: str
     POSTGRES_PORT: int = Field(ge=1, le=65535)
     POSTGRES_SSL_MODE: str = Field(pattern="^(disable|allow|prefer|require|verify-ca|verify-full)$")
@@ -61,6 +89,7 @@ class Settings(BaseSettings):
     POSTGRES_MAX_OVERFLOW: int = Field(ge=0)
     POSTGRES_POOL_TIMEOUT: float = Field(ge=1.0)
     DATABASE_URL: str
+    PGCRYPTO_KEY: SecretStr
 
     # Redis settings
     REDIS_HOST: str
@@ -68,6 +97,20 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = Field(default="", exclude=lambda v, info: info.data.get('APP_ENV') in ['staging', 'production'])
     REDIS_SSL: bool = False
     REDIS_URL: str
+    
+    # Auth settings
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: SecretStr = SecretStr("")
+    MICROSOFT_CLIENT_ID: str = ""
+    MICROSOFT_CLIENT_SECRET: SecretStr = SecretStr("")
+    FACEBOOK_CLIENT_ID: str = ""
+    FACEBOOK_CLIENT_SECRET: SecretStr = SecretStr("")
+    JWT_PRIVATE_KEY: SecretStr = SecretStr("")  # Generate RSA key pair
+    JWT_PUBLIC_KEY: str = ""
+    JWT_ISSUER: str = "https://api.cedrina.com"
+    JWT_AUDIENCE: str = "cedrina:api:v1"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     @field_validator("ALLOWED_ORIGINS", mode="after")
     @classmethod
@@ -88,32 +131,6 @@ class Settings(BaseSettings):
             raise PydanticCustomError(
                 'redis_password_required',
                 'REDIS_PASSWORD must be set in staging/production environments'
-            )
-        return value
-
-    @field_validator("DATABASE_URL")
-    @classmethod
-    def validate_database_url(cls, value: str, info: ValidationInfo) -> str:
-        """
-        Validates that DATABASE_URL matches other POSTGRES_* settings.
-        """
-        data = info.data
-        
-        # In Docker, use port 5432 internally; locally, use POSTGRES_PORT
-        effective_port = 5432 if data.get('POSTGRES_HOST') == 'postgres' else data['POSTGRES_PORT']
-        
-        expected_url = (
-            f"postgresql+psycopg2://{data['POSTGRES_USER']}:{data['POSTGRES_PASSWORD']}@"
-            f"{data['POSTGRES_HOST']}:{effective_port}/{data['POSTGRES_DB']}?sslmode={data['POSTGRES_SSL_MODE']}"
-        )
-        logger.debug(f"Expected DATABASE_URL: {expected_url}")
-        logger.debug(f"Provided DATABASE_URL: {value}")
-        
-        if value != expected_url:
-            raise PydanticCustomError(
-                'database_url_mismatch',
-                f"DATABASE_URL must match POSTGRES_* settings. Expected: {expected_url}",
-                {'expected_url': expected_url, 'provided_url': value}
             )
         return value
 

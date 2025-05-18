@@ -8,7 +8,6 @@ The project root contains configuration files, Docker-related files, and top-lev
 
 - **.env**: Default environment file for development, copied from `.env.development`. Contains project metadata, API settings, logging, security, database, Redis, and Docker configurations.
 - **.env.development**: Environment file for local development with debug settings, local PostgreSQL/Redis, and default credentials.
-- **.env.test**: Environment file for testing with isolated database settings and local instance defaults.
 - **.env.staging**: Environment file for staging with external PostgreSQL/Redis server settings and SSL enabled.
 - **.env.production**: Environment file for production with external PostgreSQL/Redis server settings, SSL, and optimized worker settings.
 - **Dockerfile**: Multi-stage Docker configuration for building, precompiling, and running the application. Defines `builder`, `precompiler`, and `runtime` stages.
@@ -19,7 +18,7 @@ The project root contains configuration files, Docker-related files, and top-lev
 - **Makefile**: Defines build, run, test, lint, format, translation, and migration tasks for local and Docker workflows.
 - **README.md**: Project documentation with setup instructions, usage, and troubleshooting (not detailed here).
 - **babel.cfg**: Configuration for Babel to extract translation keys from source code.
-- **pytest.ini**: Pytest configuration, setting `pythonpath = src` and loading `.env.test` via `pytest-dotenv`.
+- **pytest.ini**: Pytest configuration, setting `pythonpath = src` and loading `.env` via `pytest-dotenv`.
 
 ### Directories
 - **alembic/**: Database migration scripts and configuration.
