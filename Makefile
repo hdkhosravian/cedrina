@@ -57,7 +57,7 @@ run-test:
 	@poetry run bash -c "$(CMD_PREFIX) \
 		TEST_DB_URL=$$(echo \"$$DATABASE_URL\" | sed \"s/\/$$POSTGRES_DB/\/$$POSTGRES_DB_TEST/\"); \
 		export DATABASE_URL=$$TEST_DB_URL; \
-		pytest --cov=src --cov-report=html"
+		pytest --cov=src --cov-report=html || { echo 'Error: Tests failed'; exit 1; }"
 
 # --------------------
 # Database Targets
@@ -69,20 +69,21 @@ db-migrate:
 	@if [ "$(APP_ENV)" = "development" ]; then \
 		echo "Applying migrations for test database..."; \
 		poetry run bash -c "$(CMD_PREFIX) \
-			TEST_DB_URL=$$(echo \"$$DATABASE_URL\" | sed \"s/\/$$POSTGRES_DB/\/$$POSTGRES_DB_TEST/\"); \
-			export DATABASE_URL=$$TEST_DB_URL; \
+			TEST_DB_URL=\$$(echo \"\$$DATABASE_URL\" | sed \"s/\/$$POSTGRES_DB/\/$$POSTGRES_DB_TEST/\"); \
+			export DATABASE_URL=\$$TEST_DB_URL; \
 			alembic upgrade head || { echo 'Error: Migration failed for $$POSTGRES_DB_TEST'; exit 1; }"; \
 	fi
 
 db-rollback:
 	@echo "Rolling back last migration for $(APP_ENV)..."
-	@poetry run bash -c "$(CMD_PREFIX) alembic downgrade -1"
+	@poetry run bash -c "$(CMD_PREFIX) \
+		alembic downgrade -1 || { echo 'Error: Rollback failed for $$POSTGRES_DB'; exit 1; }"
 	@if [ "$(APP_ENV)" = "development" ]; then \
 		echo "Rolling back test database migration..."; \
 		poetry run bash -c "$(CMD_PREFIX) \
 			TEST_DB_URL=$$(echo \"$$DATABASE_URL\" | sed \"s/\/$$POSTGRES_DB/\/$$POSTGRES_DB_TEST/\"); \
 			export DATABASE_URL=$$TEST_DB_URL; \
-			alembic downgrade -1"; \
+			alembic downgrade -1 || { echo 'Error: Rollback failed for $$POSTGRES_DB_TEST'; exit 1; }"; \
 	fi
 
 db-init:
