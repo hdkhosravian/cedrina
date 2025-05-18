@@ -1,14 +1,18 @@
 #!/bin/sh
 set -e
 
-# Function to log messages
+# Function to log messages with timestamp
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
+# Set PYTHONPATH to ensure src/ imports work
+export PYTHONPATH=/app:/app/src:${PYTHONPATH}
+log "PYTHONPATH set to $PYTHONPATH"
+
 # Validate required environment variables
 log "Validating environment variables..."
-for var in SECRET_KEY DATABASE_URL REDIS_URL; do
+for var in SECRET_KEY DATABASE_URL REDIS_URL POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB; do
     if [ -z "$(eval echo \$$var)" ]; then
         log "ERROR: $var is not set"
         exit 1
@@ -19,7 +23,7 @@ done
 if [ "$APP_ENV" = "development" ]; then
     # Wait for PostgreSQL
     log "Waiting for PostgreSQL at postgres:5432..."
-    timeout=30
+    timeout=60
     start_time=$(date +%s)
     export PGPASSWORD="$POSTGRES_PASSWORD"
     until pg_isready -h postgres -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do
@@ -32,6 +36,10 @@ if [ "$APP_ENV" = "development" ]; then
         sleep 2
     done
     log "PostgreSQL is ready"
+
+    # Delay to ensure init-db.sh completes
+    log "Waiting 10 seconds for database initialization..."
+    sleep 10
 
     # Verify cedrina_dev role
     log "Verifying cedrina_dev role..."
@@ -54,7 +62,7 @@ if [ "$APP_ENV" = "development" ]; then
     done
     log "Redis is ready"
 else
-    # Staging/Production: Check external services with longer timeout
+    # Staging/Production: Check external services
     log "Checking external PostgreSQL at $POSTGRES_HOST:$POSTGRES_PORT..."
     retries=10
     attempt=1
@@ -97,18 +105,31 @@ else
     fi
 fi
 
-# Apply database migrations
+# Apply database migrations with retries
 log "Applying database migrations..."
-export PGPASSWORD="$POSTGRES_PASSWORD"
-alembic upgrade head || {
-    log "ERROR: Database migration failed"
-    exit 1
-}
+retries=3
+attempt=1
+while [ $attempt -le $retries ]; do
+    if alembic upgrade head 2>&1 | tee /tmp/migration.log; then
+        log "Database migrations applied successfully"
+        break
+    else
+        log "Migration attempt $attempt/$retries failed. Error details:"
+        cat /tmp/migration.log
+        if [ $attempt -eq $retries ]; then
+            log "ERROR: Database migration failed after $retries attempts"
+            exit 1
+        fi
+        log "Retrying migration in 5 seconds..."
+        sleep 5
+        attempt=$((attempt + 1))
+    fi
+done
 
 # Start the application
 if [ "$APP_ENV" = "development" ]; then
     log "Starting Uvicorn with hot reload..."
-    exec "$@"
+    exec uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/src
 else
     log "Starting Gunicorn with Uvicorn workers..."
     exec gunicorn \
