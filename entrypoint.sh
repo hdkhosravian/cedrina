@@ -19,6 +19,13 @@ for var in SECRET_KEY DATABASE_URL REDIS_URL POSTGRES_USER POSTGRES_PASSWORD POS
     fi
 done
 
+# Reconstruct DATABASE_URL to use POSTGRES_HOST from environment
+if [ "$APP_ENV" = "development" ]; then
+    log "Reconstructing DATABASE_URL for development..."
+    export DATABASE_URL="postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=${POSTGRES_SSL_MODE}"
+    log "DATABASE_URL set to $DATABASE_URL"
+fi
+
 # Wait for services based on APP_ENV
 if [ "$APP_ENV" = "development" ]; then
     # Wait for PostgreSQL
