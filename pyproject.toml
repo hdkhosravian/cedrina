@@ -1,10 +1,17 @@
-[tool.poetry]
+[project]
 name = "cedrina"
 version = "0.1.0"
 description = "Enterprise-grade FastAPI template for scalable REST and real-time applications"
-authors = ["Elite Architect <architect@example.com>"]
-license = "Proprietary"
+authors = [{name = "Sam khosravian", email = "hd.khosravian@gmail.com"}]
+license = {text = "MIT"}
 readme = "README.md"
+requires-python = "^3.12"
+dynamic = ["version"]
+
+[project.scripts]
+cedrina = "src.main:app"
+
+[tool.poetry]
 package-mode = false
 packages = [{include = "src"}]
 
@@ -49,9 +56,6 @@ bandit = "^1.7.10"  # Latest: 1.7.10
 types-python-jose = "^3.3.4"  # Latest: 3.3.4
 types-passlib = "^1.7.7"  # Latest: 1.7.7
 pytest-mock = "^3.14.0"
-
-[tool.poetry.scripts]
-cedrina = "src.main:app"
 
 [build-system]
 requires = ["poetry-core>=2.0.0"]  # Updated for Poetry 2.1.3
