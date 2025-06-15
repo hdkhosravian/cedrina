@@ -286,52 +286,20 @@ This mode deploys the application to a production environment, using secure conf
    make db-migrate
    ```
 
-## Testing
-Unit and integration tests ensure reliability, including database and cache connectivity.
+## Testing with Database Isolation
 
-### Running Tests
-1. Ensure `.env` exists with valid PostgreSQL and Redis credentials.
-2. Run tests with coverage:
-   - With Dockerized PostgreSQL and Redis containers:
-     ```bash
-     COMPOSE_PROFILES=postgres,redis make test
-     ```
-   - With local instances:
-     ```bash
-     make test
-     ```
-   - Uses `.env` for the test environment.
-   - Tests translations, database, and cache connectivity.
-   - View coverage report in `htmlcov/index.html`.
-3. Tests are in:
-   - `tests/unit/`: Unit tests (e.g., `test_database.py`).
-   - `tests/integration/`: Integration tests (to be added).
+To ensure test reliability and prevent data interference between tests, this project implements database isolation for each test run, similar to tools like `DatabaseCleaner` in Ruby on Rails with RSpec.
 
-### Test Configuration
-- `pytest.ini` sets `pythonpath = src` for module resolution and loads `.env` via `pytest-dotenv`.
-- Async tests are supported with `pytest-asyncio`.
+- **Fixture**: A pytest fixture named `clean_database` in `tests/conftest.py` is automatically applied to every test function.
+- **Functionality**: Before each test, it sets up the necessary database tables. After each test, it truncates all tables to reset the database to a clean state.
+- **Purpose**: This ensures that tests do not affect each other through residual database data, maintaining test independence and repeatability.
 
-### Troubleshooting Tests
-- **ModuleNotFoundError**: Verify `pytest.ini` exists and `pythonpath = src` is set.
-- **Validation Errors**: Ensure `.env` has a `SECRET_KEY` with at least 32 characters and valid `POSTGRES_*` and `REDIS_*` settings.
-- **Database Errors**: Check PostgreSQL connectivity and credentials in `.env`.
-  - For local PostgreSQL, ensure the server is running:
-    ```bash
-    psql -U cedrina_test -d cedrina_test -h localhost
-    ```
-- **Cache Errors**: Check Redis connectivity:
-  - For local Redis, ensure the server is running:
-    ```bash
-    redis-cli -h localhost -p 6379 ping
-    ```
-- **Translation Errors**:
-  - Verify `messages.mo` files exist in `locales/<lang>/LC_MESSAGES/`.
-  - Run `make compile-translations` after editing `.po` files.
-  - Check logs for `i18n_initialized` and `translation_fetched` messages.
-- **Cache Issues**: Clear pytest cache:
-  ```bash
-  rm -rf .pytest_cache
-  ```
+Run tests with the command:
+```bash
+TEST_MODE=true poetry run pytest -v --cov=src
+```
+
+This setup guarantees a clean slate for each test, crucial for consistent and reliable test results in a development or CI/CD environment.
 
 ## Internationalization (i18n)
 - **Supported Languages**: English (`en`), Persian (`fa`), and Arabic (`ar`).
@@ -442,95 +410,4 @@ Unit and integration tests ensure reliability, including database and cache conn
   - **domain/**: `entities`, `services` (DDD).
   - **infrastructure/**: `database`, future brokers.
   - **utils/**: Helpers, including `i18n.py`.
-- **locales/**: Translation files (`en`, `fa`, `ar`).
-- **alembic/**: Database migrations.
-- **tests/**: `unit`, `integration`.
-- **scripts/**: Utility scripts.
-- **docs/**: Documentation.
-- **.env.<env>**: `development`, `staging`, `production`, `test`.
-
-## Environment Configuration
-- **.env.development**: Development, includes Dockerized PostgreSQL/Redis credentials.
-- **.env.staging**: Staging, connects to external PostgreSQL/Redis with SSL.
-- **.env.production**: Production, connects to external PostgreSQL/Redis with SSL.
-- Update `SECRET_KEY` (minimum 32 characters), `ALLOWED_ORIGINS`, `POSTGRES_*`, `REDIS_*`, and `CEDRINA_DEV_PASSWORD` in each file.
-- Example `SECRET_KEY` or password generation:
-  ```bash
-  openssl rand -base64 32
-  ```
-
-## Troubleshooting
-- **ValidationError (SECRET_KEY, POSTGRES_PASSWORD, REDIS_PASSWORD)**:
-  - Ensure `SECRET_KEY` (32+ characters), `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, and `CEDRINA_DEV_PASSWORD` are set in `.env.*`.
-- **ModuleNotFoundError**:
-  - Use `make run-dev-local` or `make test` to set `PYTHONPATH`.
-  - In Docker, `PYTHONPATH=/app` is set automatically.
-- **Database Connectivity**:
-  - Development/Test: Verify Dockerized PostgreSQL container:
-    ```bash
-    docker ps
-    docker logs cedrina_postgres_1
-    ```
-  - Staging/Production: Verify external server:
-    ```bash
-    psql -U postgres -h staging  -d cedrina_staging
-    ```
-- **Cache Connectivity**:
-  - Development/Test: Verify Dockerized Redis container:
-    ```bash
-    docker ps
-    docker logs cedrina_redis_1
-    ```
-  - Staging/Production: Verify external Redis:
-    ```bash
-    redis-cli -h staging.redis.example.com -p 6379 -a your_staging_redis_password --tls ping
-    ```
-- **Translation Issues**:
-  - Verify `messages.mo` in `locales/<lang>/LC_MESSAGES/`.
-  - Run `make compile-translations`.
-  - Check logs for `i18n_initialized`.
-- **Docker Volume Issues**:
-  - Verify volumes:
-    ```bash
-    docker volume inspect cedrina_postgres_data cedrina_redis_data
-    ```
-  - Recreate if corrupted:
-    ```bash
-    make clean-volumes
-    make run-dev
-    ```
-- **Logs**: Check JSON logs (`docker logs <container>`).
-
-## Development Workflow
-1. Configure `.env.development` for Dockerized services.
-2. Run `make run-dev` for development.
-3. Edit `src/` or `locales/`; recompile translations (`make compile-translations`).
-4. Apply migrations (`make db-migrate`) after schema changes.
-5. Run `make test` frequently.
-6. Commit with Git, ensuring pre-commit hooks pass.
-7. Push to the repository.
-
-## Deployment Notes
-- **Staging**: Use load balancer, monitor logs, and configure external PostgreSQL/Redis with SSL, backups, and high availability.
-- **Production**: Implement auto-scaling, health checks, and automated backups.
-- **Secrets**: Use a vault (e.g., AWS Secrets Manager) for `SECRET_KEY`, `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, and `CEDRINA_DEV_PASSWORD`.
-
-## Customization
-- **Rename Project**:
-  - Update `name` in `pyproject.toml`.
-  - Replace `cedrina` in `Dockerfile`, `docker-compose.yml`, `docker-compose.prod.yml`.
-- **Add Endpoints**: Extend `src/adapters/api/v1/`.
-- **Expand i18n**: Add languages in `SUPPORTED_LANGUAGES` and `locales/<lang>/`.
-- **Database Models**: Define SQLModel models in `src/domain/entities/` and generate migrations.
-
-## Future Enhancements
-- Database model integration (e.g., User model).
-- Redis pub/sub or caching.
-- JWT authentication.
-- Message broker (Redis, RabbitMQ).
-- Monitoring (Prometheus, Grafana).
-- Additional i18n languages.
-
----
-
-This document is for internal team use only. Contact the architecture team for support.
+- **locales/**: Translation files (`en`, `fa`, `
