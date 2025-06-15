@@ -10,6 +10,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 import httpx
 import asyncio
 from datetime import datetime, timezone
+from src.permissions.dependencies import check_permission
 
 router = APIRouter()
 
@@ -42,10 +43,27 @@ async def check_database_health_async() -> Dict[str, Any]:
         logger.error("database_health_check_failed", error=str(e))
         return {"status": "unhealthy", "error": str(e)}
 
-@router.get("/", response_model=HealthResponse)
+@router.get("/", response_model=HealthResponse, dependencies=[Depends(check_permission("/health", "GET"))])
 async def health_check(request: Request):
     """
     Comprehensive health check endpoint that verifies all service dependencies.
+
+    This endpoint checks the health of critical dependencies such as the database and Redis. It returns a detailed
+    status report indicating whether the system is fully operational or in a degraded state. Access to this
+    endpoint is restricted to users with the 'admin' role, enforced by the Casbin permission system to ensure
+    sensitive system information is not exposed to unauthorized users.
+
+    Args:
+        request (Request): The incoming HTTP request object, used to determine the preferred language for
+                           status messages.
+
+    Returns:
+        HealthResponse: A structured response containing the overall system status, a localized status message,
+                        and detailed health information for each service (e.g., database, Redis).
+
+    Raises:
+        HTTPException: If the user does not have the required permissions (HTTP 403 Forbidden), as determined
+                       by the Casbin enforcer.
     """
     language = request.state.language
     status_message = get_translated_message("health_status_ok", language)

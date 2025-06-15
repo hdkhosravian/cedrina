@@ -38,23 +38,25 @@ These settings control the application's logging behavior.
 ## Security
 These variables are critical for securing the application and its communications.
 
-- **SECRET_KEY**: `6WhM3IaAWk456o802VHKpum2MB7zbD/h`
+- **SECRET_KEY**: `[REDACTED - Set a unique, secure value]`
   - A secret key for cryptographic operations. Must be at least 32 characters long and should be kept secure. Replace with a unique, secure value in production.
 - **ALLOWED_ORIGINS**: `http://0.0.0.0:8000,http://localhost:8000,http://127.0.0.1:8000`
   - Comma-separated list of allowed origins for CORS (Cross-Origin Resource Sharing). Configures which domains can access the API.
 
+**Note on Permission System**: Ensure that environment variables related to authentication (e.g., JWT settings) are configured correctly to integrate with the permission system. The permission system relies on accurate user role retrieval, which may depend on secure token validation. See `permissions.md` for more details on securing API endpoints.
+
 ## pgcrypto
 Settings for PostgreSQL's `pgcrypto` extension used for encryption.
 
-- **PGCRYPTO_KEY**: `G2R7oPVxniZpDPrOUM7d4pVHDioUtSRj`
+- **PGCRYPTO_KEY**: `[REDACTED - Set a unique, secure value]`
   - Key used by the `pgcrypto` extension in PostgreSQL for encrypting sensitive data like OAuth tokens. Ensure this is a secure, unique value and matches across environments.
 
 ## JWT (JSON Web Token) Settings
 These variables configure JWT for authentication and authorization.
 
-- **JWT_PUBLIC_KEY**: (truncated for brevity, begins with `-----BEGIN PUBLIC KEY-----`)
+- **JWT_PUBLIC_KEY**: `[REDACTED - Set a secure public key]`
   - Public key for verifying JWT signatures. Used to validate incoming tokens.
-- **JWT_PRIVATE_KEY**: (truncated for brevity, begins with `-----BEGIN PRIVATE KEY-----`)
+- **JWT_PRIVATE_KEY**: `[REDACTED - Set a secure private key]`
   - Private key for signing JWTs. Must be kept secure and not exposed in public documentation or repositories.
 - **JWT_ISSUER**: `https://api.example.com`
   - The issuer identifier for JWTs, typically a URL representing the token issuer.
@@ -84,9 +86,9 @@ These settings configure OAuth integration for external authentication providers
 ## Database Settings for PostgreSQL
 These variables configure the connection to the PostgreSQL database.
 
-- **POSTGRES_USER**: `postgres`
+- **POSTGRES_USER**: `[REDACTED - Set a secure username]`
   - Username for PostgreSQL database connection.
-- **POSTGRES_PASSWORD**: `postgres`
+- **POSTGRES_PASSWORD**: `[REDACTED - Set a secure password]`
   - Password for PostgreSQL database connection. Replace with a secure password in production.
 - **POSTGRES_DB**: `cedrina_dev`
   - Name of the primary database for the application in development.
@@ -146,12 +148,4 @@ Miscellaneous settings that may be used for specific purposes.
 
 ## Usage Notes
 - **Security**: Sensitive values like `SECRET_KEY`, `JWT_PRIVATE_KEY`, `PGCRYPTO_KEY`, database passwords, and OAuth secrets must be kept secure and not committed to version control. Use environment-specific files (e.g., `.env.development`, `.env.production`) to manage these.
-- **Environment-Specific Configurations**: Adjust values based on the environment. For instance, disable `DEBUG` and `RELOAD` in production, increase `API_WORKERS`, and enable `REDIS_SSL` and appropriate `POSTGRES_SSL_MODE`.
-- **Dynamic URLs**: Variables like `DATABASE_URL` and `REDIS_URL` are constructed from other settings if not explicitly defined. Ensure component variables are correct to avoid connection issues.
-
-## How to Configure
-1. Copy the `.env.development` template to `.env` for local development or create environment-specific files (`.env.staging`, `.env.production`).
-2. Update the values as per your setup, ensuring secure keys and credentials are used.
-3. Use a tool like `python-dotenv` (already configured in `pytest.ini`) to load these variables into your application.
-
-This documentation ensures that developers can understand and configure the `cedrina` project's environment settings for development, with considerations for security and scalability in other environments. 
+- **Environment-Specific Configurations**: Adjust values based on the environment. For instance, disable `DEBUG` and `RELOAD` in production, increase `API_WORKERS`, and enable `REDIS_SSL`

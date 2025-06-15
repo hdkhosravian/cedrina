@@ -106,6 +106,12 @@ The core application code, organized into DDD-inspired layers: adapters, core, d
 - **utils/**: Helper functions and cross-cutting concerns.
   - **__init__.py**: Exposes utility functions.
   - **i18n.py**: Configures i18n with `python-i18n`, handling translation loading and language selection.
+- **permissions/**: Access control and permission management.
+  - **__init__.py**: Exposes permission-related utilities.
+  - **config.py**: Defines configuration settings for the Casbin enforcer.
+  - **enforcer.py**: Manages the Casbin enforcer instance for policy evaluation.
+  - **dependencies.py**: Provides FastAPI dependencies for permission checks.
+  - **policies.py**: Manages policy definitions for access rules.
 - **main.py**: Application entry point, defining FastAPI app, middleware (CORS, language), routers, and startup/shutdown events.
 
 ### tests/
@@ -137,6 +143,7 @@ Contains unit and integration tests, mirroring the `src/` structure.
   - `domain/`: Business entities (`user.py`, `oauth_profile.py`, `session.py`) and services (`auth/`).
   - `infrastructure/`: Database (`database.py`) and future brokers.
   - `utils/`: i18n and helpers.
+  - `permissions/`: Access control and permission management.
   - `main.py`: FastAPI application entry point.
 - **tests/**: Unit (`unit/`) and integration (`integration/`) tests, mirroring `src/` with detailed authentication tests.
 

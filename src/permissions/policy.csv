@@ -1,0 +1,4 @@
+p, admin, /health, GET
+p, admin, /docs, GET
+p, admin, /redoc, GET
+p, admin, /metrics, GET 

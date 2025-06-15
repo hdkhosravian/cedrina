@@ -41,6 +41,7 @@ fastapi-limiter = "^0.1.6"  # Added for rate limiting
 authlib = "^1.3.2"  # Latest: 1.3.2
 cryptography = "^43.0.1"  # Latest: 43.0.1
 psutil = "^5.9.8"  # Added for system metrics
+casbin = "^1.7.0"  # Added for advanced access control
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"  # Latest: 8.3.3

@@ -6,10 +6,11 @@ from src.core.metrics import metrics_collector
 from src.core.config.settings import settings
 from typing import Dict, Any
 from datetime import datetime, timezone
+from src.permissions.dependencies import check_permission
 
 router = APIRouter()
 
-@router.get("/", response_model=Dict[str, Any])
+@router.get("/", response_model=Dict[str, Any], dependencies=[Depends(check_permission("/metrics", "GET"))])
 async def get_metrics():
     """
     Get application metrics.
@@ -20,8 +21,17 @@ async def get_metrics():
     - Database metrics (query counts, execution times)
     - Cache metrics (hit/miss rates)
     
+    Access to this endpoint is restricted to users with the 'admin' role, enforced by the Casbin permission
+    system to protect sensitive performance and operational data from unauthorized access.
+    
     Returns:
-        Dict[str, Any]: Collected metrics
+        Dict[str, Any]: Collected metrics in a structured dictionary format, providing detailed insights into
+                        system and application performance.
+    
+    Raises:
+        HTTPException: If the user does not have the required permissions (HTTP 403 Forbidden), as determined
+                       by the Casbin enforcer.
+                       If not in debug mode, returns HTTP 403 with a message indicating restricted access.
     """
     if not settings.DEBUG:
         raise HTTPException(
