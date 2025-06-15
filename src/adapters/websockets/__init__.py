@@ -9,6 +9,6 @@ async def websocket_health(websocket: WebSocket):
     await websocket.accept()
     lang = websocket.query_params.get("lang", "en")
     status_message = get_translated_message("health_status_ok", lang)
-    logger.debug("websocket_health_connected")
+    await logger.debug("websocket_health_connected")
     await websocket.send_json({"status": "connected", "message": status_message})
     await websocket.close()

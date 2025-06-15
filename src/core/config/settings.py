@@ -9,6 +9,7 @@ and provides a single `settings` object for use throughout the application.
 """
 
 import logging
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .app import AppSettings
@@ -34,6 +35,42 @@ class Settings(AppSettings, DatabaseSettings, RedisSettings, AuthSettings):
         case_sensitive=True,
         extra="ignore"
     )
+    
+    def validate_required_fields(self):
+        """
+        Validate that all required environment variables are set.
+        Raises ValueError if any critical field is missing or empty, unless in test mode.
+        """
+        required_fields = [
+            'APP_NAME',
+            'POSTGRES_HOST',
+            'POSTGRES_PORT',
+            'POSTGRES_DB',
+            'POSTGRES_USER',
+            'POSTGRES_PASSWORD',
+            'REDIS_HOST',
+            'REDIS_PORT',
+            'JWT_SECRET_KEY'
+        ]
+        
+        missing_fields = []
+        for field in required_fields:
+            try:
+                value = getattr(self, field)
+                if not value:
+                    missing_fields.append(field)
+            except AttributeError:
+                missing_fields.append(field)
+        
+        if missing_fields:
+            error_msg = f"Missing required environment variables: {', '.join(missing_fields)}"
+            if os.getenv('TEST_MODE', 'false').lower() == 'true':
+                logging.warning(f"Test mode: {error_msg}")
+            else:
+                raise ValueError(error_msg)
+        else:
+            logging.info("All required environment variables are set.")
 
 # Create a singleton instance of the settings to be used across the application.
 settings = Settings()
+settings.validate_required_fields()

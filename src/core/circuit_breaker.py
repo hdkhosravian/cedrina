@@ -2,7 +2,7 @@
 Circuit breaker implementation for external service calls.
 """
 from typing import Any, Callable, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import asyncio
 from core.logging import logger
 from functools import wraps
@@ -29,7 +29,7 @@ class CircuitBreaker:
         self.name = name
         
         self.failures = 0
-        self.last_failure_time: Optional[datetime] = None
+        self.last_failure_time = datetime.now(timezone.utc)
         self.state = "closed"  # closed, open, half-open
         self._lock = asyncio.Lock()
     
@@ -40,7 +40,7 @@ class CircuitBreaker:
                 if self.state == "half-open":
                     self.state = "closed"
                     self.failures = 0
-                    self.last_failure_time = None
+                    self.last_failure_time = datetime.now(timezone.utc)
                     logger.info(
                         "circuit_breaker_closed",
                         breaker=self.name,
@@ -48,7 +48,7 @@ class CircuitBreaker:
                     )
             else:
                 self.failures += 1
-                self.last_failure_time = datetime.utcnow()
+                self.last_failure_time = datetime.now(timezone.utc)
                 
                 if self.failures >= self.failure_threshold:
                     self.state = "open"
@@ -65,9 +65,7 @@ class CircuitBreaker:
                 return True
             
             if self.state == "open":
-                if self.last_failure_time and (
-                    datetime.utcnow() - self.last_failure_time
-                ) > timedelta(seconds=self.reset_timeout):
+                if (datetime.now(timezone.utc) - self.last_failure_time).total_seconds() > self.reset_timeout:
                     self.state = "half-open"
                     logger.info(
                         "circuit_breaker_half_open",
