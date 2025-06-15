@@ -17,13 +17,13 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from core.config.settings import settings
-from core.logging import configure_logging, logger
-from adapters.api.v1 import api_router
-from adapters.websockets import ws_router
-from utils.i18n import setup_i18n, get_request_language
+from src.core.config.settings import settings
+from src.core.logging import configure_logging, logger
+from src.adapters.api.v1 import api_router
+from src.adapters.websockets import ws_router
+from src.utils.i18n import setup_i18n, get_request_language
 import i18n
-from infrastructure.database import create_db_and_tables, check_database_health
+from src.infrastructure.database import create_db_and_tables, check_database_health
 from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware

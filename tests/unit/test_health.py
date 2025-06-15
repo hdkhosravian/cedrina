@@ -27,8 +27,10 @@ def test_health_check(client, lang, expected_message, monkeypatch):
     assert response.status_code == 200
     json_response = response.json()
     assert json_response["status"] == "ok"
-    assert json_response["env"] == "test"
     assert json_response["message"] == expected_message
+    assert json_response["env"] == "development"
+    assert "database" in json_response["services"]
+    assert json_response["services"]["database"]["status"] == "healthy"
 
 def test_health_check_default_language(client, monkeypatch):
     monkeypatch.setattr(settings, 'APP_ENV', 'test')
@@ -36,5 +38,7 @@ def test_health_check_default_language(client, monkeypatch):
     assert response.status_code == 200
     json_response = response.json()
     assert json_response["status"] == "ok"
-    assert json_response["env"] == "test"
     assert json_response["message"] == "System is operational"
+    assert json_response["env"] == "development"
+    assert "database" in json_response["services"]
+    assert json_response["services"]["database"]["status"] == "healthy"

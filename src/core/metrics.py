@@ -4,8 +4,8 @@ Metrics collection module for monitoring application performance and health.
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 import time
-from core.logging import logger
-from core.config.settings import settings
+from src.core.logging import logger
+from src.core.config.settings import settings
 import psutil
 import asyncio
 from functools import wraps

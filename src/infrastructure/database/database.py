@@ -1,7 +1,7 @@
 from sqlmodel import create_engine, SQLModel, Session
 from sqlalchemy.sql import text
-from core.config.settings import settings
-from core.logging import logger
+from src.core.config.settings import settings
+from src.core.logging import logger
 from sqlalchemy.exc import OperationalError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import time

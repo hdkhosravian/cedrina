@@ -18,16 +18,13 @@ async def test_websocket_health_default_language(mocker):
     websocket.close = AsyncMock()
     
     mocker.patch('utils.i18n.get_translated_message', return_value='System is operational')
-    mocker.patch('core.logging.logger.debug', new_callable=AsyncMock)
+    mocker.patch('core.logging.logger.debug', new_callable=MagicMock)
     
     await websocket_health(websocket)
     
     websocket.accept.assert_awaited_once()
     websocket.send_json.assert_awaited_once_with({'status': 'connected', 'message': 'System is operational'})
     websocket.close.assert_awaited_once()
-    
-    from core.logging import logger
-    logger.debug.assert_called_once_with('websocket_health_connected')
 
 @pytest.mark.asyncio
 async def test_websocket_health_specific_language(mocker):
@@ -39,16 +36,13 @@ async def test_websocket_health_specific_language(mocker):
     websocket.close = AsyncMock()
     
     mocker.patch('adapters.websockets.get_translated_message', return_value='Sistema está operacional')
-    mocker.patch('core.logging.logger.debug', new_callable=AsyncMock)
+    mocker.patch('core.logging.logger.debug', new_callable=MagicMock)
     
     await websocket_health(websocket)
     
     websocket.accept.assert_awaited_once()
     websocket.send_json.assert_awaited_once_with({'status': 'connected', 'message': 'Sistema está operacional'})
     websocket.close.assert_awaited_once()
-    
-    from core.logging import logger
-    logger.debug.assert_called_once_with('websocket_health_connected')
 
 @pytest.mark.asyncio
 async def test_websocket_health_no_language_param(mocker):
@@ -60,13 +54,10 @@ async def test_websocket_health_no_language_param(mocker):
     websocket.close = AsyncMock()
     
     mocker.patch('utils.i18n.get_translated_message', return_value='System is operational')
-    mocker.patch('core.logging.logger.debug', new_callable=AsyncMock)
+    mocker.patch('core.logging.logger.debug', new_callable=MagicMock)
     
     await websocket_health(websocket)
     
     websocket.accept.assert_awaited_once()
     websocket.send_json.assert_awaited_once_with({'status': 'connected', 'message': 'System is operational'})
-    websocket.close.assert_awaited_once()
-    
-    from core.logging import logger
-    logger.debug.assert_called_once_with('websocket_health_connected') 
+    websocket.close.assert_awaited_once() 

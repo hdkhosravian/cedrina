@@ -16,7 +16,7 @@ The logging configuration includes:
 import structlog
 from structlog.types import Processor
 
-from core.config.settings import settings
+from src.core.config.settings import settings
 
 def configure_logging(log_level: str = "INFO", json_logs: bool = False):
     """

@@ -4,6 +4,7 @@ Application-specific settings.
 from typing import List
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
+import os
 
 
 class AppSettings(BaseSettings):
@@ -25,7 +26,6 @@ class AppSettings(BaseSettings):
 
     SECRET_KEY: str = Field(..., min_length=32)
     ALLOWED_ORIGINS: str | List[str] = Field(default="http://0.0.0.0:8000")
-    SUPPORTED_LANGUAGES: List[str] = ["en", "fa", "ar"]
     DEFAULT_LANGUAGE: str = "en"
 
     @field_validator("ALLOWED_ORIGINS", mode="before")

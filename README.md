@@ -175,7 +175,7 @@ The Cedrina project employs a comprehensive testing strategy to ensure code reli
 
 To run the test suite with coverage reporting:
 
-```bash
+     ```bash
 TEST_MODE=true poetry run pytest -v --cov=src
 ```
 
@@ -277,7 +277,7 @@ To ensure test reliability and prevent data interference between tests, this pro
 - **Purpose**: This ensures that tests do not affect each other through residual database data, maintaining test independence and repeatability.
 
 Run tests with the command:
-```bash
+    ```bash
 TEST_MODE=true poetry run pytest -v --cov=src
 ```
 

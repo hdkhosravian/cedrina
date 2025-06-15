@@ -33,7 +33,7 @@ class Settings(AppSettings, DatabaseSettings, RedisSettings, AuthSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
-        extra="ignore"
+        extra="allow"
     )
     
     def validate_required_fields(self):
@@ -42,7 +42,7 @@ class Settings(AppSettings, DatabaseSettings, RedisSettings, AuthSettings):
         Raises ValueError if any critical field is missing or empty, unless in test mode.
         """
         required_fields = [
-            'APP_NAME',
+            'PROJECT_NAME',
             'POSTGRES_HOST',
             'POSTGRES_PORT',
             'POSTGRES_DB',
@@ -50,7 +50,9 @@ class Settings(AppSettings, DatabaseSettings, RedisSettings, AuthSettings):
             'POSTGRES_PASSWORD',
             'REDIS_HOST',
             'REDIS_PORT',
-            'JWT_SECRET_KEY'
+            'SECRET_KEY',
+            'JWT_PUBLIC_KEY',
+            'JWT_PRIVATE_KEY',
         ]
         
         missing_fields = []
@@ -74,3 +76,4 @@ class Settings(AppSettings, DatabaseSettings, RedisSettings, AuthSettings):
 # Create a singleton instance of the settings to be used across the application.
 settings = Settings()
 settings.validate_required_fields()
+settings.SUPPORTED_LANGUAGES = ["en", "fa", "ar"]

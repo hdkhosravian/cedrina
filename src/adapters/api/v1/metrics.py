@@ -2,8 +2,8 @@
 Metrics endpoint for exposing application metrics.
 """
 from fastapi import APIRouter, Depends, HTTPException
-from core.metrics import metrics_collector
-from core.config.settings import settings
+from src.core.metrics import metrics_collector
+from src.core.config.settings import settings
 from typing import Dict, Any
 from datetime import datetime, timezone
 

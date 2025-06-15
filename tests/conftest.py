@@ -4,7 +4,7 @@ import os
 from sqlalchemy.sql import text
 
 # Adjust sys.path to include src directory
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from infrastructure.database.database import get_db_session, create_db_and_tables
 from sqlmodel import SQLModel
