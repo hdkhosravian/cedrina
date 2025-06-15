@@ -170,32 +170,14 @@ This mode uses Docker Compose to run the application, PostgreSQL, and Redis cont
      ```
 
 ### Testing
-This mode runs unit and integration tests to ensure application reliability, using Dockerized PostgreSQL and Redis for consistency.
 
-1. **Configure Environment**:
-   - Ensure `.env` is configured with:
-     - `SECRET_KEY`, `POSTGRES_*`, `REDIS_*`, `CEDRINA_DEV_PASSWORD`.
-     - `POSTGRES_HOST=postgres`, `REDIS_HOST=redis` for Dockerized services.
-     - Example `DATABASE_URL`: `postgresql+psycopg2://postgres:postgres@postgres:5432/cedrina_test?sslmode=disable`
+The Cedrina project employs a comprehensive testing strategy to ensure code reliability and correctness. For detailed information on our testing approach, including database isolation and test coverage, please refer to [TESTING.md](./TESTING.md).
 
-2. **Set Up Test Database**:
-   - Docker Compose manages the test database:
-     ```bash
-     APP_ENV=test make run-dev
-     ```
+To run the test suite with coverage reporting:
 
-3. **Run Tests**:
-   - Start Dockerized services and run tests:
-     ```bash
-     APP_ENV=test make run-dev
-     make test
-     ```
-     - Uses `pytest` with coverage, testing translations, database, and Redis connectivity.
-     - View coverage report: `htmlcov/index.html`.
-
-4. **Verify**:
-   - Check test output for failures.
-   - Ensure `tests/unit/` and `tests/integration/` run successfully.
+```bash
+TEST_MODE=true poetry run pytest -v --cov=src
+```
 
 ### Staging
 This mode deploys the application to a staging environment, connecting to external PostgreSQL and Redis servers with secure configurations.
