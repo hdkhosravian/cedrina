@@ -17,6 +17,18 @@
 - **Dockerized Deployment**: Live reloading in development, optimized multi-stage builds for production.
 - **CI/CD Readiness**: Testing, linting, and pre-commit hooks for code quality.
 
+### Authentication and Security
+**Cedrina** includes a robust authentication system designed for enterprise-grade security, ensuring protection against common vulnerabilities and providing a scalable framework for user management. Key authentication features include:
+
+- **User Authentication**: Secure username/password authentication with bcrypt hashing and strict password policies (minimum 8 characters, must include uppercase, lowercase, and digit).
+- **JWT Token Management**: Issues and validates JWT tokens using RS256 signing (asymmetric encryption), with token expiration, rotation, and a placeholder for blacklisting compromised tokens.
+- **OAuth 2.0 Integration**: Supports authentication via Google, Microsoft, and Facebook, with encrypted access tokens and a placeholder for state validation to prevent CSRF attacks.
+- **Session Management**: Tracks user sessions in PostgreSQL and Redis, with revocation capabilities for refresh tokens.
+- **Rate Limiting**: Implements rate limiting to prevent brute force attacks on login and registration endpoints.
+- **Error Handling**: Custom exceptions for authentication and rate limiting errors, supporting multilingual error messages.
+
+For detailed information on authentication services, refer to the [Authentication Documentation](docs/authentication/services.md).
+
 ## Installation
 
 ### Prerequisites

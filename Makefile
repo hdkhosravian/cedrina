@@ -55,7 +55,7 @@ test:
 run-test:
 	@echo "Running tests in test environment..."
 	@poetry run bash -c "$(CMD_PREFIX) \
-		TEST_DB_URL=$$(echo \"$$DATABASE_URL\" | sed \"s/\/$$POSTGRES_DB/\/$$POSTGRES_DB_TEST/\"); \
+		TEST_DB_URL=$$(echo \"$$DATABASE_URL\" | sed -E 's/\/[^/]+\$$/\/$$POSTGRES_DB_TEST/'); \
 		export DATABASE_URL=$$TEST_DB_URL; \
 		pytest --cov=src --cov-report=html || { echo 'Error: Tests failed'; exit 1; }"
 

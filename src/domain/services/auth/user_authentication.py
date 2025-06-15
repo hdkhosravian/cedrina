@@ -1,12 +1,11 @@
-from pydantic import EmailStr
 from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
-from fastapi_limiter.depends import RateLimiter
+from sqlalchemy import select
+from pydantic import EmailStr
 from structlog import get_logger
 
-from src.domain.entities.user import User, Role
-from src.core.exceptions import AuthenticationError
+from domain.entities.user import User, Role
+from core.exceptions import AuthenticationError
 
 logger = get_logger(__name__)
 
@@ -14,8 +13,10 @@ class UserAuthenticationService:
     """
     Service for handling username/password authentication and user registration.
 
-    Provides secure authentication with bcrypt hashing and rate limiting, integrating
-    with PostgreSQL via SQLModel for user data persistence.
+    Provides secure authentication with bcrypt hashing, integrating
+    with PostgreSQL via SQLAlchemy for user data persistence. This service
+    enforces security best practices such as password hashing and validation
+    to prevent common vulnerabilities.
 
     Attributes:
         db_session (AsyncSession): SQLAlchemy async session for database operations.
@@ -28,7 +29,7 @@ class UserAuthenticationService:
 
     async def authenticate_by_credentials(self, username: str, password: str) -> User:
         """
-        Authenticate a user using username and password with rate limiting.
+        Authenticate a user using username and password.
 
         Args:
             username (str): User's username.
@@ -39,21 +40,23 @@ class UserAuthenticationService:
 
         Raises:
             AuthenticationError: If credentials are invalid or user is inactive.
-            RateLimitError: If login attempts exceed rate limit (5/minute).
+
+        Note:
+            This method uses bcrypt for secure password verification. Rate limiting
+            should be applied at the API layer to prevent brute force attacks.
         """
-        async with RateLimiter(times=5, seconds=60, identifier=f"login:{username}"):
-            user = await self.db_session.exec(
-                select(User).where(User.username == username)
-            )
-            user = user.first()
-            if not user or not self.pwd_context.verify(password, user.hashed_password):
-                await logger.awarning("Invalid login attempt", username=username)
-                raise AuthenticationError("Invalid username or password")
-            if not user.is_active:
-                await logger.awarning("Inactive user login attempt", username=username)
-                raise AuthenticationError("User account is inactive")
-            await logger.ainfo("User authenticated", username=username, user_id=user.id)
-            return user
+        statement = select(User).where(User.username == username)
+        user = (await self.db_session.exec(statement)).first()
+
+        if not user or not self.pwd_context.verify(password, user.hashed_password):
+            logger.warning("Invalid credentials for user", username=username)
+            raise AuthenticationError("Invalid username or password")
+        
+        if not user.is_active:
+            logger.warning("Authentication attempt for inactive user", username=username)
+            raise AuthenticationError("User account is inactive")
+        
+        return user
 
     async def register_user(self, username: str, email: EmailStr, password: str) -> User:
         """
@@ -62,33 +65,47 @@ class UserAuthenticationService:
         Args:
             username (str): Unique username.
             email (EmailStr): Unique email address.
-            password (str): User password.
+            password (str): User password, must be at least 8 characters long and include
+                           at least one uppercase letter, one lowercase letter, and one digit.
 
         Returns:
             User: Newly created user entity.
 
         Raises:
-            AuthenticationError: If username or email already exists.
-            RateLimitError: If registration attempts exceed rate limit (3/minute).
+            AuthenticationError: If username or email already exists, or if password
+                                 does not meet security requirements.
         """
-        async with RateLimiter(times=3, seconds=60, identifier=f"register:{username}"):
-            existing_user = await self.db_session.exec(
-                select(User).where((User.username == username) | (User.email == email))
-            )
-            if existing_user.first():
-                await logger.awarning("Registration attempt with existing credentials", username=username)
-                raise AuthenticationError("Username or email already exists")
+        # Check for existing username
+        statement = select(User).where(User.username == username)
+        if (await self.db_session.exec(statement)).first():
+            raise AuthenticationError("Username already registered")
 
-            hashed_password = self.pwd_context.hash(password)
-            user = User(
-                username=username,
-                email=email,
-                hashed_password=hashed_password,
-                role=Role.USER,
-                is_active=True
-            )
-            self.db_session.add(user)
-            await self.db_session.commit()
-            await self.db_session.refresh(user)
-            await logger.ainfo("User registered", username=username, user_id=user.id)
-            return user
+        # Check for existing email
+        statement = select(User).where(User.email == email)
+        if (await self.db_session.exec(statement)).first():
+            raise AuthenticationError("Email already registered")
+        
+        # Enforce password policy
+        if len(password) < 8:
+            raise AuthenticationError("Password must be at least 8 characters long")
+        if not any(c.isupper() for c in password):
+            raise AuthenticationError("Password must contain at least one uppercase letter")
+        if not any(c.islower() for c in password):
+            raise AuthenticationError("Password must contain at least one lowercase letter")
+        if not any(c.isdigit() for c in password):
+            raise AuthenticationError("Password must contain at least one digit")
+        
+        hashed_password = self.pwd_context.hash(password)
+        new_user = User(
+            username=username,
+            email=email,
+            hashed_password=hashed_password,
+            role=Role.USER,
+            is_active=True
+        )
+        self.db_session.add(new_user)
+        await self.db_session.commit()
+        await self.db_session.refresh(new_user)
+        
+        logger.info("New user registered", username=username)
+        return new_user

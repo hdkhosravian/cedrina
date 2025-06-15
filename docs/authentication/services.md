@@ -23,17 +23,19 @@ This document describes each service, its responsibilities, methods, security me
 - Authenticate users via username and password.
 - Register new users with validated credentials.
 - Enforce rate limits on login (5 attempts/minute) and registration (3 attempts/minute).
+- Enforce password policies for user registration.
 
 **Methods**:
 - `__init__(db_session: AsyncSession)`: Initializes with an async SQLAlchemy session.
 - `authenticate_by_credentials(username: str, password: str) -> User`: Authenticates a user, verifying password and activity.
-- `register_user(username: str, email: EmailStr, password: str) -> User`: Registers a new user with bcrypt-hashed password.
+- `register_user(username: str, email: EmailStr, password: str) -> User`: Registers a new user with bcrypt-hashed password, enforcing password complexity requirements.
 
 **Security**:
 - Bcrypt hashing via `passlib`.
 - Rate limiting with `fastapi-limiter` and Redis.
 - Structured logging with `structlog`.
-- Raises `AuthenticationError` for invalid credentials or inactive users.
+- Password policy enforcement (minimum 8 characters, must include uppercase, lowercase, and digit).
+- Raises `AuthenticationError` for invalid credentials, inactive users, or password policy violations.
 - Raises `RateLimitError` for excessive attempts.
 
 ### OAuthService
@@ -45,17 +47,20 @@ This document describes each service, its responsibilities, methods, security me
 - Authenticate users via OAuth providers.
 - Fetch user info with retry logic.
 - Encrypt OAuth access tokens with `pgcrypto`.
+- Provide mechanisms for state validation to prevent CSRF attacks.
 
 **Methods**:
 - `__init__(db_session: AsyncSession)`: Initializes with OAuth clients and Fernet encryption.
 - `authenticate_with_oauth(provider: str, token: Dict) -> Tuple[User, OAuthProfile]`: Authenticates and links/creates profiles.
 - `_fetch_user_info(provider: str, token: Dict) -> Dict`: Fetches user info with retries.
+- `validate_oauth_state(state: str, stored_state: str) -> bool`: Validates the OAuth state parameter to prevent CSRF attacks (placeholder for implementation).
 
 **Security**:
 - Token encryption with `cryptography.Fernet`.
 - Retry logic with `tenacity`.
-- Validation of user info.
-- Raises `AuthenticationError` for invalid OAuth data.
+- Validation of user info and token expiration.
+- Placeholder for state validation to mitigate CSRF risks.
+- Raises `AuthenticationError` for invalid OAuth data or expired tokens.
 
 ### TokenService
 **File**: `src/domain/services/auth/token.py`
@@ -66,19 +71,22 @@ This document describes each service, its responsibilities, methods, security me
 - Create short-lived access tokens (15 minutes) and long-lived refresh tokens (7 days).
 - Validate tokens for issuer, audience, expiration, and user status.
 - Rotate refresh tokens, invalidating old ones.
+- Provide mechanisms for token blacklisting.
 
 **Methods**:
 - `__init__(db_session: AsyncSession, redis_client: Redis)`: Initializes with database and Redis clients.
 - `create_access_token(user: User) -> str` (async): Creates an access token with advanced claims.
 - `create_refresh_token(user: User, jti: str) -> str` (async): Creates a refresh token, storing in Redis/PostgreSQL.
 - `refresh_tokens(refresh_token: str) -> Dict[str, str]` (async): Refreshes tokens with rotation.
-- `validate_token(token: str) -> Dict[str, Any]` (async): Validates a token’s integrity and claims.
+- `validate_token(token: str) -> Dict[str, Any]` (async): Validates a token's integrity, claims, and checks for blacklisting.
+- `_is_token_blacklisted(jti: str) -> bool` (async): Placeholder for checking if a token's JTI is blacklisted.
 
 **Security**:
 - RS256 signing with RSA key pair.
-- Single-use refresh tokens stored in Redis.
-- Comprehensive claim validation.
-- Raises `AuthenticationError` for invalid or revoked tokens.
+- Single-use refresh tokens stored as hashes in Redis.
+- Comprehensive claim validation (issuer, audience, expiration).
+- Placeholder for token blacklisting to handle compromised or revoked tokens.
+- Raises `AuthenticationError` for invalid, expired, or blacklisted tokens.
 
 ### SessionService
 **File**: `src/domain/services/auth/session.py`
@@ -105,7 +113,7 @@ This document describes each service, its responsibilities, methods, security me
 ## Exceptions
 Custom exceptions in `src/core/exceptions.py` handle authentication and rate limiting errors:
 
-- **AuthenticationError**: Raised for invalid credentials, inactive users, or invalid tokens.
+- **AuthenticationError**: Raised for invalid credentials, inactive users, invalid tokens, or password policy violations.
   - Attributes: `message` (error description), `code` (i18n key, e.g., "authentication_error").
 - **RateLimitError**: Raised when rate limits are exceeded.
   - Attributes: `message` (default: "Rate limit exceeded"), `code` (e.g., "rate_limit_exceeded").
@@ -215,7 +223,7 @@ open htmlcov/index.html
 
 ## Troubleshooting
 - **AuthenticationError**:
-  - Verify credentials, user status, or token validity.
+  - Verify credentials, user status, token validity, or password policy compliance.
   - Check logs:
     ```bash
     docker logs cedrina_app_1
@@ -228,4 +236,4 @@ open htmlcov/index.html
 - **OAuth Failure**:
   - Verify client IDs/secrets in `.env.development`.
 - **JWT Validation Failure**:
-  - Check RSA keys, `JWT_ISSUER`, `JWT_AUDIENCE`.
+  - Check RSA keys, `JWT_ISSUER`, `JWT_AUDIENCE`, or token blacklisting status.

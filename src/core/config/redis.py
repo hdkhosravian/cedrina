@@ -1,8 +1,8 @@
 """
 Redis cache settings.
 """
-from pydantic import Field, field_validator, ValidationInfo, PydanticCustomError, SecretStr
-from pydantic_settings import BaseSettings
+from pydantic import Field, field_validator, ValidationInfo, PydanticUserError, SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class RedisSettings(BaseSettings):
@@ -14,6 +14,27 @@ class RedisSettings(BaseSettings):
     REDIS_PASSWORD: SecretStr = SecretStr("")
     REDIS_SSL: bool = False
     REDIS_URL: str = ""
+
+    # Rate limiting settings
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_DEFAULT: str = "100/minute"  # Default rate limit
+    RATE_LIMIT_STORAGE_URL: str = ""  # Optional custom storage URL
+    RATE_LIMIT_STRATEGY: str = Field(
+        default="fixed-window",
+        pattern="^(fixed-window|sliding-window|token-bucket)$"
+    )
+    RATE_LIMIT_BLOCK_DURATION: int = Field(
+        default=60,
+        ge=1,
+        description="Duration in seconds to block after rate limit exceeded"
+    )
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore"
+    )
 
     @field_validator("REDIS_URL", mode="before")
     @classmethod
@@ -38,8 +59,19 @@ class RedisSettings(BaseSettings):
         Ensures REDIS_PASSWORD is set for staging/production environments.
         """
         if info.data.get('APP_ENV') in ['staging', 'production'] and not value.get_secret_value():
-            raise PydanticCustomError(
+            raise PydanticUserError(
                 'redis_password_required',
                 'REDIS_PASSWORD must be set in staging/production environments'
             )
-        return value 
+        return value
+
+    @field_validator("RATE_LIMIT_STORAGE_URL", mode="before")
+    @classmethod
+    def assemble_rate_limit_storage_url(cls, v: str | None, info: ValidationInfo) -> str:
+        """
+        Assembles the rate limit storage URL if not provided explicitly.
+        Uses the main Redis URL by default.
+        """
+        if v:
+            return v
+        return cls.assemble_redis_url(None, info) 

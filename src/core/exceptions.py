@@ -1,6 +1,12 @@
 from typing import Optional
 
-class AuthenticationError(Exception):
+class CedrinaError(Exception):
+    """Base exception class for the application."""
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(self.message)
+
+class AuthenticationError(CedrinaError):
     """
     Exception raised for authentication-related errors.
 
@@ -14,7 +20,11 @@ class AuthenticationError(Exception):
         self.code = code or "authentication_error"
         super().__init__(self.message)
 
-class RateLimitError(Exception):
+class DatabaseError(CedrinaError):
+    """Raised for database-related errors."""
+    pass
+
+class RateLimitError(CedrinaError):
     """
     Exception raised when rate limits are exceeded.
 

@@ -12,14 +12,13 @@ from sqlalchemy import engine_from_config, pool  # For database connection
 from alembic import context  # For migration context
 
 # Add project root to sys.path to resolve src/ imports
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))  # Parent of alembic/
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)  # Prepend to ensure priority
+sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from src.core.config.settings import settings  # Import settings after path adjustment
-from src.domain.entities.user import User  # User model
-from src.domain.entities.oauth_profile import OAuthProfile  # OAuthProfile model
-from src.domain.entities.session import Session  # Session model
+# Now it's safe to import settings and models
+from core.config.settings import settings  # Import settings after path adjustment
+from domain.entities.user import User  # User model
+from domain.entities.oauth_profile import OAuthProfile  # OAuthProfile model
+from domain.entities.session import Session  # Session model
 from sqlmodel import SQLModel  # For metadata
 
 # Alembic Config object, provides access to alembic.ini

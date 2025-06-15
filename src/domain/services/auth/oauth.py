@@ -7,10 +7,10 @@ from cryptography.fernet import Fernet
 from tenacity import retry, stop_after_attempt, wait_fixed
 from sqlalchemy import select
 
-from src.domain.entities.user import User, Role
-from src.domain.entities.oauth_profile import OAuthProfile, Provider
-from src.core.config import settings
-from src.core.exceptions import AuthenticationError
+from domain.entities.user import User, Role
+from domain.entities.oauth_profile import OAuthProfile, Provider
+from core.config.settings import settings
+from core.exceptions import AuthenticationError
 
 logger = get_logger(__name__)
 
@@ -20,6 +20,8 @@ class OAuthService:
 
     Supports Google, Microsoft, and Facebook OAuth flows, integrating with PostgreSQL
     via SQLModel for user and OAuth profile persistence, and encrypting tokens with pgcrypto.
+    This service ensures secure handling of OAuth tokens by encrypting access tokens and
+    validating token expiration to prevent unauthorized access.
 
     Attributes:
         db_session (AsyncSession): SQLAlchemy async session for database operations.
@@ -30,29 +32,37 @@ class OAuthService:
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
         self.oauth = OAuth()
-        self.fernet = Fernet(settings.PGCRYPTO_KEY.encode())
+        self.fernet = Fernet(settings.PGCRYPTO_KEY.get_secret_value().encode())
         self._configure_oauth()
 
     def _configure_oauth(self) -> None:
-        """Configure OAuth clients for Google, Microsoft, and Facebook."""
+        """
+        Configure OAuth clients for Google, Microsoft, and Facebook.
+
+        Note:
+            Configures clients with specific scopes for user data access. For public clients,
+            consider implementing PKCE (Proof Key for Code Exchange) to secure authorization
+            code flows. Additionally, ensure the use of state parameters to prevent CSRF attacks
+            during the OAuth flow.
+        """
         self.oauth.register(
             name="google",
             client_id=settings.GOOGLE_CLIENT_ID,
-            client_secret=settings.GOOGLE_CLIENT_SECRET,
+            client_secret=settings.GOOGLE_CLIENT_SECRET.get_secret_value(),
             server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
             client_kwargs={"scope": "openid email profile"},
         )
         self.oauth.register(
             name="microsoft",
             client_id=settings.MICROSOFT_CLIENT_ID,
-            client_secret=settings.MICROSOFT_CLIENT_SECRET,
+            client_secret=settings.MICROSOFT_CLIENT_SECRET.get_secret_value(),
             server_metadata_url="https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration",
             client_kwargs={"scope": "openid email profile"},
         )
         self.oauth.register(
             name="facebook",
             client_id=settings.FACEBOOK_CLIENT_ID,
-            client_secret=settings.FACEBOOK_CLIENT_SECRET,
+            client_secret=settings.FACEBOOK_CLIENT_SECRET.get_secret_value(),
             authorize_url="https://www.facebook.com/v18.0/dialog/oauth",
             access_token_url="https://graph.facebook.com/v18.0/oauth/access_token",
             api_base_url="https://graph.facebook.com/v18.0/",
@@ -74,8 +84,19 @@ class OAuthService:
 
         Raises:
             AuthenticationError: If OAuth token or user info is invalid.
+
+        Note:
+            Validates token expiration to prevent replay attacks and encrypts access tokens
+            for secure storage. Ensure that the OAuth flow at the client level implements
+            state validation to mitigate CSRF risks.
         """
         try:
+            # Validate token expiration
+            expires_at = token.get("expires_at")
+            if not expires_at or expires_at < datetime.now(timezone.utc).timestamp():
+                await logger.awarning("Expired OAuth token", provider=provider)
+                raise AuthenticationError("Token has expired")
+
             user_info = await self._fetch_user_info(provider, token)
             email = user_info.get("email")
             provider_user_id = user_info.get("sub") or user_info.get("id")
@@ -86,7 +107,7 @@ class OAuthService:
             # Check for existing OAuth profile
             oauth_profile = await self.db_session.exec(
                 select(OAuthProfile).where(
-                    OAuthProfile.provider == Provider(provider.upper()),
+                    OAuthProfile.provider == Provider(provider),
                     OAuthProfile.provider_user_id == provider_user_id
                 )
             )
@@ -117,7 +138,7 @@ class OAuthService:
 
                 oauth_profile = OAuthProfile(
                     user_id=user.id,
-                    provider=Provider(provider.upper()),
+                    provider=Provider(provider),
                     provider_user_id=provider_user_id,
                     access_token=self.fernet.encrypt(token["access_token"].encode()),
                     expires_at=datetime.fromtimestamp(token["expires_at"], tz=timezone.utc),
@@ -130,6 +151,25 @@ class OAuthService:
         except Exception as e:
             await logger.aerror("OAuth authentication failed", provider=provider, error=str(e))
             raise AuthenticationError(f"OAuth authentication failed: {str(e)}")
+
+    async def validate_oauth_state(self, state: str, stored_state: str) -> bool:
+        """
+        Validate the OAuth state parameter to prevent CSRF attacks.
+
+        Args:
+            state (str): State parameter returned from the OAuth provider.
+            stored_state (str): State parameter stored in the session before redirection.
+
+        Returns:
+            bool: True if state matches, False otherwise.
+
+        Note:
+            This is a placeholder for state validation logic. Implement this method to
+            compare the state parameter returned by the OAuth provider with the one stored
+            in the user's session to ensure the request originated from the legitimate client.
+        """
+        # Placeholder: Implement actual state validation logic
+        return state == stored_state
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     async def _fetch_user_info(self, provider: str, token: Dict[str, Any]) -> Dict[str, Any]:
@@ -145,6 +185,10 @@ class OAuthService:
 
         Raises:
             AuthenticationError: If fetching user info fails.
+
+        Note:
+            Implements retry logic to handle transient network issues when fetching user
+            information from OAuth providers. Logs specific errors for debugging purposes.
         """
         client = self.oauth.create_client(provider)
         try:

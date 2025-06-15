@@ -25,7 +25,7 @@ class AuthSettings(BaseSettings):
     # JWT settings
     JWT_PRIVATE_KEY: SecretStr = SecretStr("")
     JWT_PUBLIC_KEY: str = ""
-    JWT_ISSUER: str = "https://api.cedrina.com"
+    JWT_ISSUER: str = "https://api.example.com"
     JWT_AUDIENCE: str = "cedrina:api:v1"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7

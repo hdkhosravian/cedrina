@@ -29,7 +29,36 @@ The Cedrina authentication system uses PostgreSQL to store user data, OAuth prof
      openssl rand -base64 24
      ```
 
-3. **Generate and Apply Migrations**:
+3. **Configure JWT and OAuth Environment Variables**:
+   - Add the following to your `.env.*` files for JWT token management and OAuth integration:
+     ```plaintext
+     # JWT Settings
+     JWT_SECRET_KEY=your-secure-jwt-secret-key-32charsminimum
+     JWT_ALGORITHM=RS256
+     ACCESS_TOKEN_EXPIRE_MINUTES=30
+     REFRESH_TOKEN_EXPIRE_DAYS=7
+     
+     # OAuth Provider Settings (example for Google, Microsoft, Facebook)
+     GOOGLE_CLIENT_ID=your-google-client-id
+     GOOGLE_CLIENT_SECRET=your-google-client-secret
+     GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
+     
+     MICROSOFT_CLIENT_ID=your-microsoft-client-id
+     MICROSOFT_CLIENT_SECRET=your-microsoft-client-secret
+     MICROSOFT_REDIRECT_URI=http://localhost:8000/api/v1/auth/microsoft/callback
+     
+     FACEBOOK_CLIENT_ID=your-facebook-client-id
+     FACEBOOK_CLIENT_SECRET=your-facebook-client-secret
+     FACEBOOK_REDIRECT_URI=http://localhost:8000/api/v1/auth/facebook/callback
+     ```
+   - Generate a secure JWT secret key:
+     ```bash
+     openssl rand -base64 32
+     ```
+   - Replace placeholder values with actual credentials from the respective OAuth provider developer consoles.
+   - Adjust `REDIRECT_URI` values based on your environment (e.g., staging or production URLs).
+
+4. **Generate and Apply Migrations**:
    - **Local Development (Non-Docker)**:
      ```bash
      poetry run alembic revision --autogenerate -m "Add tables"
@@ -42,7 +71,7 @@ The Cedrina authentication system uses PostgreSQL to store user data, OAuth prof
      - Production: `make run-prod`
      Ensure `docker-compose.yml` does not override `entrypoint.sh` with `command`.
 
-4. **Verify Database Schema**:
+5. **Verify Database Schema**:
    - **Local**:
      ```bash
      psql -U postgres -d cedrina_dev -c "\dt"
@@ -103,4 +132,11 @@ The Cedrina authentication system uses PostgreSQL to store user data, OAuth prof
   - Verify `entrypoint.sh` explicitly runs Uvicorn in development:
     ```bash
     docker logs cedrina_app_1
+    ```
+- **JWT or OAuth Authentication Issues**:
+  - Verify that `JWT_SECRET_KEY` is at least 32 characters long and matches across environments.
+  - Check OAuth provider credentials (`CLIENT_ID`, `CLIENT_SECRET`, `REDIRECT_URI`) for typos or mismatches with provider console settings.
+  - Review logs for specific errors related to token validation or OAuth flows:
+    ```bash
+    docker logs cedrina_app_1 | grep -i "auth"
     ```

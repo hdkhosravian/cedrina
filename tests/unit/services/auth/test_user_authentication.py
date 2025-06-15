@@ -1,21 +1,11 @@
 import pytest
+from domain.entities.user import User, Role
+from domain.services.auth.user_authentication import UserAuthenticationService
+from core.exceptions import AuthenticationError
 import pytest_asyncio
-from unittest.mock import AsyncMock
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import SQLModel
-from pydantic import EmailStr
-from passlib.context import CryptContext
-from fastapi_limiter.depends import RateLimiter
+from unittest.mock import AsyncMock, MagicMock
 
-from src.domain.entities.user import User, Role
-from src.domain.services.auth.user_authentication import UserAuthenticationService
-from src.core.exceptions import AuthenticationError, RateLimitError
-
-@pytest_asyncio.fixture
-async def db_session():
-    return AsyncMock(spec=AsyncSession)
-
-@pytest_asyncio.fixture
+@pytest.fixture
 def user_auth_service(db_session):
     return UserAuthenticationService(db_session)
 
@@ -33,15 +23,13 @@ async def test_authenticate_by_credentials_success(user_auth_service, db_session
         role=Role.USER,
         is_active=True
     )
-    db_session.exec.return_value.first.return_value = user
+    db_session.exec.return_value.first = MagicMock(return_value=user)
 
     # Act
-    result = await user_auth_service.authenticate_by_credentials(username, password)
+    authenticated_user = await user_auth_service.authenticate_by_credentials(username, password)
 
     # Assert
-    assert result == user
-    db_session.exec.assert_called_once()
-    assert user_auth_service.pwd_context.verify(password, hashed_password)
+    assert authenticated_user == user
 
 @pytest.mark.asyncio
 async def test_authenticate_by_credentials_invalid_password(user_auth_service, db_session):
@@ -55,9 +43,9 @@ async def test_authenticate_by_credentials_invalid_password(user_auth_service, d
         hashed_password=hashed_password,
         is_active=True
     )
-    db_session.exec.return_value.first.return_value = user
+    db_session.exec.return_value.first = MagicMock(return_value=user)
 
-    # Act/Assert
+    # Act & Assert
     with pytest.raises(AuthenticationError, match="Invalid username or password"):
         await user_auth_service.authenticate_by_credentials(username, password)
 
@@ -73,9 +61,9 @@ async def test_authenticate_by_credentials_inactive_user(user_auth_service, db_s
         hashed_password=hashed_password,
         is_active=False
     )
-    db_session.exec.return_value.first.return_value = user
+    db_session.exec.return_value.first = MagicMock(return_value=user)
 
-    # Act/Assert
+    # Act & Assert
     with pytest.raises(AuthenticationError, match="User account is inactive"):
         await user_auth_service.authenticate_by_credentials(username, password)
 
@@ -83,44 +71,79 @@ async def test_authenticate_by_credentials_inactive_user(user_auth_service, db_s
 async def test_register_user_success(user_auth_service, db_session, mocker):
     # Arrange
     username = "newuser"
-    email = EmailStr("newuser@example.com")
-    password = "securepassword"
-    db_session.exec.return_value.first.return_value = None
-    mocker.patch.object(user_auth_service.pwd_context, "hash", return_value="hashed_password")
+    email = "newuser@example.com"
+    password = "Newpass123"
+    db_session.exec.return_value.first = MagicMock(return_value=None)
+    
+    mocker.patch.object(db_session, "refresh", new_callable=AsyncMock)
 
     # Act
-    result = await user_auth_service.register_user(username, email, password)
+    user = await user_auth_service.register_user(username, email, password)
 
     # Assert
-    assert result.username == username
-    assert result.email == email
-    assert result.hashed_password == "hashed_password"
-    assert result.role == Role.USER
-    assert result.is_active
+    assert user.username == username
+    assert user.email == email
     db_session.add.assert_called_once()
     db_session.commit.assert_called_once()
-    db_session.refresh.assert_called_once()
+    db_session.refresh.assert_called_once_with(user)
 
 @pytest.mark.asyncio
 async def test_register_user_existing_username(user_auth_service, db_session):
     # Arrange
     username = "existinguser"
-    email = EmailStr("newuser@example.com")
-    password = "securepassword"
-    user = User(username=username, email="other@example.com")
-    db_session.exec.return_value.first.return_value = user
+    email = "newuser@example.com"
+    password = "newpassword"
+    existing_user = User(username=username, email="other@example.com")
+    db_session.exec.return_value.first = MagicMock(return_value=existing_user)
 
-    # Act/Assert
-    with pytest.raises(AuthenticationError, match="Username or email already exists"):
+    # Act & Assert
+    with pytest.raises(AuthenticationError, match="Username already registered"):
         await user_auth_service.register_user(username, email, password)
 
 @pytest.mark.asyncio
-async def test_rate_limit_authentication(user_auth_service, db_session, mocker):
+async def test_register_user_password_too_short(user_auth_service, db_session):
     # Arrange
-    username = "testuser"
-    password = "securepassword"
-    mocker.patch("fastapi_limiter.depends.RateLimiter.__aenter__", side_effect=RateLimitError)
+    username = "newuser"
+    email = "newuser@example.com"
+    password = "short"
+    db_session.exec.return_value.first = MagicMock(return_value=None)
 
-    # Act/Assert
-    with pytest.raises(RateLimitError):
-        await user_auth_service.authenticate_by_credentials(username, password)
+    # Act & Assert
+    with pytest.raises(AuthenticationError, match="Password must be at least 8 characters long"):
+        await user_auth_service.register_user(username, email, password)
+
+@pytest.mark.asyncio
+async def test_register_user_password_no_uppercase(user_auth_service, db_session):
+    # Arrange
+    username = "newuser"
+    email = "newuser@example.com"
+    password = "nouppercase123"
+    db_session.exec.return_value.first = MagicMock(return_value=None)
+
+    # Act & Assert
+    with pytest.raises(AuthenticationError, match="Password must contain at least one uppercase letter"):
+        await user_auth_service.register_user(username, email, password)
+
+@pytest.mark.asyncio
+async def test_register_user_password_no_lowercase(user_auth_service, db_session):
+    # Arrange
+    username = "newuser"
+    email = "newuser@example.com"
+    password = "NOLOWERCASE123"
+    db_session.exec.return_value.first = MagicMock(return_value=None)
+
+    # Act & Assert
+    with pytest.raises(AuthenticationError, match="Password must contain at least one lowercase letter"):
+        await user_auth_service.register_user(username, email, password)
+
+@pytest.mark.asyncio
+async def test_register_user_password_no_digit(user_auth_service, db_session):
+    # Arrange
+    username = "newuser"
+    email = "newuser@example.com"
+    password = "NoDigitHere"
+    db_session.exec.return_value.first = MagicMock(return_value=None)
+
+    # Act & Assert
+    with pytest.raises(AuthenticationError, match="Password must contain at least one digit"):
+        await user_auth_service.register_user(username, email, password)

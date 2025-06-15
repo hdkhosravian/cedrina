@@ -14,9 +14,11 @@ multiple languages as configured in the application settings.
 
 import os
 import gettext
+import i18n
 from fastapi import Request
-from src.core.config.settings import settings
-from src.core.logging import logger
+from babel.support import Translations
+from core.config.settings import settings
+from core.logging import logger
 
 # Store translations for each language
 _translations = {}

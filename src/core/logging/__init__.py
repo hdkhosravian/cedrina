@@ -14,9 +14,11 @@ The logging configuration includes:
 """
 
 import structlog
-from src.core.config.settings import settings
+from structlog.types import Processor
 
-def configure_logging():
+from core.config.settings import settings
+
+def configure_logging(log_level: str = "INFO", json_logs: bool = False):
     """
     Configures the application's logging system.
     

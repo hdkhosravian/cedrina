@@ -1,6 +1,5 @@
 import pytest
-
-from src.core.exceptions import AuthenticationError, RateLimitError
+from core.exceptions import AuthenticationError, RateLimitError
 
 def test_authentication_error_default():
     # Arrange
