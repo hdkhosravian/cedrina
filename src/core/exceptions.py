@@ -26,23 +26,30 @@ __all__: Final = [
     "InvalidCredentialsError",
     "PasswordPolicyError",
     "RateLimitError",
+    "DuplicateUserError",
 ]
 
 
 @dataclass(slots=True)
 class CedrinaError(Exception):
-    """Base exception for all domain-level errors in Cedrina."""
+    """
+    Base exception class for all custom errors in the Cedrina application.
+
+    Attributes:
+        message (str): A human-readable error message.
+        code (str): A unique error code for identifying the type of error.
+    """
 
     message: str
-    code: str = "error"
+    code: str = "generic_error"
 
-    # Dataclasses generate ``__init__``; hook into ``Exception`` to keep stack-trace.
-    def __post_init__(self) -> None:  # noqa: D401
-        # Call Exception.__init__ directly to avoid MRO edge-cases with `dataclass` subclasses.
+    def __init__(self, message: str, code: str = "generic_error"):
+        self.message = message
+        self.code = code
         Exception.__init__(self, self.message)
 
     # A concise, structured representation used by loggers & FastAPI handlers.
-    def __str__(self) -> str:  # noqa: D401
+    def __str__(self) -> str:
         return self.message
 
 
@@ -53,9 +60,14 @@ class CedrinaError(Exception):
 
 @dataclass(slots=True)
 class AuthenticationError(CedrinaError):
-    """Raised for all authentication / authorisation failures."""
+    """
+    Exception raised when authentication fails.
 
-    code: str = "authentication_error"
+    This can occur due to invalid credentials, inactive accounts, or expired tokens.
+    """
+
+    def __init__(self, message: str, code: str = "authentication_error"):
+        CedrinaError.__init__(self, message, code)
 
 
 @dataclass(slots=True)
@@ -86,9 +98,12 @@ class UserAlreadyExistsError(CedrinaError):
 
 @dataclass(slots=True)
 class PasswordPolicyError(CedrinaError):
-    """Raised when a password fails to satisfy the configured policy."""
+    """
+    Exception raised when a password does not meet the required security policy.
+    """
 
-    code: str = "password_policy_failed"
+    def __init__(self, message: str, code: str = "password_policy_error"):
+        CedrinaError.__init__(self, message, code)
 
 
 # ---------------------------------------------------------------------------
@@ -100,5 +115,15 @@ class PasswordPolicyError(CedrinaError):
 class RateLimitError(CedrinaError):
     """Raised when a consumer exceeds the configured rate limits."""
 
-    code: str = "rate_limit_exceeded"
-    message: str = "Rate limit exceeded"
+    def __init__(self, message: str = "Rate limit exceeded", code: str = "rate_limit_exceeded"):
+        CedrinaError.__init__(self, message, code)
+
+
+@dataclass(slots=True)
+class DuplicateUserError(CedrinaError):
+    """
+    Exception raised when attempting to register a user with a username or email that already exists.
+    """
+
+    def __init__(self, message: str, code: str = "duplicate_user_error"):
+        CedrinaError.__init__(self, message, code)

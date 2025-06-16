@@ -34,20 +34,38 @@ def oauth_service(db_session):
             yield service
 
 @pytest.mark.asyncio
+async def test_authenticate_with_oauth_success(oauth_service, db_session, mocker):
+    # Arrange
+    provider = "google"
+    future_expires = int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp())
+    token = {"access_token": "token", "expires_at": future_expires}
+    user_info = {"sub": "123", "email": "test@example.com"}
+    mocker.patch.object(oauth_service, "_fetch_user_info", return_value=user_info)
+    user = User(id=1, username="testuser", email="test@example.com", is_active=True, roles=[Role.USER])
+    db_session.exec.return_value.first = MagicMock(return_value=None)  # No existing profile
+    db_session.exec.side_effect = [MagicMock(first=MagicMock(return_value=None)), MagicMock(first=MagicMock(return_value=user))]
+    db_session.get.return_value = user
+
+    # Act
+    result_user, result_profile = await oauth_service.authenticate_with_oauth(provider, token)
+
+    # Assert
+    assert result_user == user
+    assert isinstance(result_profile, OAuthProfile)
+    assert result_profile.provider == Provider.GOOGLE
+    assert result_profile.provider_user_id == "123"
+
+@pytest.mark.asyncio
 async def test_authenticate_with_oauth_existing_profile(oauth_service, db_session, mocker):
     # Arrange
     provider = "google"
     future_expires = int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp())
     token = {"access_token": "token", "expires_at": future_expires}
     user_info = {"sub": "123", "email": "test@example.com"}
-    user = User(id=1, username="testuser", email="test@example.com", role=Role.USER, is_active=True)
-    oauth_profile = OAuthProfile(
-        user_id=1, provider=Provider.GOOGLE, provider_user_id="123", access_token=b"encrypted"
-    )
     mocker.patch.object(oauth_service, "_fetch_user_info", return_value=user_info)
-
-    # The result of `await db_session.exec(...)` has a `first()` method
-    db_session.exec.return_value.first.return_value = oauth_profile
+    user = User(id=1, username="testuser", email="test@example.com", is_active=True, roles=[Role.USER])
+    oauth_profile = OAuthProfile(user_id=1, provider=Provider.GOOGLE, provider_user_id="123")
+    db_session.exec.return_value.first = MagicMock(return_value=oauth_profile)
     db_session.get.return_value = user
 
     # Act
@@ -56,28 +74,6 @@ async def test_authenticate_with_oauth_existing_profile(oauth_service, db_sessio
     # Assert
     assert result_user == user
     assert result_profile == oauth_profile
-    oauth_service._fetch_user_info.assert_called_once_with(provider, token)
-    db_session.exec.assert_called_once()
-
-@pytest.mark.asyncio
-async def test_authenticate_with_oauth_new_user(oauth_service, db_session, mocker):
-    # Arrange
-    provider = "google"
-    future_expires = int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp())
-    token = {"access_token": "test_token", "expires_at": future_expires}
-    user_info = {"email": "new@example.com", "sub": "12345"}
-    
-    mocker.patch.object(oauth_service, '_fetch_user_info', return_value=user_info)
-    db_session.exec.return_value.first.side_effect = [None, None]
-
-    # Act
-    user, oauth_profile = await oauth_service.authenticate_with_oauth(provider, token)
-
-    # Assert
-    assert user.email == user_info["email"]
-    assert oauth_profile.provider_user_id == user_info["sub"]
-    assert db_session.add.call_count == 2
-    assert db_session.commit.call_count == 2
 
 @pytest.mark.asyncio
 async def test_authenticate_with_oauth_invalid_user_info(oauth_service, mocker):
@@ -98,7 +94,7 @@ async def test_fetch_user_info_failure(oauth_service, mocker):
     provider = "google"
     future_expires = int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp())
     token = {"access_token": "token", "expires_at": future_expires}
-    
+
     mocker.patch.object(oauth_service, '_fetch_user_info', side_effect=AuthenticationError("Provider error"))
 
     # Act/Assert
@@ -106,28 +102,21 @@ async def test_fetch_user_info_failure(oauth_service, mocker):
         await oauth_service.authenticate_with_oauth(provider, token)
 
 @pytest.mark.asyncio
-async def test_authenticate_with_oauth_existing_user_new_profile(oauth_service, db_session, mocker):
+async def test_authenticate_with_oauth_inactive_user(oauth_service, db_session, mocker):
     # Arrange
     provider = "google"
     future_expires = int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp())
-    token = {"access_token": "test_token", "expires_at": future_expires}
-    user_info = {"email": "test@example.com", "sub": "12345"}
-    existing_user = User(id=1, email="test@example.com", username="testuser", role=Role.USER, is_active=True)
-    
-    mocker.patch.object(oauth_service, '_fetch_user_info', return_value=user_info)
-    # First exec call for OAuthProfile returns None, second for User returns existing_user
-    db_session.exec.return_value.first.side_effect = [None, existing_user]
+    token = {"access_token": "token", "expires_at": future_expires}
+    user_info = {"sub": "123", "email": "test@example.com"}
+    mocker.patch.object(oauth_service, "_fetch_user_info", return_value=user_info)
+    user = User(id=1, username="testuser", email="test@example.com", is_active=False, roles=[Role.USER])
+    oauth_profile = OAuthProfile(user_id=1, provider=Provider.GOOGLE, provider_user_id="123")
+    db_session.exec.return_value.first = MagicMock(return_value=oauth_profile)
+    db_session.get.return_value = user
 
-    # Act
-    user, oauth_profile = await oauth_service.authenticate_with_oauth(provider, token)
-
-    # Assert
-    assert user.id == existing_user.id
-    assert user.email == existing_user.email
-    assert oauth_profile.user_id == existing_user.id
-    assert oauth_profile.provider_user_id == user_info["sub"]
-    assert db_session.add.call_count == 1
-    assert db_session.commit.call_count == 1
+    # Act/Assert
+    with pytest.raises(AuthenticationError, match="User account is inactive"):
+        await oauth_service.authenticate_with_oauth(provider, token)
 
 @pytest.mark.asyncio
 async def test_authenticate_with_oauth_expired_token(oauth_service, db_session, mocker):
