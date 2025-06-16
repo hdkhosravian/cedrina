@@ -75,4 +75,5 @@ class Session(SQLModel, table=True):
     __table_args__ = (
         Index("ix_sessions_jti", "jti"),  # Index for revocation checks
         Index("ix_sessions_user_id_expires_at", "user_id", "expires_at"),  # Index for session queries
+        {"extend_existing": True},
     )

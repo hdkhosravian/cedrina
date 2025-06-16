@@ -93,4 +93,5 @@ class OAuthProfile(SQLModel, table=True):
     __table_args__ = (
         Index("ix_oauth_profiles_provider_user_id", "provider", "provider_user_id", unique=True),  # Unique constraint
         Index("ix_oauth_profiles_user_id", "user_id"),  # Index for joins
+        {"extend_existing": True},
     )

@@ -83,7 +83,7 @@ The core application code, organized into DDD-inspired layers: adapters, core, d
     - **logger.py**: Configures `structlog` for structured JSON logging.
   - **dependencies/**:
     - **__init__.py**: Exposes dependency injection utilities.
-    - **auth.py**: Placeholder for JWT authentication dependencies (not implemented).
+    - **auth.py**: Provides `get_current_user` and `get_current_admin_user` dependencies for JWT authentication.
 - **domain/**: Business logic and entities.
   - **entities/**:
     - **__init__.py**: Exposes domain entities.

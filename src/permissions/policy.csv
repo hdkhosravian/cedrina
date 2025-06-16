@@ -1,4 +1,10 @@
+# Casbin Policy File
+# Format: p, <role>, <resource>, <action>
+# This file defines access control policies for the application.
+# Only 'admin' role has access to the following protected endpoints.
+
 p, admin, /health, GET
+p, admin, /metrics, GET
 p, admin, /docs, GET
 p, admin, /redoc, GET
-p, admin, /metrics, GET 
+p, admin, /openapi.json, GET 

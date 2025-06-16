@@ -7,11 +7,12 @@ from redis.asyncio import Redis
 from jose import jwt, JWTError
 from datetime import datetime, timezone, timedelta
 
-from domain.entities.user import User, Role
-from domain.entities.session import Session
-from domain.services.auth.token import TokenService
-from core.config.settings import settings
-from core.exceptions import AuthenticationError
+from src.domain.entities.user import User, Role
+from src.domain.entities.session import Session
+from src.domain.services.auth.session import SessionService
+from src.domain.services.auth.token import TokenService
+from src.core.config.settings import settings
+from src.core.exceptions import AuthenticationError
 
 @pytest_asyncio.fixture
 async def db_session():
@@ -21,11 +22,14 @@ async def db_session():
 
 @pytest_asyncio.fixture
 async def redis_client():
-    return AsyncMock(spec=Redis)
+    client = AsyncMock(spec=Redis)
+    client.setex = AsyncMock()
+    return client
 
 @pytest.fixture
 def token_service(db_session, redis_client):
-    return TokenService(db_session, redis_client)
+    session_service_mock = AsyncMock(spec=SessionService)
+    return TokenService(db_session, redis_client, session_service=session_service_mock)
 
 @pytest.mark.asyncio
 async def test_create_access_token(token_service):
@@ -49,7 +53,6 @@ async def test_create_refresh_token(token_service, db_session, redis_client, moc
     user = User(id=1, username="testuser", email="test@example.com", role=Role.USER, is_active=True)
     jti = "test-jti"
     mocker.patch("secrets.token_urlsafe", return_value=jti)
-    redis_client.setex = AsyncMock(return_value=None)
     
     # Act
     token = await token_service.create_refresh_token(user, jti)
@@ -58,8 +61,7 @@ async def test_create_refresh_token(token_service, db_session, redis_client, moc
     payload = jwt.decode(token, settings.JWT_PUBLIC_KEY, algorithms=["RS256"], audience=settings.JWT_AUDIENCE, issuer=settings.JWT_ISSUER)
     assert payload["sub"] == str(user.id)
     assert payload["jti"] == jti
-    db_session.add.assert_called_once()
-    db_session.commit.assert_called_once()
+    token_service.session_service.create_session.assert_called_once()
 
 @pytest.mark.asyncio
 async def test_refresh_tokens_success(token_service, db_session, redis_client, mocker):
@@ -75,18 +77,12 @@ async def test_refresh_tokens_success(token_service, db_session, redis_client, m
     session = Session(user_id=user.id, jti=jti, refresh_token_hash=refresh_token_hash)
     
     redis_client.get = AsyncMock(return_value=refresh_token_hash.encode())
-    result_mock = MagicMock()
-    result_mock.first = AsyncMock(return_value=session)
-    db_session.exec.return_value = result_mock
     db_session.get.return_value = user
     mocker.patch("secrets.token_urlsafe", return_value="new-jti")
-    mocker.patch("domain.services.auth.session.SessionService.get_session", new=AsyncMock(return_value=session))
-    # Patch SessionService to always use the test's db_session and redis_client
-    from domain.services.auth.session import SessionService
-    session_service_instance = SessionService(db_session, redis_client)
-    session_service_instance.redis_client.delete = AsyncMock()
-    mocker.patch("domain.services.auth.session.SessionService", return_value=session_service_instance)
-    token_service.redis_client.setex = AsyncMock()
+    
+    # Mock SessionService methods
+    token_service.session_service.get_session.return_value = session
+    token_service.session_service.revoke_session.return_value = None
     
     # Act
     result = await token_service.refresh_tokens(refresh_token)
@@ -95,8 +91,8 @@ async def test_refresh_tokens_success(token_service, db_session, redis_client, m
     assert "access_token" in result
     assert "refresh_token" in result
     assert result["token_type"] == "bearer"
-    redis_client.delete.assert_called_once_with(f"refresh_token:{jti}")
-    db_session.add.assert_called()
+    token_service.session_service.get_session.assert_called_once_with(jti, user.id)
+    token_service.session_service.revoke_session.assert_called_once_with(jti, user.id)
 
 @pytest.mark.asyncio
 async def test_refresh_tokens_invalid_token(token_service, redis_client):

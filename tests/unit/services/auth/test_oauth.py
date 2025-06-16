@@ -6,10 +6,10 @@ from authlib.integrations.starlette_client import OAuth
 from datetime import datetime, timezone, timedelta
 from redis.asyncio import Redis
 
-from domain.entities.user import User, Role
-from domain.entities.oauth_profile import OAuthProfile, Provider
-from domain.services.auth.oauth import OAuthService
-from core.exceptions import AuthenticationError
+from src.domain.entities.user import User, Role
+from src.domain.entities.oauth_profile import OAuthProfile, Provider
+from src.domain.services.auth.oauth import OAuthService
+from src.core.exceptions import AuthenticationError
 
 @pytest_asyncio.fixture
 async def db_session():
@@ -25,9 +25,9 @@ async def db_session():
 
 @pytest_asyncio.fixture
 def oauth_service(db_session):
-    with patch('domain.services.auth.oauth.Fernet') as mock_fernet:
+    with patch('src.domain.services.auth.oauth.Fernet') as mock_fernet:
         mock_fernet.return_value.encrypt.return_value = b"encrypted_token"
-        with patch('core.config.settings.settings', autospec=True) as mock_settings:
+        with patch('src.core.config.settings.settings', autospec=True) as mock_settings:
             mock_settings.PGCRYPTO_KEY.get_secret_value.return_value = "test_key" * 8
             mock_settings.REDIS_URL = "redis://localhost:6379/0"
             service = OAuthService(db_session)
@@ -89,7 +89,7 @@ async def test_authenticate_with_oauth_invalid_user_info(oauth_service, mocker):
     mocker.patch.object(oauth_service, "_fetch_user_info", return_value=user_info)
 
     # Act/Assert
-    with pytest.raises(AuthenticationError, match="Invalid OAuth user info"):
+    with pytest.raises(AuthenticationError, match="OAuth authentication failed: Invalid OAuth user info"):
         await oauth_service.authenticate_with_oauth(provider, token)
 
 @pytest.mark.asyncio
@@ -138,7 +138,7 @@ async def test_authenticate_with_oauth_expired_token(oauth_service, db_session, 
     mocker.patch.object(oauth_service, "_fetch_user_info", return_value=user_info)
 
     # Act/Assert
-    with pytest.raises(AuthenticationError, match="Token has expired"):
+    with pytest.raises(AuthenticationError, match="OAuth authentication failed: Token has expired"):
         await oauth_service.authenticate_with_oauth(provider, expired_token)
 
 @pytest.mark.asyncio

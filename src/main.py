@@ -21,6 +21,7 @@ from src.core.config.settings import settings
 from src.core.logging import configure_logging, logger
 from src.adapters.api.v1 import api_router
 from src.adapters.websockets import ws_router
+from src.adapters.api.v1.docs import router as docs_router
 from src.utils.i18n import setup_i18n, get_request_language
 import i18n
 from src.infrastructure.database import create_db_and_tables, check_database_health
@@ -67,9 +68,9 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description=getattr(settings, 'DESCRIPTION', 'A FastAPI application with role-based access control.'),
-    docs_url="/docs" if settings.DEBUG else None,
-    redoc_url="/redoc" if settings.DEBUG else None,
-    openapi_url="/openapi.json" if settings.DEBUG else None,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
     lifespan=lifespan,
 )
 
@@ -109,3 +110,4 @@ async def set_language_middleware(request: Request, call_next):
 # Include API and WebSocket routers
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(ws_router, prefix="/ws")
+app.include_router(docs_router)

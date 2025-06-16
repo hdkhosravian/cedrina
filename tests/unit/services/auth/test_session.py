@@ -1,7 +1,7 @@
 import pytest
-from domain.entities.session import Session
-from domain.services.auth.session import SessionService
-from core.exceptions import DatabaseError, AuthenticationError
+from src.domain.entities.session import Session
+from src.domain.services.auth.session import SessionService
+from src.core.exceptions import DatabaseError, AuthenticationError
 import pytest_asyncio
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone, timedelta

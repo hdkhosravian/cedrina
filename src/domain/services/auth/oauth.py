@@ -7,10 +7,10 @@ from cryptography.fernet import Fernet
 from tenacity import retry, stop_after_attempt, wait_fixed
 from sqlalchemy import select
 
-from domain.entities.user import User, Role
-from domain.entities.oauth_profile import OAuthProfile, Provider
-from core.config.settings import settings
-from core.exceptions import AuthenticationError
+from src.domain.entities.user import User, Role
+from src.domain.entities.oauth_profile import OAuthProfile, Provider
+from src.core.config.settings import settings
+from src.core.exceptions import AuthenticationError
 
 logger = get_logger(__name__)
 

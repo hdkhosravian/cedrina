@@ -58,7 +58,7 @@ async def get_redoc_documentation():
     """
     return get_redoc_html(openapi_url="/openapi.json", title="API Documentation")
 
-@router.get("/openapi.json", dependencies=[Depends(check_permission("/docs", "GET"))])
+@router.get("/openapi.json", dependencies=[Depends(check_permission("/openapi.json", "GET"))])
 async def get_openapi_json():
     """
     Custom endpoint for OpenAPI JSON schema.

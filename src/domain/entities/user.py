@@ -93,6 +93,7 @@ class User(SQLModel, table=True):
     __table_args__ = (
         Index("ix_users_username_lower", text("lower(username)")),  # Case-insensitive index
         Index("ix_users_email_lower", text("lower(email)")),  # Case-insensitive index
+        {"extend_existing": True},
     )
 
     @field_validator("username")

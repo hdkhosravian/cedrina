@@ -6,8 +6,8 @@ from redis.asyncio import Redis
 from sqlmodel import select
 from structlog import get_logger
 
-from domain.entities.session import Session
-from core.exceptions import AuthenticationError
+from src.domain.entities.session import Session
+from src.core.exceptions import AuthenticationError
 
 logger = get_logger(__name__)
 

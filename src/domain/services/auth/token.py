@@ -1,16 +1,17 @@
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any
+import asyncio
+from typing import Any, Mapping, Optional
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from redis.asyncio import Redis
 from structlog import get_logger
 import secrets
 import hashlib
-from pydantic import ValidationError
 
-from domain.entities.user import User
-from core.config.settings import settings
-from core.exceptions import AuthenticationError
+from src.domain.entities.user import User
+from src.core.config.settings import settings
+from src.core.exceptions import AuthenticationError
+from src.domain.services.auth.session import SessionService
 
 logger = get_logger(__name__)
 
@@ -26,11 +27,13 @@ class TokenService:
     Attributes:
         db_session (AsyncSession): SQLAlchemy async session for database operations.
         redis_client (Redis): Async Redis client for token storage.
+        session_service (SessionService): Service for managing user sessions.
     """
 
-    def __init__(self, db_session: AsyncSession, redis_client: Redis):
+    def __init__(self, db_session: AsyncSession, redis_client: Redis, session_service: Optional[SessionService] = None):
         self.db_session = db_session
         self.redis_client = redis_client
+        self.session_service = session_service or SessionService(db_session, redis_client)
 
     async def create_access_token(self, user: User) -> str:
         """
@@ -79,7 +82,6 @@ class TokenService:
             The token expiration is set to a longer duration than access tokens, and token
             rotation is implemented during refresh to enhance security.
         """
-        from domain.services.auth.session import SessionService  # Avoid circular import
         payload = {
             "sub": str(user.id),
             "iss": settings.JWT_ISSUER,
@@ -91,21 +93,18 @@ class TokenService:
         refresh_token = jwt.encode(payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="RS256")
         refresh_token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
 
-        # Store in Redis
-        await self.redis_client.setex(
-            f"refresh_token:{jti}",
-            int(timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS).total_seconds()),
-            refresh_token_hash
-        )
+        # Store in Redis and DB concurrently
+        expire_seconds = int(timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS).total_seconds())
 
-        # Store in PostgreSQL via SessionService
-        session_service = SessionService(self.db_session, self.redis_client)
-        await session_service.create_session(user.id, jti, refresh_token_hash, payload["exp"])
+        await asyncio.gather(
+            self.redis_client.setex(self._redis_key(jti), expire_seconds, refresh_token_hash),
+            self.session_service.create_session(user.id, jti, refresh_token_hash, payload["exp"]),
+        )
 
         logger.debug("Refresh token created", user_id=user.id, jti=jti)
         return refresh_token
 
-    async def refresh_tokens(self, refresh_token: str) -> Dict[str, str]:
+    async def refresh_tokens(self, refresh_token: str) -> Mapping[str, str]:
         """
         Refresh JWT tokens using a refresh token with rotation.
 
@@ -113,7 +112,7 @@ class TokenService:
             refresh_token (str): Current refresh token.
 
         Returns:
-            Dict[str, str]: New access and refresh tokens with metadata.
+            Mapping[str, str]: New access and refresh tokens with metadata.
 
         Raises:
             AuthenticationError: If refresh token is invalid or revoked.
@@ -123,7 +122,6 @@ class TokenService:
             reducing the risk of token theft. Validates token signature, issuer, audience, and
             checks for revocation in both Redis and PostgreSQL.
         """
-        from domain.services.auth.session import SessionService  # Avoid circular import
         try:
             payload = jwt.decode(
                 refresh_token,
@@ -136,14 +134,13 @@ class TokenService:
             user_id = int(payload["sub"])
 
             # Verify in Redis
-            stored_hash = await self.redis_client.get(f"refresh_token:{jti}")
+            stored_hash = await self.redis_client.get(self._redis_key(jti))
             if not stored_hash or stored_hash.decode() != hashlib.sha256(refresh_token.encode()).hexdigest():
                 logger.warning("Invalid refresh token", jti=jti)
                 raise AuthenticationError("Invalid refresh token")
 
             # Verify session
-            session_service = SessionService(self.db_session, self.redis_client)
-            session = await session_service.get_session(jti, user_id)
+            session = await self.session_service.get_session(jti, user_id)
             if not session or session.revoked_at:
                 logger.warning("Revoked or invalid session", jti=jti)
                 raise AuthenticationError("Session revoked or invalid")
@@ -154,8 +151,8 @@ class TokenService:
                 logger.warning("Inactive user refresh attempt", user_id=user_id)
                 raise AuthenticationError("User account is inactive")
 
-            # Revoke old session
-            await session_service.revoke_session(jti, user_id)
+            # Revoke old session & rotate token concurrently
+            await self.session_service.revoke_session(jti, user_id)
 
             # Create new tokens
             new_jti = secrets.token_urlsafe(16)
@@ -172,7 +169,7 @@ class TokenService:
             logger.error("JWT decode failed", error=str(e))
             raise AuthenticationError("Invalid refresh token")
 
-    async def validate_token(self, token: str) -> Dict[str, Any]:
+    async def validate_token(self, token: str) -> Mapping[str, Any]:
         """
         Validate a JWT access token with advanced checks.
 
@@ -180,7 +177,7 @@ class TokenService:
             token (str): JWT access token.
 
         Returns:
-            Dict[str, Any]: Decoded payload.
+            Mapping[str, Any]: Decoded payload.
 
         Raises:
             AuthenticationError: If token is invalid, expired, or user is inactive.
@@ -199,13 +196,16 @@ class TokenService:
             )
             user_id = int(payload["sub"])
 
-            # Check if token is blacklisted (e.g., due to compromise)
-            if await self._is_token_blacklisted(payload["jti"]):
+            # Concurrently check if token blacklisted and fetch user details.
+            blacklisted_task = asyncio.create_task(self._is_token_blacklisted(payload["jti"]))
+            user_task = asyncio.create_task(self.db_session.get(User, user_id))
+
+            blacklisted, user = await asyncio.gather(blacklisted_task, user_task)
+
+            if blacklisted:
                 logger.warning("Blacklisted token used", jti=payload["jti"], user_id=user_id)
                 raise AuthenticationError("Token has been revoked or blacklisted")
 
-            # Check user
-            user = await self.db_session.get(User, user_id)
             if not user or not user.is_active:
                 logger.warning("Invalid user in JWT", user_id=user_id)
                 raise AuthenticationError("User is invalid or inactive")
@@ -214,7 +214,7 @@ class TokenService:
             return payload
         except JWTError as e:
             logger.error("JWT validation failed", error=str(e))
-            raise AuthenticationError("Invalid token")
+            raise AuthenticationError("Invalid token") from e
 
     async def _is_token_blacklisted(self, jti: str) -> bool:
         """
@@ -232,13 +232,8 @@ class TokenService:
             high-security applications, consider implementing this to handle token revocation
             beyond session management.
         """
-        # Placeholder: Implement actual blacklist check if needed
+        # TODO: Implement actual blacklist check if needed (Redis / DB lookup)
         return False
-
-    def _get_session_service(self) -> "SessionService":
-        """Get SessionService to avoid circular import."""
-        from domain.services.auth.session import SessionService  # Avoid circular import
-        return SessionService(self.db_session, self.redis_client)
 
     async def revoke_refresh_token(self, encoded_token: str) -> None:
         """
@@ -248,43 +243,15 @@ class TokenService:
             encoded_token (str): Encoded refresh token.
 
         Raises:
-            AuthenticationError: If the token is invalid or cannot be revoked.
+            AuthenticationError: If token is invalid.
 
         Note:
             Ensures the token is validated before revocation and removes it from both
             Redis and PostgreSQL storage to prevent further use.
         """
-        try:
-            payload = jwt.decode(
-                encoded_token,
-                settings.JWT_PUBLIC_KEY,
-                algorithms=["RS256"],
-                issuer=settings.JWT_ISSUER,
-                audience=settings.JWT_AUDIENCE
-            )
-            jti = payload["jti"]
-            user_id = int(payload["sub"])
+        await self.session_service.revoke_token(encoded_token)
 
-            # Verify in Redis
-            stored_hash = await self.redis_client.get(f"refresh_token:{jti}")
-            if not stored_hash or stored_hash.decode() != hashlib.sha256(encoded_token.encode()).hexdigest():
-                logger.warning("Invalid refresh token", jti=jti)
-                raise AuthenticationError("Invalid refresh token")
-
-            # Verify session
-            session_service = self._get_session_service()
-            session = await session_service.get_session(jti, user_id)
-            if not session or session.revoked_at:
-                logger.warning("Revoked or invalid session", jti=jti)
-                raise AuthenticationError("Session revoked or invalid")
-
-            # Revoke session
-            await session_service.revoke_session(jti, user_id)
-        except (JWTError, ValidationError, AuthenticationError) as e:
-            logger.warning("Invalid refresh token", error=str(e))
-            raise AuthenticationError("Invalid refresh token")
-
-    def _get_session_service_sync(self) -> "SessionService":
-        """Get SessionService to avoid circular import."""
-        from domain.services.auth.session import SessionService  # Avoid circular import
-        return SessionService(self.db_session, self.redis_client)
+    @staticmethod
+    def _redis_key(jti: str) -> str:  # noqa: D401
+        """Generate the Redis key under which the refresh-token hash is stored."""
+        return f"refresh_token:{jti}"

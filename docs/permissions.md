@@ -81,6 +81,7 @@ A comprehensive test suite for the permission system is located in `tests/unit/p
 
 - **Unit Tests**: Covering configuration, enforcer initialization, policy management, and dependency logic.
 - **Integration Tests**: Simulating API requests to protected endpoints with different user roles to verify access control.
+- **Edge Cases**: Testing token expiration, role changes, concurrent access, and malformed tokens.
 
 Run the tests with:
 
@@ -90,24 +91,20 @@ poetry run pytest tests/unit/permissions/
 
 ## Integration with Authentication
 
-The permission system relies on user role information from the authentication system. Currently, `get_current_user_role()` in `dependencies.py` is a placeholder. To fully integrate:
+The permission system is now fully integrated with the application's JWT-based authentication system. Access control is enforced by a series of dependencies that work together:
 
-1. Update `get_current_user_role()` to extract the role from the authenticated user's token or session.
-2. Ensure the role matches the ones defined in `policy.csv` (e.g., `admin`).
+1. **`oauth2_scheme`**: A standard FastAPI `OAuth2PasswordBearer` dependency that extracts the bearer token from the `Authorization` header.
 
-Example placeholder in `dependencies.py`:
+2. **`get_current_user`**: A dependency located in `src/core/dependencies/auth.py`. It receives the token, validates it using the `TokenService`, and fetches the corresponding `User` from the database. It raises a 401 Unauthorized error if the token is invalid, expired, or the user is not active.
 
-```python
-async def get_current_user_role() -> str:
-    # TODO: Integrate with auth system to get the actual user role
-    return "admin"  # Placeholder for testing
-```
+3. **`check_permission`**: The Casbin permission dependency in `src/permissions/dependencies.py`. It now depends on `get_current_user` to get the authenticated user. It then uses the user's role (`current_user.role`) to enforce the policy. If the user's role is not sufficient, it raises a 403 Forbidden error.
+
+This setup ensures that only actively authenticated users with the correct role can access protected endpoints.
 
 ## Troubleshooting
 
-- **403 Forbidden Errors**: Check if the user's role matches a policy in `policy.csv` for the requested resource and action. Ensure `get_current_user_role()` returns the correct role.
-- **Policy Not Applied**: Verify that `model.conf` and `policy.csv` are correctly loaded by the enforcer. Check logs for initialization errors.
-- **Testing Failures**: Ensure mocks in tests simulate the expected behavior of the enforcer and user roles.
+- **401 Unauthorized Errors**: This indicates a problem with the JWT token. Ensure a valid, non-expired token is being sent in the `Authorization: Bearer <token>` header.
+- **403 Forbidden Errors**: This means the authenticated user does not have the required role for the resource. Check the policies in `src/permissions/policy.csv` and the user's role in the database.
 
 ## Future Enhancements
 

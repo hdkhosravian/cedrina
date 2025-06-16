@@ -1,7 +1,7 @@
 import pytest
-from domain.entities.user import User, Role
-from domain.services.auth.user_authentication import UserAuthenticationService
-from core.exceptions import AuthenticationError
+from src.domain.entities.user import User, Role
+from src.domain.services.auth.user_authentication import UserAuthenticationService
+from src.core.exceptions import AuthenticationError
 import pytest_asyncio
 from unittest.mock import AsyncMock, MagicMock
 

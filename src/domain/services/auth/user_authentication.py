@@ -4,8 +4,14 @@ from sqlalchemy import select
 from pydantic import EmailStr
 from structlog import get_logger
 
-from domain.entities.user import User, Role
-from core.exceptions import AuthenticationError
+from src.core.exceptions import (
+    AuthenticationError,
+    UserAlreadyExistsError,
+    InvalidCredentialsError,
+    PasswordPolicyError,
+)
+from src.domain.entities.user import User, Role
+from src.domain.services.auth.password_policy import PasswordPolicyValidator
 
 logger = get_logger(__name__)
 
