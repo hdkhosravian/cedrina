@@ -90,67 +90,61 @@ class OAuthService:
             for secure storage. Ensure that the OAuth flow at the client level implements
             state validation to mitigate CSRF risks.
         """
-        try:
-            # Validate token expiration
-            expires_at = token.get("expires_at")
-            if not expires_at or expires_at < datetime.now(timezone.utc).timestamp():
-                await logger.awarning("Expired OAuth token", provider=provider)
-                raise AuthenticationError("Token has expired")
+        # Validate token expiration
+        expires_at = token.get("expires_at")
+        if not expires_at or expires_at < datetime.now(timezone.utc).timestamp():
+            await logger.awarning("Expired OAuth token", provider=provider)
+            raise AuthenticationError("Token has expired")
 
-            user_info = await self._fetch_user_info(provider, token)
-            email = user_info.get("email")
-            provider_user_id = user_info.get("sub") or user_info.get("id")
-            if not email or not provider_user_id:
-                await logger.aerror("Invalid OAuth user info", provider=provider)
-                raise AuthenticationError("Invalid OAuth user info")
+        user_info = await self._fetch_user_info(provider, token)
+        email = user_info.get("email")
+        provider_user_id = user_info.get("sub") or user_info.get("id")
+        if not email or not provider_user_id:
+            await logger.aerror("Invalid OAuth user info", provider=provider)
+            raise AuthenticationError("Invalid OAuth user info")
 
-            # Check for existing OAuth profile
-            oauth_profile = await self.db_session.exec(
-                select(OAuthProfile).where(
-                    OAuthProfile.provider == Provider(provider),
-                    OAuthProfile.provider_user_id == provider_user_id
-                )
+        # Check for existing OAuth profile
+        oauth_profile = await self.db_session.exec(
+            select(OAuthProfile).where(
+                OAuthProfile.provider == Provider(provider),
+                OAuthProfile.provider_user_id == provider_user_id,
             )
-            oauth_profile = oauth_profile.first()
+        )
+        oauth_profile = oauth_profile.first()
 
-            if oauth_profile:
-                user = await self.db_session.get(User, oauth_profile.user_id)
-                if not user or not user.is_active:
-                    await logger.awarning("Inactive user OAuth login", email=email)
-                    raise AuthenticationError("User account is inactive")
-            else:
-                # Create or link user
-                user = await self.db_session.exec(
-                    select(User).where(User.email == email)
+        if oauth_profile:
+            user = await self.db_session.get(User, oauth_profile.user_id)
+            if not user or not user.is_active:
+                await logger.awarning("Inactive user OAuth login", email=email)
+                raise AuthenticationError("User account is inactive")
+        else:
+            # Create or link user
+            user = await self.db_session.exec(select(User).where(User.email == email))
+            user = user.first()
+            if not user:
+                user = User(
+                    username=f"{provider}_{provider_user_id[:10]}",
+                    email=email,
+                    role=Role.USER,
+                    is_active=True,
                 )
-                user = user.first()
-                if not user:
-                    user = User(
-                        username=f"{provider}_{provider_user_id[:10]}",
-                        email=email,
-                        role=Role.USER,
-                        is_active=True,
-                    )
-                    self.db_session.add(user)
-                    await self.db_session.commit()
-                    await self.db_session.refresh(user)
-                    await logger.ainfo("Created new user from OAuth", email=email)
-
-                oauth_profile = OAuthProfile(
-                    user_id=user.id,
-                    provider=Provider(provider),
-                    provider_user_id=provider_user_id,
-                    access_token=self.fernet.encrypt(token["access_token"].encode()),
-                    expires_at=datetime.fromtimestamp(token["expires_at"], tz=timezone.utc),
-                )
-                self.db_session.add(oauth_profile)
+                self.db_session.add(user)
                 await self.db_session.commit()
-                await logger.ainfo("Linked OAuth profile", provider=provider, user_id=user.id)
+                await self.db_session.refresh(user)
+                await logger.ainfo("Created new user from OAuth", email=email)
 
-            return user, oauth_profile
-        except Exception as e:
-            await logger.aerror("OAuth authentication failed", provider=provider, error=str(e))
-            raise AuthenticationError(f"OAuth authentication failed: {str(e)}")
+            oauth_profile = OAuthProfile(
+                user_id=user.id,
+                provider=Provider(provider),
+                provider_user_id=provider_user_id,
+                access_token=self.fernet.encrypt(token["access_token"].encode()),
+                expires_at=datetime.fromtimestamp(token["expires_at"], tz=timezone.utc),
+            )
+            self.db_session.add(oauth_profile)
+            await self.db_session.commit()
+            await logger.ainfo("Linked OAuth profile", provider=provider, user_id=user.id)
+
+        return user, oauth_profile
 
     async def validate_oauth_state(self, state: str, stored_state: str) -> bool:
         """
@@ -191,13 +185,9 @@ class OAuthService:
             information from OAuth providers. Logs specific errors for debugging purposes.
         """
         client = self.oauth.create_client(provider)
-        try:
-            if provider == "facebook":
-                user_info = await client.get("me", token=token, params={"fields": "id,email,name"})
-                return user_info.json()
-            else:
-                user_info = await client.get("userinfo", token=token)
-                return user_info.json()
-        except Exception as e:
-            await logger.aerror("Failed to fetch OAuth user info", provider=provider, error=str(e))
-            raise AuthenticationError(f"Failed to fetch user info: {str(e)}")
+        if provider == "facebook":
+            user_info = await client.get("me", token=token, params={"fields": "id,email,name"})
+            return user_info.json()
+        else:
+            user_info = await client.get("userinfo", token=token)
+            return user_info.json()

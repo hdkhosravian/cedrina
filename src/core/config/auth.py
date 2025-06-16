@@ -56,19 +56,13 @@ class AuthSettings(BaseSettings):
         public_key_path = Path("public.pem")
 
         if private_key_path.is_file():
-            try:
-                private_key = private_key_path.read_text().strip()
-                if private_key:
-                    self.JWT_PRIVATE_KEY = SecretStr(private_key)
-                    logger.info("Loaded JWT private key from private.pem, overriding env var if set.")
-            except Exception as e:
-                logger.warning("Failed to load private key from private.pem: %s", e)
-        
+            private_key = private_key_path.read_text().strip()
+            if private_key:
+                self.JWT_PRIVATE_KEY = SecretStr(private_key)
+                logger.info("Loaded JWT private key from private.pem, overriding env var if set.")
+
         if public_key_path.is_file():
-            try:
-                public_key = public_key_path.read_text().strip()
-                if public_key:
-                    self.JWT_PUBLIC_KEY = public_key
-                    logger.info("Loaded JWT public key from public.pem, overriding env var if set.")
-            except Exception as e:
-                logger.warning("Failed to load public key from public.pem: %s", e) 
+            public_key = public_key_path.read_text().strip()
+            if public_key:
+                self.JWT_PUBLIC_KEY = public_key
+                logger.info("Loaded JWT public key from public.pem, overriding env var if set.") 

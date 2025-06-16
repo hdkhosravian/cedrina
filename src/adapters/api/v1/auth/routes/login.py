@@ -49,12 +49,7 @@ async def login_user(
     Raises:
         HTTPException: If authentication fails due to invalid credentials or inactive account.
     """
-    try:
-        user = await user_service.authenticate_by_credentials(payload.username, payload.password)
-    except AuthenticationError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    user = await user_service.authenticate_by_credentials(payload.username, payload.password)
 
     access_token = await token_service.create_access_token(user=user)
     refresh_token = await token_service.create_refresh_token(user=user)

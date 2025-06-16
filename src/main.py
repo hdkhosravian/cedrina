@@ -28,6 +28,14 @@ from src.infrastructure.database import create_db_and_tables, check_database_hea
 from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
+from src.core.exceptions import (
+    AuthenticationError,
+    PermissionError,
+)
+from src.core.handlers import (
+    authentication_error_handler,
+    permission_error_handler,
+)
 
 # Load environment variables
 load_dotenv(override=True)
@@ -73,6 +81,10 @@ app = FastAPI(
     openapi_url=None,
     lifespan=lifespan,
 )
+
+# Register custom exception handlers
+app.add_exception_handler(AuthenticationError, authentication_error_handler)
+app.add_exception_handler(PermissionError, permission_error_handler)
 
 # CORS middleware configuration
 app.add_middleware(

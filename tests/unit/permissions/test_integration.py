@@ -18,6 +18,7 @@ Tests:
     - test_expired_token_handling: Verifies that an expired token results in a 401 Unauthorized response.
     - test_openapi_json_endpoint_admin_access: Verifies that an admin user can access the /openapi.json endpoint.
     - test_openapi_json_endpoint_non_admin_denied: Verifies that a non-admin user is denied access to the /openapi.json endpoint.
+    - test_policy_enforcement_for_wrong_role: Verifies that a user with a valid but incorrect role is denied access with a 403 error.
 """
 
 import pytest
@@ -100,20 +101,34 @@ def check_endpoint_access(client, method, url, user, expected_status):
 # --- Test Cases ---
 
 @pytest.mark.asyncio
-async def test_protected_endpoints_with_admin_user(client, mock_admin_user):
+@pytest.mark.parametrize("endpoint", [
+    "/api/v1/health", 
+    "/api/v1/metrics", 
+    "/docs", 
+    "/redoc", 
+    "/openapi.json"
+])
+async def test_admin_access_to_protected_endpoints(client, mock_admin_user, endpoint):
     """Tests that an admin user has access to all protected routes."""
-    check_endpoint_access(client, "get", "/api/v1/health", mock_admin_user, 200)
-    check_endpoint_access(client, "get", "/api/v1/metrics", mock_admin_user, 200)
-    check_endpoint_access(client, "get", "/docs", mock_admin_user, 200)
-    check_endpoint_access(client, "get", "/redoc", mock_admin_user, 200)
+    check_endpoint_access(client, "get", endpoint, mock_admin_user, 200)
 
 @pytest.mark.asyncio
-async def test_protected_endpoints_with_normal_user(client, mock_normal_user):
-    """Tests that a normal user is denied access to all protected routes."""
-    check_endpoint_access(client, "get", "/api/v1/health", mock_normal_user, 403)
-    check_endpoint_access(client, "get", "/api/v1/metrics", mock_normal_user, 403)
-    check_endpoint_access(client, "get", "/docs", mock_normal_user, 403)
-    check_endpoint_access(client, "get", "/redoc", mock_normal_user, 403)
+@pytest.mark.parametrize("endpoint", [
+    "/api/v1/health", 
+    "/api/v1/metrics", 
+    "/docs", 
+    "/redoc", 
+    "/openapi.json"
+])
+async def test_normal_user_denied_access_to_protected_endpoints(client, mock_normal_user, endpoint):
+    """
+    Tests that a normal user is denied access to all protected routes with a 
+    403 Forbidden error and a specific permission error message.
+    """
+    response = check_endpoint_access(client, "get", endpoint, mock_normal_user, 403)
+    # Strip the /api/v1 prefix for the error message assertion if present
+    expected_resource = endpoint.replace("/api/v1", "")
+    assert f"User with role 'user' does not have permission to GET {expected_resource}" in response.json()["detail"]
 
 @pytest.mark.asyncio
 async def test_access_with_inactive_user(client, mock_inactive_user):
@@ -141,12 +156,35 @@ async def test_unauthorized_access_without_token(client):
 
 @pytest.mark.asyncio
 async def test_user_with_no_role_is_denied(client):
-    """Tests that a user with a null/None role is gracefully denied access."""
+    """Tests that a user with a null/None role is gracefully denied access with a 403 error."""
     user_no_role = MagicMock(spec=User)
     user_no_role.id = 4
     user_no_role.role = None
     user_no_role.is_active = True
-    check_endpoint_access(client, "get", "/api/v1/health", user_no_role, 403)
+    response = check_endpoint_access(client, "get", "/api/v1/health", user_no_role, 403)
+    assert "User has no assigned role" in response.json()["detail"]
+
+@pytest.mark.asyncio
+async def test_policy_enforcement_for_wrong_role(client):
+    """
+    Tests that a user with a valid role but incorrect for the endpoint (e.g., 'finance' trying to access
+    an 'admin' resource) is properly denied with a 403 error.
+    This simulates a real-world scenario where policies in policy.csv are the deciding factor.
+    """
+    # Mock a role enum for the test
+    mock_role = MagicMock()
+    mock_role.value = "finance"
+
+    finance_user = MagicMock(spec=User)
+    finance_user.id = 5
+    finance_user.role = mock_role  # A role that exists but doesn't have access
+    finance_user.is_active = True
+
+    # The policies fixture in client only allows 'admin' for this endpoint
+    response = check_endpoint_access(client, "get", "/api/v1/health", finance_user, 403)
+
+    # Verify the specific error message from the Casbin enforcer
+    assert "User with role 'finance' does not have permission to GET /health" in response.json()["detail"]
 
 @pytest.mark.asyncio
 async def test_expired_token_handling(client):
@@ -156,8 +194,9 @@ async def test_expired_token_handling(client):
 
     app.dependency_overrides[get_current_user] = override_get_expired_token
     headers = {"Authorization": "Bearer expired-token"}
-    with pytest.raises(AuthenticationError, match="Token has expired"):
-        client.get("/api/v1/health", headers=headers)
+    response = client.get("/api/v1/health", headers=headers)
+    assert response.status_code == 401
+    assert "Token has expired" in response.json()["detail"]
 
 @pytest.mark.asyncio
 async def test_invalid_token_format(client):
@@ -220,4 +259,5 @@ async def test_openapi_json_endpoint_admin_access(client, mock_admin_user):
 @pytest.mark.asyncio
 async def test_openapi_json_endpoint_non_admin_denied(client, mock_normal_user):
     """Tests that a non-admin user is denied access to the /openapi.json endpoint."""
-    check_endpoint_access(client, "get", "/openapi.json", mock_normal_user, 403) 
+    response = check_endpoint_access(client, "get", "/openapi.json", mock_normal_user, 403)
+    assert "does not have permission" in response.json()["detail"] 

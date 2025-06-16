@@ -27,6 +27,7 @@ __all__: Final = [
     "PasswordPolicyError",
     "RateLimitError",
     "DuplicateUserError",
+    "PermissionError",
 ]
 
 
@@ -75,6 +76,16 @@ class InvalidCredentialsError(AuthenticationError):
     """Raised when credentials supplied by the user are invalid."""
 
     code: str = "invalid_credentials"
+
+
+@dataclass(slots=True)
+class PermissionError(CedrinaError):
+    """
+    Exception raised when a user is not authorized to perform an action.
+    """
+
+    def __init__(self, message: str, code: str = "permission_denied"):
+        CedrinaError.__init__(self, message, code)
 
 
 # ---------------------------------------------------------------------------

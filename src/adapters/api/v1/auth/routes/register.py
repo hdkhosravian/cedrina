@@ -50,18 +50,11 @@ async def register_user(
     Raises:
         HTTPException: If the registration fails due to duplicate username, weak password, or other validation errors.
     """
-    try:
-        user = await user_service.register_user(
-            username=payload.username,
-            email=payload.email,
-            password=payload.password
-        )
-    except DuplicateUserError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
-    except PasswordPolicyError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    user = await user_service.register_user(
+        username=payload.username,
+        email=payload.email,
+        password=payload.password
+    )
 
     access_token = await token_service.create_access_token(user=user)
     refresh_token = await token_service.create_refresh_token(user=user)

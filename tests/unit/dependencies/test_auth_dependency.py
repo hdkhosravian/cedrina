@@ -12,6 +12,8 @@ from src.domain.entities.user import User, Role
 from src.domain.services.auth.token import TokenService
 from src.infrastructure.database import get_db
 from src.infrastructure.redis import get_redis
+from src.core.exceptions import PermissionError, AuthenticationError
+from src.core.handlers import permission_error_handler
 
 
 @pytest_asyncio.fixture
@@ -40,6 +42,7 @@ def app(db_session, redis_client, user, admin_user):
     """Create an ephemeral FastAPI app that mounts endpoints using the deps."""
 
     _app = FastAPI()
+    _app.add_exception_handler(PermissionError, permission_error_handler)
 
     # Patch dependencies inside this app context only
     _app.dependency_overrides[get_db] = lambda: db_session
@@ -84,7 +87,7 @@ async def test_get_current_user_invalid_token(client, db_session, redis_client):
     # Arrange
     token = "bad-token"
 
-    with patch.object(TokenService, "validate_token", AsyncMock(side_effect=Exception("fail"))):
+    with patch.object(TokenService, "validate_token", AsyncMock(side_effect=AuthenticationError("fail"))):
         # Act
         response = client.get("/secure", headers={"Authorization": f"Bearer {token}"})
 
@@ -102,6 +105,7 @@ async def test_admin_route_permission_denied(client, db_session, redis_client, u
         response = client.get("/admin", headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == 403
+    assert "The user does not have administrative privileges." in response.json()["detail"]
 
 
 @pytest.mark.asyncio

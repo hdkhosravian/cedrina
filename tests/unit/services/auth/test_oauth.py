@@ -85,7 +85,7 @@ async def test_authenticate_with_oauth_invalid_user_info(oauth_service, mocker):
     mocker.patch.object(oauth_service, "_fetch_user_info", return_value=user_info)
 
     # Act/Assert
-    with pytest.raises(AuthenticationError, match="OAuth authentication failed: Invalid OAuth user info"):
+    with pytest.raises(AuthenticationError, match="Invalid OAuth user info"):
         await oauth_service.authenticate_with_oauth(provider, token)
 
 @pytest.mark.asyncio
@@ -98,7 +98,7 @@ async def test_fetch_user_info_failure(oauth_service, mocker):
     mocker.patch.object(oauth_service, '_fetch_user_info', side_effect=AuthenticationError("Provider error"))
 
     # Act/Assert
-    with pytest.raises(AuthenticationError, match="OAuth authentication failed: Provider error"):
+    with pytest.raises(AuthenticationError, match="Provider error"):
         await oauth_service.authenticate_with_oauth(provider, token)
 
 @pytest.mark.asyncio
@@ -127,7 +127,7 @@ async def test_authenticate_with_oauth_expired_token(oauth_service, db_session, 
     mocker.patch.object(oauth_service, "_fetch_user_info", return_value=user_info)
 
     # Act/Assert
-    with pytest.raises(AuthenticationError, match="OAuth authentication failed: Token has expired"):
+    with pytest.raises(AuthenticationError, match="Token has expired"):
         await oauth_service.authenticate_with_oauth(provider, expired_token)
 
 @pytest.mark.asyncio

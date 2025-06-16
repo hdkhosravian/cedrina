@@ -26,38 +26,18 @@ def test_setup_i18n_success(mocker):
 def test_setup_i18n_locales_not_found(mocker):
     """Test setup_i18n when locales directory is not found."""
     mocker.patch('os.path.exists', return_value=False)
-    mock_logger_error = mocker.patch('core.logging.logger.error')
     
-    setup_i18n()
-    
-    # Removed strict assertion on call count as logger output shows calls but mock might not capture them
-    # mock_logger_error.assert_called_once()
-    # args, _ = mock_logger_error.call_args
-    # assert isinstance(args[0], dict)
-    # assert args[0].get('event') == 'i18n_setup_failed'
-    # assert 'error' in args[0]
+    with pytest.raises(FileNotFoundError):
+        setup_i18n()
 
 
 def test_setup_i18n_translation_error(mocker):
     """Test setup_i18n when translation loading fails for a language."""
     mocker.patch('os.path.exists', return_value=True)
-    mocker.patch('gettext.translation', side_effect=Exception("Translation error"))
-    mocker.patch('core.logging.logger.info')
-    mock_logger_error = mocker.patch('core.logging.logger.error')
+    mocker.patch('gettext.translation', side_effect=Exception("Translation loading failed"))
     
-    # Clear existing translations for test
-    _translations.clear()
-    setup_i18n()
-    
-    # Removed strict assertion on call count as logger output shows calls but mock might not capture them
-    # assert mock_logger_error.call_count == len(settings.SUPPORTED_LANGUAGES)  # One error per language
-    # calls = mock_logger_error.call_args_list
-    # for call in calls:
-    #     args, _ = call
-    #     assert isinstance(args[0], dict)
-    #     assert args[0].get('event') == 'i18n_init_failed'
-    #     assert 'language' in args[0]
-    #     assert 'error' in args[0]
+    with pytest.raises(Exception, match="Translation loading failed"):
+        setup_i18n()
 
 
 def test_get_translated_message_success(mocker):
@@ -83,32 +63,23 @@ def test_get_translated_message_invalid_locale(mocker):
 
 
 def test_get_translated_message_not_found(mocker):
-    """Test translation retrieval when translation is not found for locale."""
-    mocker.patch('os.path.exists', return_value=True)
+    """Test translation returns the key when the translation is missing."""
     mock_translation = mocker.MagicMock()
-    mock_translation.gettext.side_effect = lambda x: x  # Return the input key as is to simulate missing translation
-    mocker.patch('gettext.translation', return_value=mock_translation)
-    mocker.patch('core.logging.logger.info')
-    mock_logger_error = mocker.patch('core.logging.logger.error')
-    mock_logger_warning = mocker.patch('core.logging.logger.warning')
+    # Simulate gettext behavior for a missing key
+    mock_translation.gettext.side_effect = lambda key: key
     
-    # Clear existing translations for test
-    _translations.clear()
-    result = get_translated_message("test_key", settings.DEFAULT_LANGUAGE)
-    assert result == "test_key"
-    # Removed strict assertion on call count as logger output shows calls but mock might not capture them
-    # mock_logger_error.assert_called_once()
-    # error_args, _ = mock_logger_error.call_args
-    # assert isinstance(error_args[0], dict)
-    # assert error_args[0].get('event') == 'translation_not_found_for_locale'
-    # assert error_args[0].get('locale') == settings.DEFAULT_LANGUAGE
-    # assert 'available_translations' in error_args[0]
-    # mock_logger_warning.assert_called_once()
-    # warning_args, _ = mock_logger_warning.call_args
-    # assert isinstance(warning_args[0], dict)
-    # assert warning_args[0].get('event') == 'translation_key_not_found'
-    # assert warning_args[0].get('key') == 'test_key'
-    # assert warning_args[0].get('locale') == settings.DEFAULT_LANGUAGE
+    _translations['en'] = mock_translation
+    
+    mock_logger = mocker.patch('utils.i18n.logger')
+
+    result = get_translated_message("untranslated_key", "en")
+    
+    assert result == "untranslated_key"
+    mock_logger.warning.assert_called_with(
+        "translation_key_not_found", 
+        key="untranslated_key", 
+        locale="en"
+    )
 
 
 def test_get_request_language_query_param(mocker):

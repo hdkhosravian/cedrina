@@ -24,6 +24,7 @@ import casbin
 from src.core.dependencies.auth import get_current_user
 from src.domain.entities.user import User
 from .enforcer import get_enforcer
+from src.core.exceptions import PermissionError
 
 def check_permission(resource: str, action: str):
     """
@@ -51,15 +52,9 @@ def check_permission(resource: str, action: str):
         The actual dependency that will be executed by FastAPI.
         """
         if current_user.role is None:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User has no assigned role, access denied."
-            )
+            raise PermissionError("User has no assigned role, access denied.")
         
         user_role = current_user.role.value
         if not enforcer.enforce(user_role, resource, action):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"User with role '{user_role}' does not have permission to {action} {resource}"
-            )
+            raise PermissionError(f"User with role '{user_role}' does not have permission to {action} {resource}")
     return permission_dependency 

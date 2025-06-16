@@ -58,12 +58,7 @@ async def oauth_authenticate(
     Raises:
         HTTPException: If OAuth authentication fails due to invalid or expired token.
     """
-    try:
-        user, profile = await oauth_service.authenticate_with_oauth(payload.provider, payload.token)
-    except AuthenticationError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    user, profile = await oauth_service.authenticate_with_oauth(payload.provider, payload.token)
 
     access_token = await token_service.create_access_token(user=user)
     refresh_token = await token_service.create_refresh_token(user=user)

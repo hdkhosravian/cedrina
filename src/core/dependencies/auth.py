@@ -13,6 +13,7 @@ from src.domain.entities.user import User, Role
 from src.domain.services.auth.token import TokenService
 from src.infrastructure.database import get_db
 from src.infrastructure.redis import get_redis
+from src.core.exceptions import PermissionError, AuthenticationError
 
 __all__ = [
     "get_current_user",
@@ -70,16 +71,13 @@ async def get_current_user(  # noqa: D401
         if user is None or not user.is_active:
             raise _auth_fail("User not found or inactive")
         return user
-    except Exception as exc:  # noqa: BLE001 – we convert to HTTPException below
-        raise _auth_fail(f"Invalid token: {exc}") from exc
+    except AuthenticationError as exc:
+        raise _auth_fail(str(exc)) from exc
 
 
 def get_current_admin_user(current_user: Annotated[User, Depends(get_current_user)]) -> User:  # noqa: D401
     """Ensure the authenticated user has *ADMIN* role."""
 
     if current_user.role != Role.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="The user does not have administrative privileges.",
-        )
+        raise PermissionError("The user does not have administrative privileges.")
     return current_user 

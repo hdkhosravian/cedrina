@@ -44,13 +44,6 @@ def get_db_session() -> Generator[Session, None, None]:
             checked_out=engine.pool.checkedout()
         )
         yield session
-    except Exception as e:
-        logger.error(
-            "database_session_error",
-            error=str(e),
-            error_type=type(e).__name__
-        )
-        raise
     finally:
         if session:
             session.close()
@@ -83,8 +76,7 @@ def get_db() -> Generator[Session, None, None]:
     with get_db_session() as session:
         try:
             yield session
-        except Exception as e:
-            logger.error("database_session_error", error=str(e))
+        except Exception:
             session.rollback()
             raise
 
@@ -157,19 +149,10 @@ def create_db_and_tables() -> None:
     Creates database tables with logging.
     """
     start_time = time.time()
-    try:
-        SQLModel.metadata.create_all(engine)
-        execution_time = time.time() - start_time
-        logger.info(
-            "database_tables_created",
-            execution_time=execution_time,
-            tables=list(SQLModel.metadata.tables.keys())
-        )
-    except Exception as e:
-        execution_time = time.time() - start_time
-        logger.error(
-            "database_tables_creation_failed",
-            error=str(e),
-            execution_time=execution_time
-        )
-        raise
+    SQLModel.metadata.create_all(engine)
+    execution_time = time.time() - start_time
+    logger.info(
+        "database_tables_created",
+        execution_time=execution_time,
+        tables=list(SQLModel.metadata.tables.keys())
+    )
