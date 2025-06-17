@@ -66,7 +66,7 @@ async def health_check(request: Request):
                        by the Casbin enforcer.
     """
     language = request.state.language
-    status_message = get_translated_message("health_status_ok", language)
+    status_message = get_translated_message("system_operational", language)
     
     # Run health checks concurrently
     redis_health, db_health = await asyncio.gather(

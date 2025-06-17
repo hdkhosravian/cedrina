@@ -97,19 +97,11 @@ class User(SQLModel, table=True):
     )
 
     @field_validator("username")
+    @classmethod
     def validate_username(cls, value: str) -> str:
         """
-        Validate username to allow only alphanumeric characters, underscores, and hyphens.
-        
-        Args:
-            value (str): Username to validate.
-        
-        Returns:
-            str: Validated username.
-        
-        Raises:
-            ValueError: If username contains invalid characters, translatable via i18n.
+        Ensures the username contains only allowed characters.
         """
         if not value.replace("_", "").replace("-", "").isalnum():
-            raise ValueError("Username must contain only letters, numbers, underscores, or hyphens")
+            raise ValueError(get_translated_message("invalid_username_characters", "en"))
         return value

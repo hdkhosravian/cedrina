@@ -22,7 +22,7 @@ from src.core.logging import configure_logging, logger
 from src.adapters.api.v1 import api_router
 from src.adapters.websockets import ws_router
 from src.adapters.api.v1.docs import router as docs_router
-from src.utils.i18n import setup_i18n, get_request_language
+from src.utils.i18n import setup_i18n, get_request_language, get_translated_message
 import i18n
 from src.infrastructure.database import create_db_and_tables, check_database_health
 from contextlib import asynccontextmanager
@@ -80,6 +80,8 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None,
     lifespan=lifespan,
+    default_response_class=JSONResponse,
+    default_response_description=get_translated_message("successful_response", settings.DEFAULT_LANGUAGE)
 )
 
 # Register custom exception handlers

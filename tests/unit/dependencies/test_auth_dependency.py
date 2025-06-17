@@ -1,6 +1,6 @@
 import pytest
 import pytest_asyncio
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, patch
 
@@ -44,18 +44,25 @@ def app(db_session, redis_client, user, admin_user):
     _app = FastAPI()
     _app.add_exception_handler(PermissionError, permission_error_handler)
 
+    # Add a dummy middleware to set the language state for i18n
+    @_app.middleware("http")
+    async def set_language_middleware(request: Request, call_next):
+        request.state.language = "en"  # Default to 'en' for these tests
+        response = await call_next(request)
+        return response
+
     # Patch dependencies inside this app context only
     _app.dependency_overrides[get_db] = lambda: db_session
     _app.dependency_overrides[get_redis] = lambda: redis_client
 
     # -- Secure endpoint (any user) -------------------------------------------
     @_app.get("/secure")
-    async def secure_route(current: User = Depends(get_current_user)):  # noqa: D401
+    async def secure_route(request: Request, current: User = Depends(get_current_user)):  # noqa: D401
         return {"user_id": current.id}
 
     # -- Admin endpoint --------------------------------------------------------
     @_app.get("/admin")
-    async def admin_route(current: User = Depends(get_current_admin_user)):  # noqa: D401
+    async def admin_route(request: Request, current: User = Depends(get_current_admin_user)):  # noqa: D401
         return {"user_id": current.id}
 
     return _app

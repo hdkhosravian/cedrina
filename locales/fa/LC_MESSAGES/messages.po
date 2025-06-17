@@ -14,5 +14,74 @@ msgstr ""
 "Generated-By: Babel 2.17.0\n"
 
 msgid "health_status_ok"
-msgstr "سیستم عملیاتی است"
+msgstr "سیستم در حال کار است"
+
+msgid "invalid_token_subject"
+msgstr "توکن نامعتبر: موضوع وجود ندارد"
+
+msgid "user_not_found_or_inactive"
+msgstr "کاربر یافت نشد یا غیرفعال است"
+
+msgid "admin_privileges_required"
+msgstr "کاربر دارای دسترسی‌های مدیریتی نیست."
+
+msgid "user_has_no_role"
+msgstr "کاربر هیچ نقشی ندارد، دسترسی رد شد."
+
+msgid "permission_denied_for_action"
+msgstr "کاربر با نقش '{role}' اجازه {action} {resource} را ندارد"
+
+msgid "invalid_username_characters"
+msgstr "نام کاربری باید فقط شامل حروف، اعداد، زیرخط یا خط تیره باشد"
+
+msgid "invalid_username_or_password"
+msgstr "نام کاربری یا رمز عبور نامعتبر است"
+
+msgid "user_account_inactive"
+msgstr "حساب کاربری غیرفعال است"
+
+msgid "username_already_registered"
+msgstr "نام کاربری قبلاً ثبت شده است"
+
+msgid "email_already_registered"
+msgstr "ایمیل قبلاً ثبت شده است"
+
+msgid "password_too_short"
+msgstr "رمز عبور باید حداقل 8 کاراکتر باشد"
+
+msgid "password_no_uppercase"
+msgstr "رمز عبور باید حداقل یک حرف بزرگ داشته باشد"
+
+msgid "password_no_lowercase"
+msgstr "رمز عبور باید حداقل یک حرف کوچک داشته باشد"
+
+msgid "password_no_digit"
+msgstr "رمز عبور باید حداقل یک عدد داشته باشد"
+
+msgid "token_expired"
+msgstr "توکن منقضی شده است"
+
+msgid "invalid_oauth_user_info"
+msgstr "اطلاعات کاربر OAuth نامعتبر است"
+
+msgid "invalid_credentials"
+msgstr "اعتبارنامه نامعتبر است"
+
+msgid "too_many_requests"
+msgstr "درخواست‌های بیش از حد"
+
+msgid "rate_limit_exceeded"
+msgstr "محدودیت نرخ تجاوز شده است"
+
+msgid "metrics_endpoint_debug_only"
+msgstr "نقطه پایانی متریک فقط در حالت اشکال‌زدایی در دسترس است"
+
+msgid "error_prefix"
+msgstr "خطا: {message}"
+
+msgid "successful_response"
+msgstr "پاسخ موفق"
+
+msgid "system_operational"
+msgstr "سیستم در حال کار است"
 

@@ -18,13 +18,14 @@ This module ensures that access control logic is decoupled from business logic, 
 Responsibility Principle and making the system easier to maintain and extend.
 """
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 import casbin
 
 from src.core.dependencies.auth import get_current_user
 from src.domain.entities.user import User
 from .enforcer import get_enforcer
 from src.core.exceptions import PermissionError
+from src.utils.i18n import get_translated_message
 
 def check_permission(resource: str, action: str):
     """
@@ -45,16 +46,25 @@ def check_permission(resource: str, action: str):
         callable: A FastAPI dependency function that performs the permission check.
     """
     async def permission_dependency(
+        request: Request,
         current_user: User = Depends(get_current_user),
         enforcer: casbin.Enforcer = Depends(get_enforcer)
     ):
         """
         The actual dependency that will be executed by FastAPI.
         """
+        locale = request.state.language
         if current_user.role is None:
-            raise PermissionError("User has no assigned role, access denied.")
+            message = get_translated_message("user_has_no_role", locale)
+            raise PermissionError(message)
         
         user_role = current_user.role.value
-        if not enforcer.enforce(user_role, resource, action):
-            raise PermissionError(f"User with role '{user_role}' does not have permission to {action} {resource}")
+        result = enforcer.enforce(user_role, resource, action)
+        if hasattr(result, "__await__"):
+            result = await result
+        if not result:
+            message = get_translated_message("permission_denied_for_action", locale).format(
+                role=user_role, action=action, resource=resource
+            )
+            raise PermissionError(message)
     return permission_dependency 

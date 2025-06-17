@@ -12,6 +12,7 @@ from src.core.exceptions import (
 )
 from src.domain.entities.user import User, Role
 from src.domain.services.auth.password_policy import PasswordPolicyValidator
+from src.utils.i18n import get_translated_message
 
 logger = get_logger(__name__)
 
@@ -56,11 +57,11 @@ class UserAuthenticationService:
 
         if not user or not self.pwd_context.verify(password, user.hashed_password):
             logger.warning("Invalid credentials for user", username=username)
-            raise AuthenticationError("Invalid username or password")
+            raise AuthenticationError(get_translated_message("invalid_username_or_password", "en"))
         
         if not user.is_active:
             logger.warning("Authentication attempt for inactive user", username=username)
-            raise AuthenticationError("User account is inactive")
+            raise AuthenticationError(get_translated_message("user_account_inactive", "en"))
         
         return user
 
@@ -83,23 +84,26 @@ class UserAuthenticationService:
         """
         # Check for existing username
         statement = select(User).where(User.username == username)
-        if (await self.db_session.exec(statement)).first():
-            raise AuthenticationError("Username already registered")
+        existing_user_by_username = (await self.db_session.exec(statement)).first()
 
         # Check for existing email
         statement = select(User).where(User.email == email)
-        if (await self.db_session.exec(statement)).first():
-            raise AuthenticationError("Email already registered")
+        existing_user_by_email = (await self.db_session.exec(statement)).first()
+        
+        if existing_user_by_username:
+            raise AuthenticationError(get_translated_message("username_already_registered", "en"))
+        if existing_user_by_email:
+            raise AuthenticationError(get_translated_message("email_already_registered", "en"))
         
         # Enforce password policy
         if len(password) < 8:
-            raise AuthenticationError("Password must be at least 8 characters long")
+            raise AuthenticationError(get_translated_message("password_too_short", "en"))
         if not any(c.isupper() for c in password):
-            raise AuthenticationError("Password must contain at least one uppercase letter")
+            raise AuthenticationError(get_translated_message("password_no_uppercase", "en"))
         if not any(c.islower() for c in password):
-            raise AuthenticationError("Password must contain at least one lowercase letter")
+            raise AuthenticationError(get_translated_message("password_no_lowercase", "en"))
         if not any(c.isdigit() for c in password):
-            raise AuthenticationError("Password must contain at least one digit")
+            raise AuthenticationError(get_translated_message("password_no_digit", "en"))
         
         hashed_password = self.pwd_context.hash(password)
         new_user = User(

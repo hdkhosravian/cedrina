@@ -1,9 +1,10 @@
 """
 Metrics endpoint for exposing application metrics.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from src.core.metrics import metrics_collector
 from src.core.config.settings import settings
+from src.utils.i18n import get_translated_message
 from typing import Dict, Any
 from datetime import datetime, timezone
 from src.permissions.dependencies import check_permission
@@ -11,7 +12,7 @@ from src.permissions.dependencies import check_permission
 router = APIRouter()
 
 @router.get("/", response_model=Dict[str, Any], dependencies=[Depends(check_permission("/metrics", "GET"))])
-async def get_metrics():
+async def get_metrics(request: Request):
     """
     Get application metrics.
     
@@ -23,6 +24,10 @@ async def get_metrics():
     
     Access to this endpoint is restricted to users with the 'admin' role, enforced by the Casbin permission
     system to protect sensitive performance and operational data from unauthorized access.
+    
+    Args:
+        request (Request): The incoming HTTP request object, used to determine the preferred language for
+                           error messages.
     
     Returns:
         Dict[str, Any]: Collected metrics in a structured dictionary format, providing detailed insights into
@@ -36,7 +41,7 @@ async def get_metrics():
     if not settings.DEBUG:
         raise HTTPException(
             status_code=403,
-            detail="Metrics endpoint is only available in debug mode"
+            detail=get_translated_message("metrics_endpoint_debug_only", request.state.language)
         )
     
     return {

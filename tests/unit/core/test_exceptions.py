@@ -1,9 +1,10 @@
 import pytest
-from core.exceptions import AuthenticationError, RateLimitError
+from src.core.exceptions import AuthenticationError, RateLimitError
+from src.utils.i18n import get_translated_message
 
 def test_authentication_error_default():
     # Arrange
-    message = "Invalid credentials"
+    message = get_translated_message("invalid_credentials", "en")
     code = "auth_failed"
 
     # Act
@@ -16,7 +17,7 @@ def test_authentication_error_default():
 
 def test_authentication_error_no_code():
     # Arrange
-    message = "Invalid credentials"
+    message = get_translated_message("invalid_credentials", "en")
 
     # Act
     error = AuthenticationError(message)
@@ -28,7 +29,7 @@ def test_authentication_error_no_code():
 
 def test_rate_limit_error_default():
     # Arrange
-    message = "Too many requests"
+    message = get_translated_message("too_many_requests", "en")
     code = "rate_limit"
 
     # Act
@@ -41,7 +42,7 @@ def test_rate_limit_error_default():
 
 def test_rate_limit_error_no_code():
     # Arrange
-    message = "Rate limit exceeded"
+    message = get_translated_message("rate_limit_exceeded", "en")
 
     # Act
     error = RateLimitError()

@@ -6,11 +6,13 @@ from structlog import get_logger
 from cryptography.fernet import Fernet
 from tenacity import retry, stop_after_attempt, wait_fixed
 from sqlalchemy import select
+import time
 
 from src.domain.entities.user import User, Role
 from src.domain.entities.oauth_profile import OAuthProfile, Provider
 from src.core.config.settings import settings
 from src.core.exceptions import AuthenticationError
+from src.utils.i18n import get_translated_message
 
 logger = get_logger(__name__)
 
@@ -91,17 +93,14 @@ class OAuthService:
             state validation to mitigate CSRF risks.
         """
         # Validate token expiration
-        expires_at = token.get("expires_at")
-        if not expires_at or expires_at < datetime.now(timezone.utc).timestamp():
-            await logger.awarning("Expired OAuth token", provider=provider)
-            raise AuthenticationError("Token has expired")
+        if token.get('expires_at', 0) < time.time():
+            raise AuthenticationError(get_translated_message("token_expired", "en"))
 
         user_info = await self._fetch_user_info(provider, token)
         email = user_info.get("email")
         provider_user_id = user_info.get("sub") or user_info.get("id")
         if not email or not provider_user_id:
-            await logger.aerror("Invalid OAuth user info", provider=provider)
-            raise AuthenticationError("Invalid OAuth user info")
+            raise AuthenticationError(get_translated_message("invalid_oauth_user_info", "en"))
 
         # Check for existing OAuth profile
         oauth_profile = await self.db_session.exec(
@@ -115,8 +114,7 @@ class OAuthService:
         if oauth_profile:
             user = await self.db_session.get(User, oauth_profile.user_id)
             if not user or not user.is_active:
-                await logger.awarning("Inactive user OAuth login", email=email)
-                raise AuthenticationError("User account is inactive")
+                raise AuthenticationError(get_translated_message("user_account_inactive", "en"))
         else:
             # Create or link user
             user = await self.db_session.exec(select(User).where(User.email == email))

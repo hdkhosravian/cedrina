@@ -55,18 +55,10 @@ class Settings(AppSettings, DatabaseSettings, RedisSettings, AuthSettings):
             'JWT_PRIVATE_KEY',
         ]
         
-        missing_fields = []
-        for field in required_fields:
-            try:
-                value = getattr(self, field)
-                if not value:
-                    missing_fields.append(field)
-            except AttributeError:
-                missing_fields.append(field)
-        
+        missing_fields = [field for field in required_fields if not getattr(self, field)]
         if missing_fields:
             error_msg = f"Missing required environment variables: {', '.join(missing_fields)}"
-            if os.getenv('TEST_MODE', 'false').lower() == 'true':
+            if self.TEST_MODE:
                 logging.warning(f"Test mode: {error_msg}")
             else:
                 raise ValueError(error_msg)

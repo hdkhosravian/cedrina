@@ -3,7 +3,7 @@ from __future__ import annotations
 # FastAPI & typing
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,7 @@ from src.domain.services.auth.token import TokenService
 from src.infrastructure.database import get_db
 from src.infrastructure.redis import get_redis
 from src.core.exceptions import PermissionError, AuthenticationError
+from src.utils.i18n import get_translated_message
 
 __all__ = [
     "get_current_user",
@@ -36,9 +37,9 @@ RedisClient = Annotated[Redis, Depends(get_redis)]
 # ---------------------------------------------------------------------------
 
 
-def _auth_fail(detail: str) -> HTTPException:  # noqa: D401
+def _auth_fail(request: Request, key: str) -> HTTPException:  # noqa: D401
     """Consistently shaped *401* UNAUTHORIZED response."""
-
+    detail = get_translated_message(key, request.state.language)
     return HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail=detail,
@@ -52,7 +53,7 @@ def _auth_fail(detail: str) -> HTTPException:  # noqa: D401
 
 
 async def get_current_user(  # noqa: D401
-    token: TokenStr, db_session: DBSession, redis_client: RedisClient
+    request: Request, token: TokenStr, db_session: DBSession, redis_client: RedisClient
 ) -> User:
     """Return the authenticated :class:`~src.domain.entities.user.User`.
 
@@ -65,19 +66,23 @@ async def get_current_user(  # noqa: D401
         payload = await TokenService(db_session, redis_client).validate_token(token)
         user_id = payload.get("sub")
         if user_id is None:
-            raise _auth_fail("Invalid token: Subject missing")
+            raise _auth_fail(request, "invalid_token_subject")
 
         user = await db_session.get(User, int(user_id))
         if user is None or not user.is_active:
-            raise _auth_fail("User not found or inactive")
+            raise _auth_fail(request, "user_not_found_or_inactive")
         return user
     except AuthenticationError as exc:
-        raise _auth_fail(str(exc)) from exc
+        # Here we translate the exception message itself, assuming it's a valid key
+        raise _auth_fail(request, str(exc)) from exc
 
 
-def get_current_admin_user(current_user: Annotated[User, Depends(get_current_user)]) -> User:  # noqa: D401
+def get_current_admin_user(
+    request: Request, current_user: Annotated[User, Depends(get_current_user)]
+) -> User:  # noqa: D401
     """Ensure the authenticated user has *ADMIN* role."""
 
     if current_user.role != Role.ADMIN:
-        raise PermissionError("The user does not have administrative privileges.")
+        message = get_translated_message("admin_privileges_required", request.state.language)
+        raise PermissionError(message)
     return current_user 

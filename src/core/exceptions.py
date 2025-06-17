@@ -17,6 +17,7 @@ Rationale
 
 from dataclasses import dataclass
 from typing import Final
+from src.utils.i18n import get_translated_message
 
 __all__: Final = [
     "CedrinaError",
@@ -126,7 +127,9 @@ class PasswordPolicyError(CedrinaError):
 class RateLimitError(CedrinaError):
     """Raised when a consumer exceeds the configured rate limits."""
 
-    def __init__(self, message: str = "Rate limit exceeded", code: str = "rate_limit_exceeded"):
+    def __init__(self, message: str | None = None, code: str = "rate_limit_exceeded"):
+        if message is None:
+            message = get_translated_message("rate_limit_exceeded", "en")
         CedrinaError.__init__(self, message, code)
 
 
