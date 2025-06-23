@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from unittest.mock import MagicMock
 from src.core.dependencies.auth import get_current_user
 from src.domain.entities.user import User, Role
+from src.core.ratelimiter import get_limiter
 
 @pytest.fixture(autouse=True)
 def setup():
@@ -17,7 +18,8 @@ def setup():
 
 @pytest.fixture
 def client():
-    """Provides a test client with a mock admin user."""
+    """Provides a basic test client."""
+    app.state.limiter = get_limiter()
     mock_admin_user = MagicMock(spec=User)
     mock_admin_user.role = Role.ADMIN
     mock_admin_user.is_active = True

@@ -31,6 +31,10 @@ def oauth_service(db_session):
             mock_settings.PGCRYPTO_KEY.get_secret_value.return_value = "test_key" * 8
             mock_settings.REDIS_URL = "redis://localhost:6379/0"
             service = OAuthService(db_session)
+            # Replace create_client with MagicMock that returns another MagicMock allowing
+            # tests to attach parse_id_token or other attributes.
+            mock_client = MagicMock()
+            service.oauth.create_client = MagicMock(return_value=mock_client)
             yield service
 
 @pytest.mark.asyncio
@@ -80,9 +84,8 @@ async def test_authenticate_with_oauth_invalid_user_info(oauth_service, mocker):
     # Arrange
     provider = "google"
     future_expires = int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp())
-    token = {"access_token": "token", "expires_at": future_expires}
-    user_info = {"sub": "123"}  # Missing email
-    mocker.patch.object(oauth_service, "_fetch_user_info", return_value=user_info)
+    token = {"sub": "123", "expires_at": future_expires}  # Missing email and includes valid expiry
+    mocker.patch.object(oauth_service, "_fetch_user_info", return_value=token)
 
     # Act/Assert
     with pytest.raises(AuthenticationError, match="Invalid OAuth user info"):
@@ -153,3 +156,76 @@ async def test_validate_oauth_state_failure(oauth_service):
 
     # Assert
     assert result is False
+
+@pytest.mark.asyncio
+async def test_authenticate_with_oauth_invalid_id_token(oauth_service, mocker):
+    # Arrange
+    provider = "google"
+    token = {
+        "id_token": "invalid_token",
+        "access_token": "access_token",
+        "expires_at": 9999999999  # Far in the future
+    }
+    
+    # Mock id_token parsing to return None (invalid token)
+    oauth_service.oauth.create_client.return_value.parse_id_token = AsyncMock(return_value=None)
+    
+    # Act & Assert
+    with pytest.raises(AuthenticationError, match="Invalid ID token"):
+        await oauth_service.authenticate_with_oauth(provider, token)
+
+@pytest.mark.asyncio
+async def test_authenticate_with_oauth_invalid_issuer(oauth_service, mocker):
+    # Arrange
+    provider = "google"
+    token = {
+        "id_token": "token_with_wrong_issuer",
+        "access_token": "access_token",
+        "expires_at": 9999999999  # Far in the future
+    }
+    
+    # Mock id_token parsing to return a token with wrong issuer
+    mock_id_token = {"iss": "https://wrong.issuer.com", "sub": "12345"}
+    oauth_service.oauth.create_client.return_value.parse_id_token = AsyncMock(return_value=mock_id_token)
+    
+    # Act & Assert
+    with pytest.raises(AuthenticationError, match="Invalid ID token issuer"):
+        await oauth_service.authenticate_with_oauth(provider, token)
+
+@pytest.mark.asyncio
+async def test_authenticate_with_oauth_valid_token(oauth_service, mocker):
+    # Arrange
+    provider = "google"
+    token = {
+        "id_token": "valid_token",
+        "access_token": "access_token",
+        "expires_at": 9999999999  # Far in the future
+    }
+    user_info = {"email": "test@example.com", "sub": "12345", "name": "Test User"}
+    mock_user = User(id=1, username="testuser", email="test@example.com")
+    mock_oauth_profile = OAuthProfile(
+        user_id=1,
+        provider=Provider.GOOGLE,
+        provider_user_id="12345",
+        access_token=b'encrypted_token',
+        expires_at=9999999999
+    )
+    
+    # Mock id_token parsing
+    mock_id_token = {"iss": "https://accounts.google.com", "sub": "12345"}
+    oauth_service.oauth.create_client.return_value.parse_id_token = AsyncMock(return_value=mock_id_token)
+    # Mock user info fetch
+    mocker.patch.object(oauth_service, '_fetch_user_info', return_value=user_info)
+    # Mock database operations
+    result_none = MagicMock()
+    result_none.first.return_value = None
+    oauth_service.db_session.exec.return_value = result_none
+    oauth_service.db_session.get.return_value = mock_user
+    
+    # Act
+    user, oauth_profile = await oauth_service.authenticate_with_oauth(provider, token)
+    
+    # Assert
+    assert user.email == "test@example.com"
+    assert oauth_profile.provider_user_id == "12345"
+    assert oauth_profile.provider == Provider.GOOGLE

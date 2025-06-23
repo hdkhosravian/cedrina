@@ -27,7 +27,7 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
-TokenStr = Annotated[str, Depends(OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token"))]
+TokenStr = Annotated[str, Depends(OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login"))]
 DBSession = Annotated[AsyncSession, Depends(get_db)]
 RedisClient = Annotated[Redis, Depends(get_redis)]
 

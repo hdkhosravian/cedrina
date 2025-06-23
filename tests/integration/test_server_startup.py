@@ -13,10 +13,36 @@ import pytest
 import asyncio
 import uvicorn
 from fastapi.testclient import TestClient
+from unittest.mock import patch
 from src.main import app
+from src.core.config.settings import settings
+from src.infrastructure.database import check_database_health
+from src.core.ratelimiter import get_limiter
+
+@patch("src.main.check_database_health")
+def test_server_startup(mock_check_db_health):
+    """
+    Test server startup sequence, mocking database health check.
+    """
+    # Case 1: Database is healthy
+    mock_check_db_health.return_value = True
+    app.state.limiter = get_limiter()  # Ensure limiter is attached for the test
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/v1/health", headers={"Authorization": "Bearer fake-token"})
+            assert response.status_code in [200, 401, 403], f"Unexpected status code: {response.status_code}"
+    except RuntimeError as e:
+        pytest.fail(f"Server startup failed with healthy database: {e}")
+
+    # Case 2: Database is unhealthy
+    mock_check_db_health.return_value = False
+    with pytest.raises(RuntimeError) as excinfo:
+        with TestClient(app):
+            pass  # The client context manager will trigger the lifespan event
+    assert "Database unavailable" in str(excinfo.value)
 
 @pytest.mark.asyncio
-async def test_server_startup():
+async def test_server_startup_alternative():
     """
     Test that the server can start successfully and respond to requests.
     

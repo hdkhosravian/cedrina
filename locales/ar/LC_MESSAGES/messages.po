@@ -47,7 +47,7 @@ msgid "email_already_registered"
 msgstr "البريد الإلكتروني مسجل بالفعل"
 
 msgid "password_too_short"
-msgstr "يجب أن تكون كلمة المرور 8 أحرف على الأقل"
+msgstr "يجب أن تكون كلمة المرور {length} حرفًا على الأقل"
 
 msgid "password_no_uppercase"
 msgstr "يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل"
@@ -84,4 +84,19 @@ msgstr "استجابة ناجحة"
 
 msgid "system_operational"
 msgstr "النظام يعمل"
+
+msgid "password_no_special_char"
+msgstr "يجب أن تحتوي كلمة المرور على حرف خاص واحد على الأقل"
+
+msgid "invalid_refresh_token"
+msgstr "رمز التحديث غير صالح"
+
+msgid "session_revoked_or_invalid"
+msgstr "الجلسة ملغاة أو غير صالحة"
+
+msgid "token_revoked_or_blacklisted"
+msgstr "تم إبطال أو إدراج الرمز في القائمة السوداء"
+
+msgid "user_is_invalid_or_inactive"
+msgstr "المستخدم غير صالح أو غير نشط"
 

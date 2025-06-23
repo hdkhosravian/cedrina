@@ -47,7 +47,7 @@ msgid "email_already_registered"
 msgstr "ایمیل قبلاً ثبت شده است"
 
 msgid "password_too_short"
-msgstr "رمز عبور باید حداقل 8 کاراکتر باشد"
+msgstr "رمز عبور باید حداقل {length} کاراکتر باشد"
 
 msgid "password_no_uppercase"
 msgstr "رمز عبور باید حداقل یک حرف بزرگ داشته باشد"
@@ -84,4 +84,19 @@ msgstr "پاسخ موفق"
 
 msgid "system_operational"
 msgstr "سیستم در حال کار است"
+
+msgid "password_no_special_char"
+msgstr "رمز عبور باید حداقل یک کاراکتر ویژه داشته باشد"
+
+msgid "invalid_refresh_token"
+msgstr "توکن رفرش نامعتبر است"
+
+msgid "session_revoked_or_invalid"
+msgstr "نشست لغو شده یا نامعتبر است"
+
+msgid "token_revoked_or_blacklisted"
+msgstr "توکن لغو شده یا در فهرست سیاه قرار دارد"
+
+msgid "user_is_invalid_or_inactive"
+msgstr "کاربر نامعتبر یا غیرفعال است"
 

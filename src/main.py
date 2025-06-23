@@ -35,7 +35,11 @@ from src.core.exceptions import (
 from src.core.handlers import (
     authentication_error_handler,
     permission_error_handler,
+    rate_limit_exception_handler,
 )
+from src.core.ratelimiter import get_limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 # Load environment variables
 load_dotenv(override=True)
@@ -67,6 +71,9 @@ async def lifespan(app: FastAPI):
     create_db_and_tables()
     logger.info("application_startup", env=settings.APP_ENV, version=settings.VERSION)
     
+    # Attach the limiter to the app state
+    app.state.limiter = get_limiter()
+    
     yield
     
     # Shutdown
@@ -85,6 +92,7 @@ app = FastAPI(
 )
 
 # Register custom exception handlers
+app.add_exception_handler(RateLimitExceeded, rate_limit_exception_handler)
 app.add_exception_handler(AuthenticationError, authentication_error_handler)
 app.add_exception_handler(PermissionError, permission_error_handler)
 
@@ -96,6 +104,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add Middleware
+app.add_middleware(SlowAPIMiddleware)
 
 @app.middleware("http")
 async def set_language_middleware(request: Request, call_next):

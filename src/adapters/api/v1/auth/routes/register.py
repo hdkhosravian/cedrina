@@ -8,7 +8,7 @@ and immediately issues JWT tokens for authentication upon successful registratio
 """
 
 import secrets
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, Request
 
 from src.adapters.api.v1.auth.schemas import RegisterRequest, AuthResponse, TokenPair, UserOut
 from src.adapters.api.v1.auth.dependencies import (
@@ -32,6 +32,7 @@ router = APIRouter()
     description="Creates a new user account with the provided username, email, and password. Upon successful registration, issues JWT tokens for authentication.",
 )
 async def register_user(
+    request: Request,
     payload: RegisterRequest,
     user_service: UserAuthenticationService = Depends(get_user_auth_service),
     token_service: TokenService = Depends(get_token_service),
@@ -40,6 +41,7 @@ async def register_user(
     Register a new user with the provided credentials.
 
     Args:
+        request (Request): The FastAPI request object.
         payload (RegisterRequest): The request payload containing user registration data.
         user_service (UserAuthenticationService): The service for user authentication operations.
         token_service (TokenService): The service for token operations.
@@ -50,6 +52,10 @@ async def register_user(
     Raises:
         HTTPException: If the registration fails due to duplicate username, weak password, or other validation errors.
     """
+    client_ip = request.client.host or "unknown"
+    key = f"register:{client_ip}"
+    await enforce_rate_limit(token_service.redis_client, key)
+
     user = await user_service.register_user(
         username=payload.username,
         email=payload.email,

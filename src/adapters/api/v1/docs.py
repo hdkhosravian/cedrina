@@ -19,11 +19,11 @@ Endpoints:
 from fastapi import APIRouter, Depends, Response
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from fastapi.openapi.utils import get_openapi
-from src.permissions.dependencies import check_permission
+from src.core.dependencies.auth import get_current_admin_user
 
 router = APIRouter()
 
-@router.get("/docs", dependencies=[Depends(check_permission("/docs", "GET"))])
+@router.get("/docs", dependencies=[Depends(get_current_admin_user)])
 async def get_documentation():
     """
     Custom endpoint for Swagger UI documentation.
@@ -40,7 +40,7 @@ async def get_documentation():
     """
     return get_swagger_ui_html(openapi_url="/openapi.json", title="API Documentation")
 
-@router.get("/redoc", dependencies=[Depends(check_permission("/redoc", "GET"))])
+@router.get("/redoc", dependencies=[Depends(get_current_admin_user)])
 async def get_redoc_documentation():
     """
     Custom endpoint for ReDoc documentation.
@@ -58,7 +58,7 @@ async def get_redoc_documentation():
     """
     return get_redoc_html(openapi_url="/openapi.json", title="API Documentation")
 
-@router.get("/openapi.json", dependencies=[Depends(check_permission("/openapi.json", "GET"))])
+@router.get("/openapi.json", dependencies=[Depends(get_current_admin_user)])
 async def get_openapi_json():
     """
     Custom endpoint for OpenAPI JSON schema.

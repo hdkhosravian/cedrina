@@ -10,7 +10,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 import httpx
 import asyncio
 from datetime import datetime, timezone
-from src.permissions.dependencies import check_permission
+from src.core.dependencies.auth import get_current_admin_user
 
 router = APIRouter()
 
@@ -43,7 +43,7 @@ async def check_database_health_async() -> Dict[str, Any]:
         logger.error("database_health_check_failed", error=str(e))
         return {"status": "unhealthy", "error": str(e)}
 
-@router.get("/", response_model=HealthResponse, dependencies=[Depends(check_permission("/health", "GET"))])
+@router.get("/", response_model=HealthResponse, dependencies=[Depends(get_current_admin_user)])
 async def health_check(request: Request):
     """
     Comprehensive health check endpoint that verifies all service dependencies.

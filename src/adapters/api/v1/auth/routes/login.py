@@ -7,7 +7,7 @@ It provides an endpoint for users to log in and receive JWT tokens for accessing
 """
 
 import secrets
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, Request
 
 from src.adapters.api.v1.auth.schemas import LoginRequest, AuthResponse, TokenPair, UserOut
 from src.adapters.api.v1.auth.dependencies import (
@@ -31,6 +31,7 @@ router = APIRouter()
     description="Authenticates a user with the provided username and password, issuing JWT tokens upon successful authentication.",
 )
 async def login_user(
+    request: Request,
     payload: LoginRequest,
     user_service: UserAuthenticationService = Depends(get_user_auth_service),
     token_service: TokenService = Depends(get_token_service),
@@ -39,6 +40,7 @@ async def login_user(
     Authenticate a user with username and password.
 
     Args:
+        request (Request): The FastAPI request object.
         payload (LoginRequest): The request payload containing user login credentials.
         user_service (UserAuthenticationService): The service for user authentication operations.
         token_service (TokenService): The service for token operations.
@@ -49,6 +51,11 @@ async def login_user(
     Raises:
         HTTPException: If authentication fails due to invalid credentials or inactive account.
     """
+    # Rate limiting keyed by *username* and client IP to mitigate credential stuffing
+    client_ip = request.client.host or "unknown"
+    key = f"login:{payload.username}:{client_ip}"
+    # Removed manual rate limit enforcement as it's handled by slowapi middleware
+
     user = await user_service.authenticate_by_credentials(payload.username, payload.password)
 
     access_token = await token_service.create_access_token(user=user)

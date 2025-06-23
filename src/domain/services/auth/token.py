@@ -12,6 +12,7 @@ from src.domain.entities.user import User
 from src.core.config.settings import settings
 from src.core.exceptions import AuthenticationError
 from src.domain.services.auth.session import SessionService
+from src.utils.i18n import get_translated_message
 
 logger = get_logger(__name__)
 
@@ -60,13 +61,13 @@ class TokenService:
             "aud": settings.JWT_AUDIENCE,
             "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
             "iat": datetime.now(timezone.utc),
-            "jti": secrets.token_urlsafe(16)
+            "jti": secrets.token_urlsafe(24)
         }
         token = jwt.encode(payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="RS256")
         logger.debug("Access token created", user_id=user.id, jti=payload["jti"])
         return token
 
-    async def create_refresh_token(self, user: User, jti: str) -> str:
+    async def create_refresh_token(self, user: User, jti: Optional[str] = None) -> str:
         """
         Create a JWT refresh token and store in Redis/PostgreSQL.
 
@@ -82,6 +83,10 @@ class TokenService:
             The token expiration is set to a longer duration than access tokens, and token
             rotation is implemented during refresh to enhance security.
         """
+        # Auto-generate a new JTI if the caller did not supply one
+        if jti is None:
+            jti = secrets.token_urlsafe(24)
+
         payload = {
             "sub": str(user.id),
             "iss": settings.JWT_ISSUER,
@@ -137,25 +142,25 @@ class TokenService:
             stored_hash = await self.redis_client.get(self._redis_key(jti))
             if not stored_hash or stored_hash.decode() != hashlib.sha256(refresh_token.encode()).hexdigest():
                 logger.warning("Invalid refresh token", jti=jti)
-                raise AuthenticationError("Invalid refresh token")
+                raise AuthenticationError(get_translated_message("invalid_refresh_token", "en"))
 
             # Verify session
             session = await self.session_service.get_session(jti, user_id)
             if not session or session.revoked_at:
                 logger.warning("Revoked or invalid session", jti=jti)
-                raise AuthenticationError("Session revoked or invalid")
+                raise AuthenticationError(get_translated_message("session_revoked_or_invalid", "en"))
 
             # Get user
             user = await self.db_session.get(User, user_id)
             if not user or not user.is_active:
                 logger.warning("Inactive user refresh attempt", user_id=user_id)
-                raise AuthenticationError("User account is inactive")
+                raise AuthenticationError(get_translated_message("user_account_inactive", "en"))
 
             # Revoke old session & rotate token concurrently
             await self.session_service.revoke_session(jti, user_id)
 
             # Create new tokens
-            new_jti = secrets.token_urlsafe(16)
+            new_jti = secrets.token_urlsafe(24)
             access_token = await self.create_access_token(user)
             refresh_token = await self.create_refresh_token(user, new_jti)
             logger.info("Tokens refreshed", user_id=user_id, new_jti=new_jti)
@@ -167,7 +172,7 @@ class TokenService:
             }
         except JWTError as e:
             logger.error("JWT decode failed", error=str(e))
-            raise AuthenticationError("Invalid refresh token")
+            raise AuthenticationError(get_translated_message("invalid_refresh_token", "en"))
 
     async def validate_token(self, token: str) -> Mapping[str, Any]:
         """
@@ -204,17 +209,17 @@ class TokenService:
 
             if blacklisted:
                 logger.warning("Blacklisted token used", jti=payload["jti"], user_id=user_id)
-                raise AuthenticationError("Token has been revoked or blacklisted")
+                raise AuthenticationError(get_translated_message("token_revoked_or_blacklisted", "en"))
 
             if not user or not user.is_active:
                 logger.warning("Invalid user in JWT", user_id=user_id)
-                raise AuthenticationError("User is invalid or inactive")
+                raise AuthenticationError(get_translated_message("user_is_invalid_or_inactive", "en"))
 
             logger.debug("JWT validated", user_id=user_id, jti=payload["jti"])
             return payload
         except JWTError as e:
             logger.error("JWT validation failed", error=str(e))
-            raise AuthenticationError("Invalid token") from e
+            raise AuthenticationError(get_translated_message("invalid_token", "en")) from e
 
     async def _is_token_blacklisted(self, jti: str) -> bool:
         """
@@ -232,8 +237,9 @@ class TokenService:
             high-security applications, consider implementing this to handle token revocation
             beyond session management.
         """
-        # TODO: Implement actual blacklist check if needed (Redis / DB lookup)
-        return False
+        key = self._blacklist_key(jti)
+        value = await self.redis_client.get(key)
+        return value == "revoked"
 
     async def revoke_refresh_token(self, encoded_token: str) -> None:
         """
@@ -251,7 +257,30 @@ class TokenService:
         """
         await self.session_service.revoke_token(encoded_token)
 
+    async def revoke_access_token(self, jti: str, expires_in: int | None = None) -> None:
+        """Revoke (blacklist) an access-token by its *JTI*.
+
+        The JTI is stored in Redis with a TTL equal to the remaining lifespan of
+        the original access token (defaults to ``ACCESS_TOKEN_EXPIRE_MINUTES``).
+
+        Args:
+            jti: The JWT ID of the access token to revoke.
+            expires_in: Optional number of seconds to keep the blacklist entry.
+                       If *None*, we use the configured access-token lifetime.
+        """
+
+        if expires_in is None:
+            expires_in = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+
+        await self.redis_client.setex(self._blacklist_key(jti), expires_in, "revoked")
+        logger.info("Access token revoked", jti=jti, ttl=expires_in)
+
     @staticmethod
     def _redis_key(jti: str) -> str:  # noqa: D401
         """Generate the Redis key under which the refresh-token hash is stored."""
         return f"refresh_token:{jti}"
+
+    @staticmethod
+    def _blacklist_key(jti: str) -> str:  # noqa: D401
+        """Return the Redis key under which a blacklisted JTI is stored."""
+        return f"blacklist:{jti}"

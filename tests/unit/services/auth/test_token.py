@@ -24,6 +24,7 @@ async def db_session():
 async def redis_client():
     client = AsyncMock(spec=Redis)
     client.setex = AsyncMock()
+    client.get = AsyncMock()
     return client
 
 @pytest.fixture
@@ -55,7 +56,7 @@ async def test_create_refresh_token(token_service, db_session, redis_client, moc
     mocker.patch("secrets.token_urlsafe", return_value=jti)
     
     # Act
-    token = await token_service.create_refresh_token(user, jti)
+    token = await token_service.create_refresh_token(user)
 
     # Assert
     payload = jwt.decode(token, settings.JWT_PUBLIC_KEY, algorithms=["RS256"], audience=settings.JWT_AUDIENCE, issuer=settings.JWT_ISSUER)
@@ -173,7 +174,7 @@ async def test_validate_token_expired(token_service, db_session):
         await token_service.validate_token(expired_token)
 
 @pytest.mark.asyncio
-async def test_validate_token_blacklisted(token_service, db_session, mocker):
+async def test_validate_token_blacklisted(token_service, db_session, redis_client):
     # Arrange
     user = User(id=1, username="testuser", email="test@example.com", role=Role.USER, is_active=True)
     token_payload = {
@@ -189,8 +190,31 @@ async def test_validate_token_blacklisted(token_service, db_session, mocker):
     }
     token = jwt.encode(token_payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="RS256")
     db_session.get.return_value = user
-    mocker.patch.object(token_service, "_is_token_blacklisted", return_value=True)
+
+    # Revoke the access token by its JTI and ensure Redis returns the marker
+    jti = token_payload["jti"]
+    await token_service.revoke_access_token(jti)
+
+    # Simulate Redis returning the blacklist marker
+    redis_client.get = AsyncMock(return_value="revoked")
 
     # Act & Assert
-    with pytest.raises(AuthenticationError, match="Token has been revoked or blacklisted"):
+    with pytest.raises(AuthenticationError, match="Token revoked or blacklisted"):
         await token_service.validate_token(token)
+
+@pytest.mark.asyncio
+async def test_jti_length_in_tokens(token_service):
+    # Arrange
+    user = User(id=1, username="testuser", email="test@example.com", role=Role.USER, is_active=True)
+
+    # Act
+    access_token = await token_service.create_access_token(user)
+    refresh_token = await token_service.create_refresh_token(user)
+
+    # Decode tokens to get payloads
+    access_payload = jwt.decode(access_token, settings.JWT_PUBLIC_KEY, algorithms=["RS256"], audience=settings.JWT_AUDIENCE, issuer=settings.JWT_ISSUER)
+    refresh_payload = jwt.decode(refresh_token, settings.JWT_PUBLIC_KEY, algorithms=["RS256"], audience=settings.JWT_AUDIENCE, issuer=settings.JWT_ISSUER)
+
+    # Assert JTI length is 24 URL-safe characters
+    assert len(access_payload["jti"]) == 32  # 24 bytes URL-safe encoded results in 32 characters
+    assert len(refresh_payload["jti"]) == 32  # 24 bytes URL-safe encoded results in 32 characters

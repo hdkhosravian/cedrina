@@ -5,6 +5,7 @@ from sqlmodel import SQLModel, Field, Column, String, Index  # For ORM and table
 from pydantic import EmailStr, field_validator  # For email validation and custom validation
 from sqlalchemy import text, DateTime  # For SQL expressions and explicit DateTime type
 from sqlalchemy.dialects import postgresql  # Import PostgreSQL dialect
+from src.utils.i18n import get_translated_message  # For translation in validation
 
 class Role(str, Enum):
     """
@@ -100,8 +101,16 @@ class User(SQLModel, table=True):
     @classmethod
     def validate_username(cls, value: str) -> str:
         """
-        Ensures the username contains only allowed characters.
+        Ensures the username contains only allowed characters and normalizes to lowercase.
         """
         if not value.replace("_", "").replace("-", "").isalnum():
             raise ValueError(get_translated_message("invalid_username_characters", "en"))
-        return value
+        return value.lower()
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: EmailStr) -> EmailStr:
+        """
+        Normalizes email to lowercase for case-insensitive uniqueness.
+        """
+        return value.lower()

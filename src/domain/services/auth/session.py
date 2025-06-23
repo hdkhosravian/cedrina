@@ -8,6 +8,7 @@ from structlog import get_logger
 
 from src.domain.entities.session import Session
 from src.core.exceptions import AuthenticationError
+from src.utils.i18n import get_translated_message
 
 logger = get_logger(__name__)
 
@@ -65,7 +66,7 @@ class SessionService:
         session = await self.get_session(jti, user_id)
         if not session or session.revoked_at:
             await logger.awarning("Attempt to revoke invalid session", jti=jti)
-            raise AuthenticationError("Session already revoked or invalid")
+            raise AuthenticationError(get_translated_message("session_revoked_or_invalid", "en"))
 
         session.revoked_at = datetime.now(timezone.utc)
         self.db_session.add(session)

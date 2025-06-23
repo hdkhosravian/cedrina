@@ -52,7 +52,7 @@ async def test_revoke_session_not_found(session_service, db_session):
     db_session.exec.return_value.first = MagicMock(return_value=None)
 
     # Act & Assert
-    with pytest.raises(AuthenticationError, match="Session already revoked or invalid"):
+    with pytest.raises(AuthenticationError, match="Session revoked or invalid"):
         await session_service.revoke_session("non_existent_jti", 1)
 
 @pytest.mark.asyncio

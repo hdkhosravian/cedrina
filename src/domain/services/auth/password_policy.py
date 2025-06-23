@@ -1,5 +1,13 @@
 import re
+from src.utils.i18n import get_translated_message
 from src.core.exceptions import PasswordPolicyError
+from src.core.config.settings import (
+    PASSWORD_MIN_LENGTH,
+    PASSWORD_REQUIRE_UPPERCASE,
+    PASSWORD_REQUIRE_LOWERCASE,
+    PASSWORD_REQUIRE_DIGIT,
+    PASSWORD_REQUIRE_SPECIAL_CHAR,
+)
 
 class PasswordPolicyValidator:
     """
@@ -8,19 +16,12 @@ class PasswordPolicyValidator:
     The policy requires passwords to meet minimum length, and include a mix of 
     uppercase letters, lowercase letters, numbers, and special characters.
     """
-    def __init__(
-        self,
-        min_length: int = 8,
-        require_uppercase: bool = True,
-        require_lowercase: bool = True,
-        require_digit: bool = True,
-        require_special_char: bool = True,
-    ):
-        self.min_length = min_length
-        self.require_uppercase = require_uppercase
-        self.require_lowercase = require_lowercase
-        self.require_digit = require_digit
-        self.require_special_char = require_special_char
+    def __init__(self):
+        self.min_length = PASSWORD_MIN_LENGTH
+        self.require_uppercase = PASSWORD_REQUIRE_UPPERCASE
+        self.require_lowercase = PASSWORD_REQUIRE_LOWERCASE
+        self.require_digit = PASSWORD_REQUIRE_DIGIT
+        self.require_special_char = PASSWORD_REQUIRE_SPECIAL_CHAR
 
     def validate(self, password: str):
         """
@@ -33,12 +34,18 @@ class PasswordPolicyValidator:
             PasswordPolicyError: If the password does not meet the policy requirements.
         """
         if len(password) < self.min_length:
-            raise PasswordPolicyError(f"Password must be at least {self.min_length} characters long.")
+            raw = get_translated_message("password_too_short", "en")
+            message = raw.format(length=self.min_length) if "{length}" in raw else raw
+            raise PasswordPolicyError(message)
+
         if self.require_uppercase and not re.search(r"[A-Z]", password):
-            raise PasswordPolicyError("Password must contain at least one uppercase letter.")
+            raise PasswordPolicyError(get_translated_message("password_no_uppercase", "en"))
+
         if self.require_lowercase and not re.search(r"[a-z]", password):
-            raise PasswordPolicyError("Password must contain at least one lowercase letter.")
+            raise PasswordPolicyError(get_translated_message("password_no_lowercase", "en"))
+
         if self.require_digit and not re.search(r"\d", password):
-            raise PasswordPolicyError("Password must contain at least one digit.")
+            raise PasswordPolicyError(get_translated_message("password_no_digit", "en"))
+
         if self.require_special_char and not re.search(r"[!@#$%^&*(),.?:{}|<>_=-]", password):
-            raise PasswordPolicyError("Password must contain at least one special character.") 
+            raise PasswordPolicyError(get_translated_message("password_no_special_char", "en")) 

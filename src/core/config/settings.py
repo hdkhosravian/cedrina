@@ -69,3 +69,11 @@ class Settings(AppSettings, DatabaseSettings, RedisSettings, AuthSettings):
 settings = Settings()
 settings.validate_required_fields()
 settings.SUPPORTED_LANGUAGES = ["en", "fa", "ar"]
+
+# Password Policy Settings
+PASSWORD_MIN_LENGTH = 8
+PASSWORD_REQUIRE_UPPERCASE = True
+PASSWORD_REQUIRE_LOWERCASE = True
+PASSWORD_REQUIRE_DIGIT = True
+PASSWORD_REQUIRE_SPECIAL_CHAR = True
+BCRYPT_WORK_FACTOR = 12  # Configurable bcrypt rounds, default 12

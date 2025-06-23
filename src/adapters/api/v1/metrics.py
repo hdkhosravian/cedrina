@@ -7,11 +7,11 @@ from src.core.config.settings import settings
 from src.utils.i18n import get_translated_message
 from typing import Dict, Any
 from datetime import datetime, timezone
-from src.permissions.dependencies import check_permission
+from src.core.dependencies.auth import get_current_admin_user
 
 router = APIRouter()
 
-@router.get("/", response_model=Dict[str, Any], dependencies=[Depends(check_permission("/metrics", "GET"))])
+@router.get("/", response_model=Dict[str, Any], dependencies=[Depends(get_current_admin_user)])
 async def get_metrics(request: Request):
     """
     Get application metrics.

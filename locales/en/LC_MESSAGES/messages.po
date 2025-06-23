@@ -47,7 +47,7 @@ msgid "email_already_registered"
 msgstr "Email already registered"
 
 msgid "password_too_short"
-msgstr "Password must be at least 8 characters long"
+msgstr "Password must be at least {length} characters long"
 
 msgid "password_no_uppercase"
 msgstr "Password must contain at least one uppercase letter"
@@ -84,4 +84,33 @@ msgstr "Successful Response"
 
 msgid "system_operational"
 msgstr "System is operational"
+
+msgid "invalid_id_token"
+msgstr "Invalid ID token"
+
+msgid "invalid_id_token_issuer"
+msgstr "Invalid ID token issuer"
+
+# Newly added keys (2025-06-23)
+
+msgid "password_no_special_char"
+msgstr "Password must contain at least one special character"
+
+msgid "invalid_refresh_token"
+msgstr "Invalid refresh token"
+
+msgid "session_revoked_or_invalid"
+msgstr "Session revoked or invalid"
+
+msgid "token_revoked_or_blacklisted"
+msgstr "Token revoked or blacklisted"
+
+msgid "user_is_invalid_or_inactive"
+msgstr "User is invalid or inactive"
+
+msgid "invalid_token"
+msgstr "Invalid token"
+
+msgid "session_already_revoked_or_invalid"
+msgstr "Session already revoked or invalid"
 

@@ -18,6 +18,7 @@ class RedisSettings(BaseSettings):
     # Rate limiting settings
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_DEFAULT: str = "100/minute"  # Default rate limit
+    RATE_LIMIT_AUTH: str = "20/minute"      # Stricter limit for auth routes
     RATE_LIMIT_STORAGE_URL: str = ""  # Optional custom storage URL
     RATE_LIMIT_STRATEGY: str = Field(
         default="fixed-window",

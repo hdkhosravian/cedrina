@@ -16,6 +16,8 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
+from sqlalchemy.engine import make_url
+import urllib.parse as urlparse
 
 from src.core.config.settings import settings
 
@@ -23,19 +25,27 @@ from src.core.config.settings import settings
 # Engine / session-factory
 # ---------------------------------------------------------------------------
 
-ASYNC_DATABASE_URL = settings.DATABASE_URL.replace("postgresql+psycopg2", "postgresql+asyncpg")
-
-_engine = create_async_engine(
-    ASYNC_DATABASE_URL,
-    echo=settings.DEBUG,
-    pool_size=settings.POSTGRES_POOL_SIZE,
-    max_overflow=settings.POSTGRES_MAX_OVERFLOW,
-    pool_timeout=settings.POSTGRES_POOL_TIMEOUT,
-    pool_pre_ping=True,
+# Construct the async database URL
+async_url = settings.DATABASE_URL.replace('postgresql+psycopg2', 'postgresql+asyncpg')
+# Strip sslmode from the URL if present, as asyncpg handles SSL differently
+parsed = urlparse.urlparse(async_url)
+query = dict(urlparse.parse_qsl(parsed.query))
+query.pop('sslmode', None)
+new_query = urlparse.urlencode(query)
+parsed = parsed._replace(query=new_query)
+cleaned_url = urlparse.urlunparse(parsed)
+url = make_url(cleaned_url)
+conn_params = {}
+# asyncpg does not support sslmode in connect_args, it's handled in the URL if needed
+engine = create_async_engine(
+    url,
+    echo=False,
+    future=True,
+    connect_args=conn_params
 )
 
 AsyncSessionFactory: sessionmaker[AsyncSession] = sessionmaker(  # type: ignore[type-arg]
-    bind=_engine, class_=AsyncSession, expire_on_commit=False
+    bind=engine, class_=AsyncSession, expire_on_commit=False
 )
 
 
@@ -60,5 +70,5 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:  # noqa: D401
 async def create_async_db_and_tables() -> None:  # noqa: D401
     """Create tables using the *async* engine (mainly for test-suites)."""
 
-    async with _engine.begin() as conn:
+    async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all) 

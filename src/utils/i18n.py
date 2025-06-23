@@ -23,6 +23,19 @@ from src.core.logging import logger
 # Store translations for each language
 _translations = {}
 
+# ---------------------------------------------------------------------------
+# Internal fallback catalog (parsed from *.po* files)
+# ---------------------------------------------------------------------------
+
+# In scenarios where the compiled *.mo* files are out of date (e.g. during local
+# development or in CI pipelines where the Babel compilation step was skipped),
+# newly-added translations would not be picked up by *gettext* and the call
+# would simply return the original *msgid*.  To avoid shipping untranslated
+# (and often user-visible) strings, we parse the corresponding *.po* files at
+# startup and keep a lightweight in-memory catalogue as a secondary lookup.
+
+_fallback_catalogs: dict[str, dict[str, str]] = {}
+
 def setup_i18n():
     """
     Initializes the internationalization system.
@@ -44,16 +57,42 @@ def setup_i18n():
     if not os.path.exists(locales_path):
         raise FileNotFoundError(f"Locales directory not found: {locales_path}")
     
-    # Initialize gettext for each supported language
+    # Initialise gettext and parse *.po* files for each supported language
     for lang in settings.SUPPORTED_LANGUAGES:
         translation = gettext.translation(
             domain="messages",
             localedir=locales_path,
             languages=[lang],
-            fallback=True
+            fallback=True,
         )
         _translations[lang] = translation
-        logger.info("i18n_initialized", language=lang, locales_path=locales_path)
+
+        # -------------------------------------------------------------------
+        # Parse *.po* file for the language – this allows us to serve newly
+        # added translations even when the compiled *.mo* file has not yet
+        # been regenerated.  The parser is intentionally simple and only
+        # supports the subset of the PO specification required for our use
+        # case (single-line *msgid* / *msgstr* pairs).
+        # -------------------------------------------------------------------
+        po_path = os.path.join(locales_path, lang, "LC_MESSAGES", "messages.po")
+        catalog: dict[str, str] = {}
+        if os.path.exists(po_path):
+            try:
+                with open(po_path, "r", encoding="utf-8") as po_file:
+                    current_msgid: str | None = None
+                    for raw_line in po_file:
+                        line = raw_line.strip()
+                        if line.startswith("msgid "):
+                            current_msgid = line[6:].strip().strip('"')
+                        elif line.startswith("msgstr ") and current_msgid is not None:
+                            msgstr = line[7:].strip().strip('"')
+                            catalog[current_msgid] = msgstr or current_msgid
+                            current_msgid = None
+            except Exception as exc:  # pragma: no cover – defensive logging
+                logger.warning("i18n_po_parse_failed", lang=lang, error=str(exc))
+
+        _fallback_catalogs[lang] = catalog
+        logger.info("i18n_initialized", language=lang, entries=len(catalog))
 
     logger.info("i18n_setup_complete", default_locale=settings.DEFAULT_LANGUAGE)
 
@@ -88,9 +127,12 @@ def get_translated_message(key: str, locale: str = settings.DEFAULT_LANGUAGE) ->
         
     translated = translation.gettext(key)
     
-    # If gettext returns the key itself, it means translation was not found for that key
     if translated == key:
-        logger.warning("translation_key_not_found", key=key, locale=locale)
+        # Attempt fallback catalog (parsed from *.po*)
+        catalog = _fallback_catalogs.get(locale, {})
+        translated = catalog.get(key, key)
+        if translated == key:
+            logger.warning("translation_key_not_found", key=key, locale=locale)
     
     return translated
 
