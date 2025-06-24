@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Internationalization (i18n) utility module for handling translations and language preferences.
 
@@ -14,14 +16,14 @@ multiple languages as configured in the application settings.
 
 import os
 import gettext
-import i18n
+from typing import Dict, Optional
 from fastapi import Request
 from babel.support import Translations
 from src.core.config.settings import settings
 from src.core.logging import logger
 
 # Store translations for each language
-_translations = {}
+_translations: Dict[str, gettext.GNUTranslations] = {}
 
 # ---------------------------------------------------------------------------
 # Internal fallback catalog (parsed from *.po* files)
@@ -34,30 +36,34 @@ _translations = {}
 # (and often user-visible) strings, we parse the corresponding *.po* files at
 # startup and keep a lightweight in-memory catalogue as a secondary lookup.
 
-_fallback_catalogs: dict[str, dict[str, str]] = {}
+_fallback_catalogs: Dict[str, Dict[str, str]] = {}
 
-def setup_i18n():
+def setup_i18n() -> None:
     """
-    Initializes the internationalization system.
-    
-    This function:
-    1. Locates the translations directory
-    2. Loads translation files for each supported language
-    3. Sets up fallback mechanisms
-    4. Logs initialization status
-    
+    Initialize the internationalization system by loading translations.
+
+    Loads translation files for each supported language from the locales directory
+    and parses .po files as a fallback for development environments where .mo
+    files may not be updated. Logs initialization status for debugging.
+
     Raises:
-        FileNotFoundError: If the locales directory is not found
-        Exception: For other initialization errors
+        FileNotFoundError: If the locales directory is not found.
+        Exception: For other initialization errors during .po file parsing.
+
+    Performance:
+        - Loads all translations into memory at startup, which may impact memory
+          usage with many languages or large translation files.
+        - Consider lazy loading or caching for scalability in future iterations.
     """
     # Ensure absolute path for locales
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
     locales_path = os.path.join(base_dir, "locales")
+    
     # Verify locales path exists
     if not os.path.exists(locales_path):
         raise FileNotFoundError(f"Locales directory not found: {locales_path}")
     
-    # Initialise gettext and parse *.po* files for each supported language
+    # Initialize gettext and parse .po files for each supported language
     for lang in settings.SUPPORTED_LANGUAGES:
         translation = gettext.translation(
             domain="messages",
@@ -67,19 +73,19 @@ def setup_i18n():
         )
         _translations[lang] = translation
 
-        # -------------------------------------------------------------------
-        # Parse *.po* file for the language – this allows us to serve newly
-        # added translations even when the compiled *.mo* file has not yet
-        # been regenerated.  The parser is intentionally simple and only
-        # supports the subset of the PO specification required for our use
-        # case (single-line *msgid* / *msgstr* pairs).
-        # -------------------------------------------------------------------
+        # Parse .po file as fallback for newly added translations not in .mo
         po_path = os.path.join(locales_path, lang, "LC_MESSAGES", "messages.po")
-        catalog: dict[str, str] = {}
+        catalog: Dict[str, str] = {}
         if os.path.exists(po_path):
             try:
+                # Basic security: Limit file size to prevent memory exhaustion
+                file_size = os.path.getsize(po_path)
+                if file_size > 10 * 1024 * 1024:  # 10MB limit
+                    logger.warning("i18n_po_file_too_large", lang=lang, size=file_size)
+                    continue
+                
                 with open(po_path, "r", encoding="utf-8") as po_file:
-                    current_msgid: str | None = None
+                    current_msgid: Optional[str] = None
                     for raw_line in po_file:
                         line = raw_line.strip()
                         if line.startswith("msgid "):
@@ -88,7 +94,7 @@ def setup_i18n():
                             msgstr = line[7:].strip().strip('"')
                             catalog[current_msgid] = msgstr or current_msgid
                             current_msgid = None
-            except Exception as exc:  # pragma: no cover – defensive logging
+            except Exception as exc:  # pragma: no cover
                 logger.warning("i18n_po_parse_failed", lang=lang, error=str(exc))
 
         _fallback_catalogs[lang] = catalog
@@ -98,37 +104,34 @@ def setup_i18n():
 
 def get_translated_message(key: str, locale: str = settings.DEFAULT_LANGUAGE) -> str:
     """
-    Retrieves a translated message for the given key and locale.
-    
-    This function:
-    1. Validates the requested locale
-    2. Attempts to find the translation
-    3. Falls back to default language if needed
-    4. Handles missing translations gracefully
-    5. Logs translation events
-    
+    Retrieve a translated message for the given key and locale.
+
+    Validates the requested locale, attempts translation, and falls back to the
+    default language or key if needed. Logs failures for debugging.
+
     Args:
-        key (str): The message key to translate
-        locale (str): The target language code (defaults to settings.DEFAULT_LANGUAGE)
-        
+        key: The message key to translate.
+        locale: The target language code (defaults to DEFAULT_LANGUAGE).
+
     Returns:
-        str: The translated message or the original key if translation fails
+        The translated message or the original key if translation fails.
+
+    Security:
+        - Validates locale against supported languages to prevent injection or
+          unexpected behavior.
     """
     if locale not in _translations:
-        logger.warning("unsupported_locale_requested", requested_locale=locale, fallback_locale=settings.DEFAULT_LANGUAGE)
+        logger.warning("unsupported_locale_requested", requested_locale=locale,
+                       fallback_locale=settings.DEFAULT_LANGUAGE)
         locale = settings.DEFAULT_LANGUAGE
     
     translation = _translations.get(locale)
-
-    # This should not happen if setup_i18n is successful, but as a safeguard:
-    if not translation:
+    if not translation:  # Safeguard if setup_i18n fails
         logger.error("translation_missing_for_locale", locale=locale)
         return key
         
     translated = translation.gettext(key)
-    
-    if translated == key:
-        # Attempt fallback catalog (parsed from *.po*)
+    if translated == key:  # Translation not found in .mo
         catalog = _fallback_catalogs.get(locale, {})
         translated = catalog.get(key, key)
         if translated == key:
@@ -138,27 +141,32 @@ def get_translated_message(key: str, locale: str = settings.DEFAULT_LANGUAGE) ->
 
 def get_request_language(request: Request) -> str:
     """
-    Determines the preferred language from the request.
-    
-    This function checks for language preference in the following order:
-    1. Query parameter 'lang'
-    2. Accept-Language header
-    3. Default language from settings
-    
+    Determine the preferred language from a request.
+
+    Checks language preference in order: query parameter 'lang',
+    Accept-Language header, then default language from settings.
+
     Args:
-        request (Request): The FastAPI request object
-        
+        request: The FastAPI request object.
+
     Returns:
-        str: The determined language code
+        The determined language code.
+
+    Security:
+        - Validates language codes against supported languages to prevent
+          unexpected behavior from malformed input.
     """
     # Check query parameter first
     lang = request.query_params.get("lang")
     if lang and lang in settings.SUPPORTED_LANGUAGES:
         return lang
+    
     # Fallback to Accept-Language header
-    accept_language = request.headers.get("Accept-Language", settings.DEFAULT_LANGUAGE)
+    accept_language = request.headers.get("Accept-Language",
+                                          settings.DEFAULT_LANGUAGE)
     for lang in accept_language.split(","):
         lang = lang.split(";")[0].strip().split("-")[0]
         if lang in settings.SUPPORTED_LANGUAGES:
             return lang
+    
     return settings.DEFAULT_LANGUAGE

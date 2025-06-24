@@ -10,6 +10,11 @@ Dynamic policy management is particularly useful for applications where permissi
 be customized per user or tenant without requiring a restart or manual file updates. This module interacts with
 the Casbin enforcer to apply these changes immediately.
 
+**Security Note**: Dynamic policy updates must be strictly validated and audited to prevent privilege escalation
+or policy injection attacks (OWASP A01:2021 - Broken Access Control). Always sanitize inputs and log policy
+changes for audit trails. Consider restricting dynamic updates to administrative roles and using persistent
+storage for production environments to ensure policy integrity across restarts.
+
 Functions:
     add_policy: Adds a new policy to allow a subject to perform an action on a resource.
     remove_policy: Removes a policy to revoke access for a subject on a resource.
@@ -18,7 +23,35 @@ Note: Policies added programmatically are in-memory by default unless persisted 
 database). For permanent changes, consider integrating a Casbin adapter for policy persistence.
 """
 
+import logging
+from typing import Optional
+
 from .enforcer import get_enforcer
+
+# Configure logging for policy management events
+logger = logging.getLogger(__name__)
+
+def _validate_policy_input(subject: str, object: str, action: str) -> None:
+    """
+    Validate policy input parameters to prevent malformed or malicious data.
+
+    Args:
+        subject (str): The subject (e.g., role or user ID) to validate.
+        object (str): The object (e.g., resource or endpoint) to validate.
+        action (str): The action (e.g., 'GET', 'POST') to validate.
+
+    Raises:
+        ValueError: If any input is empty, contains invalid characters, or exceeds length limits.
+    """
+    if not all([subject, object, action]):
+        raise ValueError("Policy parameters (subject, object, action) cannot be empty")
+    
+    max_length = 255
+    for param, name in [(subject, 'subject'), (object, 'object'), (action, 'action')]:
+        if len(param) > max_length:
+            raise ValueError(f"Policy {name} exceeds maximum length of {max_length} characters")
+        if any(char in param for char in ['\n', '\r', '\t']):
+            raise ValueError(f"Policy {name} contains invalid control characters")
 
 def add_policy(subject: str, object: str, action: str) -> bool:
     """
@@ -29,6 +62,9 @@ def add_policy(subject: str, object: str, action: str) -> bool:
     added to the Casbin enforcer's in-memory policy set and takes effect immediately for subsequent permission
     checks.
 
+    **Security Note**: Input validation is performed to prevent policy injection. Policy additions are logged for
+audit purposes. Ensure that only authorized users can add policies to prevent privilege escalation.
+
     Args:
         subject (str): The subject (e.g., role like 'admin' or user ID) to which the policy applies.
         object (str): The object (e.g., resource or endpoint like '/health') to which access is granted.
@@ -37,12 +73,19 @@ def add_policy(subject: str, object: str, action: str) -> bool:
     Returns:
         bool: True if the policy was added successfully, False if it already exists or the operation failed.
 
+    Raises:
+        ValueError: If the input parameters are invalid or malformed.
+
     Example:
         To allow the 'editor' role to access '/reports' with GET:
         `add_policy('editor', '/reports', 'GET')`
     """
+    _validate_policy_input(subject, object, action)
     enforcer = get_enforcer()
-    return enforcer.add_policy(subject, object, action)
+    success = enforcer.add_policy(subject, object, action)
+    if success:
+        logger.info(f"Policy added: {subject} can {action} on {object}")
+    return success
 
 def remove_policy(subject: str, object: str, action: str) -> bool:
     """
@@ -52,6 +95,10 @@ def remove_policy(subject: str, object: str, action: str) -> bool:
     to perform a specified action on a given object. Removing a policy effectively revokes access for the subject
     unless another policy or role inheritance grants the same permission.
 
+    **Security Note**: Policy removals are logged for audit purposes. Ensure that policy removal does not
+    inadvertently revoke critical access for administrative roles. Validate inputs to prevent unintended policy
+    modifications.
+
     Args:
         subject (str): The subject (e.g., role like 'admin' or user ID) from which the policy is removed.
         object (str): The object (e.g., resource or endpoint like '/health') from which access is revoked.
@@ -60,9 +107,16 @@ def remove_policy(subject: str, object: str, action: str) -> bool:
     Returns:
         bool: True if the policy was removed successfully, False if it did not exist or the operation failed.
 
+    Raises:
+        ValueError: If the input parameters are invalid or malformed.
+
     Example:
         To revoke the 'editor' role's access to '/reports' with GET:
         `remove_policy('editor', '/reports', 'GET')`
     """
+    _validate_policy_input(subject, object, action)
     enforcer = get_enforcer()
-    return enforcer.remove_policy(subject, object, action) 
+    success = enforcer.remove_policy(subject, object, action)
+    if success:
+        logger.info(f"Policy removed: {subject} can no longer {action} on {object}")
+    return success 

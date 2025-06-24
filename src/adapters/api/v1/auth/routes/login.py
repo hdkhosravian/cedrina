@@ -2,22 +2,18 @@ from __future__ import annotations
 
 """/auth/login route module.
 
-This module handles user authentication via username and password in the Cedrina authentication system.
-It provides an endpoint for users to log in and receive JWT tokens for accessing protected resources.
+This module handles user authentication via username and password in the Cedrina
+authentication system. It provides an endpoint for users to log in and receive
+JWT tokens for accessing protected resources.
 """
 
-import secrets
-from fastapi import APIRouter, Depends, status, HTTPException, Request
+from fastapi import APIRouter, Depends, status, Request
 
-from src.adapters.api.v1.auth.schemas import LoginRequest, AuthResponse, TokenPair, UserOut
-from src.adapters.api.v1.auth.dependencies import (
-    get_user_auth_service,
-    get_token_service,
-)
+from src.adapters.api.v1.auth.schemas import LoginRequest, AuthResponse, UserOut
+from src.adapters.api.v1.auth.dependencies import get_user_auth_service, get_token_service
+from src.adapters.api.v1.auth.utils import create_token_pair
 from src.domain.services.auth.user_authentication import UserAuthenticationService
 from src.domain.services.auth.token import TokenService
-from src.core.config.settings import settings
-from src.core.exceptions import AuthenticationError
 
 router = APIRouter()
 
@@ -28,7 +24,7 @@ router = APIRouter()
     status_code=status.HTTP_200_OK,
     tags=["auth"],
     summary="Authenticate a user",
-    description="Authenticates a user with the provided username and password, issuing JWT tokens upon successful authentication.",
+    description="Authenticates a user with username and password, issuing JWT tokens on success.",
 )
 async def login_user(
     request: Request,
@@ -39,34 +35,41 @@ async def login_user(
     """
     Authenticate a user with username and password.
 
+    This endpoint validates user credentials and issues JWT tokens (access
+    and refresh) for protected resources. It uses rate limiting to mitigate
+    brute-force and credential stuffing attacks.
+
     Args:
-        request (Request): The FastAPI request object.
-        payload (LoginRequest): The request payload containing user login credentials.
-        user_service (UserAuthenticationService): The service for user authentication operations.
-        token_service (TokenService): The service for token operations.
+        request (Request): FastAPI request object, used to get client IP for
+            rate limiting.
+        payload (LoginRequest): Request payload with username and password.
+        user_service (UserAuthenticationService): Service for validating user
+            credentials.
+        token_service (TokenService): Service for generating JWT tokens.
 
     Returns:
-        AuthResponse: A response containing the authenticated user's information and JWT tokens.
+        AuthResponse: Response with user details and JWT token pair.
 
     Raises:
-        HTTPException: If authentication fails due to invalid credentials or inactive account.
+        HTTPException: If credentials are invalid (401) or account inactive
+            (403).
+
+    Security:
+        - Rate limiting uses username and client IP to prevent brute-force.
+        - Enforced via slowapi middleware (see app config).
+        - Passwords are hashed securely in user service (not route logic).
+        - JWT tokens use RS256 signing for security (asymmetric keys).
     """
-    # Rate limiting keyed by *username* and client IP to mitigate credential stuffing
+    # Rate limiting by username and client IP to mitigate credential stuffing.
+    # Enforcement by slowapi middleware. If disabled, endpoint is vulnerable to
+    # brute-force attacks.
     client_ip = request.client.host or "unknown"
     key = f"login:{payload.username}:{client_ip}"
-    # Removed manual rate limit enforcement as it's handled by slowapi middleware
 
+    # Authenticate user. Raises error if credentials invalid or user inactive.
     user = await user_service.authenticate_by_credentials(payload.username, payload.password)
 
-    access_token = await token_service.create_access_token(user=user)
-    refresh_token = await token_service.create_refresh_token(user=user)
+    # Create token pair using shared utility for consistency across endpoints.
+    tokens = await create_token_pair(token_service, user)
 
-    token_type = "Bearer"
-    return AuthResponse(
-        tokens=TokenPair(
-            access_token=access_token,
-            refresh_token=refresh_token,
-            token_type=token_type
-        ),
-        user=UserOut.from_entity(user)
-    ) 
+    return AuthResponse(tokens=tokens, user=UserOut.from_entity(user)) 

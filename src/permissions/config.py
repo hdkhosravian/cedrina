@@ -9,15 +9,20 @@ The paths defined here point to the model configuration file and the policy file
 permissions are evaluated and enforced. These files are critical for the correct functioning of the access
 control system.
 
+**Security Note**: Ensure that the model and policy files are protected from unauthorized access or modification,
+as tampering with these files could lead to privilege escalation or denial of access. Avoid using user-provided
+input directly in file paths to prevent path traversal attacks (OWASP A01:2021 - Broken Access Control).
+
 Attributes:
-    MODEL_PATH (str): The absolute path to the Casbin model configuration file (model.conf). This file defines
+    MODEL_PATH (Path): The absolute path to the Casbin model configuration file (model.conf). This file defines
 the structure of access control rules, including request definitions, policy definitions, and matching logic.
-    POLICY_PATH (str): The absolute path to the Casbin policy file (policy.csv). This file contains the specific
+    POLICY_PATH (Path): The absolute path to the Casbin policy file (policy.csv). This file contains the specific
 rules or policies that grant or deny access to resources based on roles or users.
 """
 
-import os
+from pathlib import Path
 
-# Define paths for Casbin model and policy files
-MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "model.conf")
-POLICY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "policy.csv") 
+# Define paths for Casbin model and policy files using pathlib for cross-platform compatibility
+BASE_DIR = Path(__file__).parent.resolve()
+MODEL_PATH: Path = BASE_DIR / "model.conf"
+POLICY_PATH: Path = BASE_DIR / "policy.csv" 
