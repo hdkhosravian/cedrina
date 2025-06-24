@@ -87,7 +87,7 @@ Defined in `src/adapters/api/v1/auth/routes/`, these FastAPI routes expose authe
 Pydantic models in `src/adapters/api/v1/auth/schemas/` define request and response structures:
 
 - **Requests**: `RegisterRequest`, `LoginRequest`, `OAuthAuthenticateRequest`.
-- **Responses**: `UserOut`, `TokenPair`, `AuthResponse`, `OAuthAuthResponse`.
+- **Responses**: `UserOut`, `TokenPair`, `AuthResponse`, `OAuthAuthResponse`. The `TokenPair` model now includes an `expires_in` field to indicate the expiration time of the access token in seconds.
 
 ### 5. Dependencies
 
@@ -162,7 +162,7 @@ Response:
 ```json
 {
   "user": { "id": 1, "username": "testuser", "email": "test@example.com", "is_active": true, "created_at": "2025-06-16T12:00:00", "roles": ["user"] },
-  "tokens": { "access_token": "eyJ...", "refresh_token": "eyJ...", "token_type": "Bearer" }
+  "tokens": { "access_token": "eyJ...", "refresh_token": "eyJ...", "token_type": "Bearer", "expires_in": 1800 }
 }
 ```
 
@@ -172,10 +172,26 @@ Response:
 curl -X POST http://localhost:8000/api/v1/auth/login -H "Content-Type: application/json" -d '{"username": "testuser", "password": "StrongPass123"}'
 ```
 
+Response:
+```json
+{
+  "user": { "id": 1, "username": "testuser", "email": "test@example.com", "is_active": true, "created_at": "2025-06-16T12:00:00", "roles": ["user"] },
+  "tokens": { "access_token": "eyJ...", "refresh_token": "eyJ...", "token_type": "Bearer", "expires_in": 1800 }
+}
+```
+
 ### OAuth Authentication
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/auth/oauth -H "Content-Type: application/json" -d '{"provider": "google", "token": {"access_token": "oauth_token", "expires_at": 9999999999}}'
+```
+
+Response:
+```json
+{
+  "user": { "id": 1, "username": "testuser", "email": "test@example.com", "is_active": true, "created_at": "2025-06-16T12:00:00", "roles": ["user"] },
+  "tokens": { "access_token": "eyJ...", "refresh_token": "eyJ...", "token_type": "Bearer", "expires_in": 1800 }
+}
 ```
 
 ## Troubleshooting

@@ -87,6 +87,7 @@ This document describes each service, its responsibilities, methods, security me
 - Comprehensive claim validation (issuer, audience, expiration).
 - Placeholder for token blacklisting to handle compromised or revoked tokens.
 - Raises `AuthenticationError` for invalid, expired, or blacklisted tokens.
+- Note: The `TokenPair` response model now includes an `expires_in` field indicating the access token's expiration time in seconds.
 
 ### SessionService
 **File**: `src/domain/services/auth/session.py`

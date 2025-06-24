@@ -45,7 +45,7 @@ def setup_i18n() -> None:
     Loads translation files for each supported language from the locales directory
     and parses .po files as a fallback for development environments where .mo
     files may not be updated. Logs initialization status for debugging.
-
+    
     Raises:
         FileNotFoundError: If the locales directory is not found.
         Exception: For other initialization errors during .po file parsing.
@@ -105,14 +105,14 @@ def setup_i18n() -> None:
 def get_translated_message(key: str, locale: str = settings.DEFAULT_LANGUAGE) -> str:
     """
     Retrieve a translated message for the given key and locale.
-
+    
     Validates the requested locale, attempts translation, and falls back to the
     default language or key if needed. Logs failures for debugging.
-
+    
     Args:
         key: The message key to translate.
         locale: The target language code (defaults to DEFAULT_LANGUAGE).
-
+        
     Returns:
         The translated message or the original key if translation fails.
 
@@ -142,13 +142,13 @@ def get_translated_message(key: str, locale: str = settings.DEFAULT_LANGUAGE) ->
 def get_request_language(request: Request) -> str:
     """
     Determine the preferred language from a request.
-
+    
     Checks language preference in order: query parameter 'lang',
     Accept-Language header, then default language from settings.
-
+    
     Args:
         request: The FastAPI request object.
-
+        
     Returns:
         The determined language code.
 

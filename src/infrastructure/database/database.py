@@ -1,3 +1,28 @@
+"""
+Synchronous Database Connection Module
+
+This module manages synchronous database connections using SQLModel and SQLAlchemy for the application.
+It provides utilities for session management, health checks, and query logging. Synchronous operations
+are typically used for background jobs or test suites that do not require asynchronous database access.
+
+The database engine is configured with settings for connection pooling, timeouts, and SSL mode to ensure
+reliable and secure connectivity to the PostgreSQL database.
+
+**Security Note**: Ensure that the database connection URL (DATABASE_URL) uses SSL/TLS (via sslmode) for
+secure communication over untrusted networks to prevent data interception (OWASP A02:2021 - Cryptographic
+Failures). Avoid logging sensitive information such as connection strings or credentials to prevent
+information disclosure (OWASP A09:2021 - Security Logging and Monitoring Failures). Use least privilege
+principles for database accounts to minimize damage in case of compromise.
+
+Key Components:
+    - engine: The SQLAlchemy engine configured for synchronous database connections.
+    - get_db_session: A context manager for creating database sessions with logging.
+    - get_db: A FastAPI dependency for injecting database sessions.
+    - log_query_execution: Utility to log query details without sensitive data.
+    - check_database_health: Function to verify database connectivity with retry logic.
+    - create_db_and_tables: Function to create database tables on startup.
+"""
+
 from sqlmodel import create_engine, SQLModel, Session
 from sqlalchemy.sql import text
 from src.core.config.settings import settings
@@ -88,12 +113,18 @@ def log_query_execution(
 ) -> None:
     """
     Log database query execution details.
+
+    This function logs details about database queries for debugging and monitoring purposes.
+    It ensures that sensitive data like credentials or connection strings are not logged.
+
+    **Security Note**: Avoid including sensitive data in query parameters or error messages
+to prevent information disclosure (OWASP A09:2021 - Security Logging and Monitoring Failures).
     
     Args:
-        query: The SQL query
-        params: Query parameters
-        execution_time: Query execution time
-        error: Any error that occurred
+        query (str): The SQL query executed.
+        params (Optional[dict]): Query parameters, if any. Ensure no sensitive data is included.
+        execution_time (float): Time taken to execute the query in seconds.
+        error (Optional[Exception]): Any error that occurred during execution.
     """
     log_data = {
         "query": query,
@@ -119,9 +150,12 @@ def check_database_health() -> bool:
     This function attempts to execute a simple query to verify database connectivity
     and responsiveness. It's used during application startup and can be used for
     periodic health checks.
+
+    **Security Note**: Ensure health check failures are logged without exposing
+    sensitive connection details to prevent information disclosure.
     
     Returns:
-        bool: True if database is healthy and responsive, False otherwise
+        bool: True if database is healthy and responsive, False otherwise.
     """
     start_time = time.time()
     try:
