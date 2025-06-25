@@ -2,8 +2,7 @@ from datetime import datetime  # For timestamp fields
 from enum import Enum  # For type-safe provider enumeration
 from typing import Optional  # For optional fields
 from sqlmodel import SQLModel, Field, Column, Index  # For ORM and table definition
-from sqlalchemy.dialects.postgresql import BYTEA  # For encrypted access token
-from sqlalchemy import String, text, DateTime  # Import String and SQL expressions
+from sqlalchemy import String, text, DateTime, LargeBinary  # Import String and SQL expressions
 from sqlalchemy.dialects import postgresql  # Import PostgreSQL dialect
 
 class Provider(str, Enum):
@@ -50,7 +49,6 @@ class OAuthProfile(SQLModel, table=True):
     )
     user_id: int = Field(
         foreign_key="users.id",  # References users table
-        index=True,  # Index for performance
         nullable=False,  # Required field
         description="Foreign key referencing the User"
     )
@@ -66,7 +64,7 @@ class OAuthProfile(SQLModel, table=True):
         description="Unique user ID from the OAuth provider"
     )
     access_token: bytes = Field(
-        sa_column=Column(BYTEA, nullable=False),  # Encrypted token
+        sa_column=Column(LargeBinary, nullable=False),  # Encrypted token
         description="Encrypted OAuth access token using pgcrypto"
     )
     expires_at: datetime = Field(

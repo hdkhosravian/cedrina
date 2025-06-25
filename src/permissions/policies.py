@@ -31,7 +31,7 @@ from .enforcer import get_enforcer
 # Configure logging for policy management events
 logger = logging.getLogger(__name__)
 
-def _validate_policy_input(subject: str, object: str, action: str) -> None:
+def _validate_policy_input(subject: str, object: str, action: str, sub_dept: str = "*", sub_loc: str = "*", time_of_day: str = "*") -> None:
     """
     Validate policy input parameters to prevent malformed or malicious data.
 
@@ -39,6 +39,9 @@ def _validate_policy_input(subject: str, object: str, action: str) -> None:
         subject (str): The subject (e.g., role or user ID) to validate.
         object (str): The object (e.g., resource or endpoint) to validate.
         action (str): The action (e.g., 'GET', 'POST') to validate.
+        sub_dept (str): The department attribute for ABAC, defaults to wildcard.
+        sub_loc (str): The location attribute for ABAC, defaults to wildcard.
+        time_of_day (str): The time of day attribute for ABAC, defaults to wildcard.
 
     Raises:
         ValueError: If any input is empty, contains invalid characters, or exceeds length limits.
@@ -47,13 +50,13 @@ def _validate_policy_input(subject: str, object: str, action: str) -> None:
         raise ValueError("Policy parameters (subject, object, action) cannot be empty")
     
     max_length = 255
-    for param, name in [(subject, 'subject'), (object, 'object'), (action, 'action')]:
+    for param, name in [(subject, 'subject'), (object, 'object'), (action, 'action'), (sub_dept, 'sub_dept'), (sub_loc, 'sub_loc'), (time_of_day, 'time_of_day')]:
         if len(param) > max_length:
             raise ValueError(f"Policy {name} exceeds maximum length of {max_length} characters")
         if any(char in param for char in ['\n', '\r', '\t']):
             raise ValueError(f"Policy {name} contains invalid control characters")
 
-def add_policy(subject: str, object: str, action: str) -> bool:
+def add_policy(subject: str, object: str, action: str, sub_dept: str = "*", sub_loc: str = "*", time_of_day: str = "*") -> bool:
     """
     Add a policy to allow a subject to perform an action on an object.
 
@@ -69,6 +72,9 @@ audit purposes. Ensure that only authorized users can add policies to prevent pr
         subject (str): The subject (e.g., role like 'admin' or user ID) to which the policy applies.
         object (str): The object (e.g., resource or endpoint like '/health') to which access is granted.
         action (str): The action (e.g., 'GET', 'POST') that the subject is allowed to perform.
+        sub_dept (str): The department attribute for ABAC, defaults to wildcard "*".
+        sub_loc (str): The location attribute for ABAC, defaults to wildcard "*".
+        time_of_day (str): The time of day attribute for ABAC, defaults to wildcard "*".
 
     Returns:
         bool: True if the policy was added successfully, False if it already exists or the operation failed.
@@ -80,14 +86,14 @@ audit purposes. Ensure that only authorized users can add policies to prevent pr
         To allow the 'editor' role to access '/reports' with GET:
         `add_policy('editor', '/reports', 'GET')`
     """
-    _validate_policy_input(subject, object, action)
+    _validate_policy_input(subject, object, action, sub_dept, sub_loc, time_of_day)
     enforcer = get_enforcer()
-    success = enforcer.add_policy(subject, object, action)
+    success = enforcer.add_policy(subject, object, action, sub_dept, sub_loc, time_of_day)
     if success:
-        logger.info(f"Policy added: {subject} can {action} on {object}")
+        logger.info(f"Policy added: {subject} can {action} on {object} with dept={sub_dept}, loc={sub_loc}, time={time_of_day}")
     return success
 
-def remove_policy(subject: str, object: str, action: str) -> bool:
+def remove_policy(subject: str, object: str, action: str, sub_dept: str = "*", sub_loc: str = "*", time_of_day: str = "*") -> bool:
     """
     Remove a policy to deny a subject from performing an action on an object.
 
@@ -103,6 +109,9 @@ def remove_policy(subject: str, object: str, action: str) -> bool:
         subject (str): The subject (e.g., role like 'admin' or user ID) from which the policy is removed.
         object (str): The object (e.g., resource or endpoint like '/health') from which access is revoked.
         action (str): The action (e.g., 'GET', 'POST') that the subject is no longer allowed to perform.
+        sub_dept (str): The department attribute for ABAC, defaults to wildcard "*".
+        sub_loc (str): The location attribute for ABAC, defaults to wildcard "*".
+        time_of_day (str): The time of day attribute for ABAC, defaults to wildcard "*".
 
     Returns:
         bool: True if the policy was removed successfully, False if it did not exist or the operation failed.
@@ -114,9 +123,9 @@ def remove_policy(subject: str, object: str, action: str) -> bool:
         To revoke the 'editor' role's access to '/reports' with GET:
         `remove_policy('editor', '/reports', 'GET')`
     """
-    _validate_policy_input(subject, object, action)
+    _validate_policy_input(subject, object, action, sub_dept, sub_loc, time_of_day)
     enforcer = get_enforcer()
-    success = enforcer.remove_policy(subject, object, action)
+    success = enforcer.remove_policy(subject, object, action, sub_dept, sub_loc, time_of_day)
     if success:
-        logger.info(f"Policy removed: {subject} can no longer {action} on {object}")
+        logger.info(f"Policy removed: {subject} can no longer {action} on {object} with dept={sub_dept}, loc={sub_loc}, time={time_of_day}")
     return success 

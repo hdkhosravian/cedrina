@@ -82,7 +82,11 @@ def check_permission(resource: str, action: str) -> callable:
             raise PermissionError(message)
         
         user_role = current_user.role.value
-        result = enforcer.enforce(user_role, resource, action)
+        # Use wildcard for ABAC attributes if not available from user context
+        sub_dept = getattr(current_user, 'department', '*')
+        sub_loc = getattr(current_user, 'location', '*')
+        time_of_day = getattr(current_user, 'time_of_day', '*')
+        result = enforcer.enforce(user_role, resource, action, sub_dept, sub_loc, time_of_day)
         if hasattr(result, "__await__"):
             result = await result
         if not result:
