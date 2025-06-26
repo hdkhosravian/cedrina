@@ -114,3 +114,9 @@ msgstr "Invalid token"
 msgid "session_already_revoked_or_invalid"
 msgstr "Session already revoked or invalid"
 
+msgid "password_changed"
+msgstr "Password successfully changed"
+
+msgid "incorrect_current_password"
+msgstr "Current password is incorrect"
+

@@ -81,12 +81,14 @@ Defined in `src/adapters/api/v1/auth/routes/`, these FastAPI routes expose authe
 - **Register** (`register.py`): `POST /api/v1/auth/register` - Creates a new user and issues tokens.
 - **Login** (`login.py`): `POST /api/v1/auth/login` - Authenticates a user and issues tokens.
 - **OAuth** (`oauth.py`): `POST /api/v1/auth/oauth` - Handles OAuth authentication and token issuance.
+- **Change Password** (`change_password.py`): `POST /api/v1/auth/change-password` - Allows authenticated users to update their password.
 
 ### 4. Schemas
 
+
 Pydantic models in `src/adapters/api/v1/auth/schemas/` define request and response structures:
 
-- **Requests**: `RegisterRequest`, `LoginRequest`, `OAuthAuthenticateRequest`.
+- **Requests**: `RegisterRequest`, `LoginRequest`, `OAuthAuthenticateRequest`, `ChangePasswordRequest`.
 - **Responses**: `UserOut`, `TokenPair`, `AuthResponse`, `OAuthAuthResponse`. The `TokenPair` model now includes an `expires_in` field to indicate the expiration time of the access token in seconds.
 
 ### 5. Dependencies
@@ -166,6 +168,7 @@ Response:
 }
 ```
 
+
 ### User Login
 
 ```bash
@@ -177,6 +180,22 @@ Response:
 {
   "user": { "id": 1, "username": "testuser", "email": "test@example.com", "is_active": true, "created_at": "2025-06-16T12:00:00", "roles": ["user"] },
   "tokens": { "access_token": "eyJ...", "refresh_token": "eyJ...", "token_type": "Bearer", "expires_in": 1800 }
+}
+```
+
+### Change Password
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/change-password \
+  -H "Authorization: Bearer <access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"current_password": "Oldpass123!", "new_password": "Newpass123!"}'
+```
+
+Response:
+```json
+{
+  "message": "Password successfully changed"
 }
 ```
 

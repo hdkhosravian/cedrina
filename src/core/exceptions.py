@@ -29,6 +29,7 @@ __all__: Final = [
     "RateLimitError",
     "DuplicateUserError",
     "PermissionError",
+    "IncorrectPasswordError",
 ]
 
 
@@ -140,4 +141,12 @@ class DuplicateUserError(CedrinaError):
     """
 
     def __init__(self, message: str, code: str = "duplicate_user_error"):
+        CedrinaError.__init__(self, message, code)
+
+
+@dataclass(slots=True)
+class IncorrectPasswordError(CedrinaError):
+    """Raised when the provided current password is incorrect."""
+
+    def __init__(self, message: str, code: str = "incorrect_password"):
         CedrinaError.__init__(self, message, code)

@@ -18,6 +18,7 @@ from src.core.exceptions import (
     AuthenticationError,
     DuplicateUserError,
     PasswordPolicyError,
+    IncorrectPasswordError,
     PermissionError,
     DatabaseError,
 )
@@ -27,6 +28,7 @@ __all__ = [
     "authentication_error_handler",
     "duplicate_user_error_handler",
     "password_policy_error_handler",
+    "incorrect_password_error_handler",
     "permission_error_handler",
     "rate_limit_exception_handler",
     "cedrina_error_handler",
@@ -57,6 +59,14 @@ async def password_policy_error_handler(request: Request, exc: PasswordPolicyErr
     """Handles PasswordPolicyError exceptions, returning a 422 Unprocessable Entity response."""
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": exc.message},
+    )
+
+
+async def incorrect_password_error_handler(request: Request, exc: IncorrectPasswordError) -> JSONResponse:
+    """Return 400 Bad Request when the current password is incorrect."""
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
         content={"detail": exc.message},
     )
 

@@ -29,6 +29,7 @@ This document describes each service, its responsibilities, methods, security me
 - `__init__(db_session: AsyncSession)`: Initializes with an async SQLAlchemy session.
 - `authenticate_by_credentials(username: str, password: str) -> User`: Authenticates a user, verifying password and activity.
 - `register_user(username: str, email: EmailStr, password: str) -> User`: Registers a new user with bcrypt-hashed password, enforcing password complexity requirements.
+- `change_password(user_id: int, current_password: str, new_password: str) -> None`: Updates a user's password after verifying the current password and enforcing policy rules.
 
 **Security**:
 - Bcrypt hashing via `passlib`.
@@ -190,13 +191,17 @@ After endpoint implementation:
    curl -X POST http://localhost:8000/api/v1/auth/refresh -d '{"refresh_token": "your-refresh-token"}' -H "Content-Type: application/json"
    ```
 
-4. **Check Database**:
+4. **Test Change Password**:
+   ```bash
+   curl -X POST http://localhost:8000/api/v1/auth/change-password -H "Authorization: Bearer <access-token>" -d '{"current_password": "Oldpass123!", "new_password": "Newpass123!"}' -H "Content-Type: application/json"
+   ```
+5. **Check Database**:
    ```bash
    docker exec cedrina_postgres_1 psql -U postgres -d cedrina_dev -c "SELECT * FROM users"
    docker exec cedrina_postgres_1 psql -U postgres -d cedrina_dev -c "SELECT * FROM sessions"
    ```
 
-5. **Check Redis**:
+6. **Check Redis**:
    ```bash
    docker exec cedrina_redis_1 redis-cli KEYS "refresh_token:*"
    ```

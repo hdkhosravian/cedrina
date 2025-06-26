@@ -100,3 +100,9 @@ msgstr "توکن لغو شده یا در فهرست سیاه قرار دارد"
 msgid "user_is_invalid_or_inactive"
 msgstr "کاربر نامعتبر یا غیرفعال است"
 
+msgid "password_changed"
+msgstr "رمز عبور با موفقیت تغییر یافت"
+
+msgid "incorrect_current_password"
+msgstr "رمز عبور فعلی نادرست است"
+
