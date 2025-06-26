@@ -21,16 +21,31 @@ from src.core.config.settings import settings
 from src.core.logging import configure_logging, logger
 from src.adapters.api.v1 import api_router
 from src.adapters.websockets import ws_router
-from src.utils.i18n import setup_i18n, get_request_language
+from src.adapters.api.v1.docs import router as docs_router
+from src.utils.i18n import setup_i18n, get_request_language, get_translated_message
 import i18n
 from src.infrastructure.database import create_db_and_tables, check_database_health
 from contextlib import asynccontextmanager
+from fastapi.responses import JSONResponse
+from starlette.middleware.cors import CORSMiddleware
+from src.core.exceptions import (
+    AuthenticationError,
+    PermissionError,
+)
+from src.core.handlers import (
+    authentication_error_handler,
+    permission_error_handler,
+    rate_limit_exception_handler,
+)
+from src.core.ratelimiter import get_limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 # Load environment variables
 load_dotenv(override=True)
 
 # Configure logging
-configure_logging()
+configure_logging(log_level=settings.LOG_LEVEL, json_logs=settings.LOG_JSON)
 
 # Setup i18n
 setup_i18n()
@@ -56,6 +71,9 @@ async def lifespan(app: FastAPI):
     create_db_and_tables()
     logger.info("application_startup", env=settings.APP_ENV, version=settings.VERSION)
     
+    # Attach the limiter to the app state
+    app.state.limiter = get_limiter()
+    
     yield
     
     # Shutdown
@@ -64,11 +82,19 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    debug=settings.DEBUG,
-    docs_url="/docs" if settings.DEBUG else None,
-    redoc_url="/redoc" if settings.DEBUG else None,
+    description=getattr(settings, 'DESCRIPTION', 'A FastAPI application with role-based access control.'),
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
     lifespan=lifespan,
+    default_response_class=JSONResponse,
+    default_response_description=get_translated_message("successful_response", settings.DEFAULT_LANGUAGE)
 )
+
+# Register custom exception handlers
+app.add_exception_handler(RateLimitExceeded, rate_limit_exception_handler)
+app.add_exception_handler(AuthenticationError, authentication_error_handler)
+app.add_exception_handler(PermissionError, permission_error_handler)
 
 # CORS middleware configuration
 app.add_middleware(
@@ -78,6 +104,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add Middleware
+app.add_middleware(SlowAPIMiddleware)
 
 @app.middleware("http")
 async def set_language_middleware(request: Request, call_next):
@@ -106,3 +135,4 @@ async def set_language_middleware(request: Request, call_next):
 # Include API and WebSocket routers
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(ws_router, prefix="/ws")
+app.include_router(docs_router)

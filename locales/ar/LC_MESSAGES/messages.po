@@ -7,8 +7,7 @@ msgstr ""
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ar\n"
 "Language-Team: ar <LL@li.org>\n"
-"Plural-Forms: nplurals=6; plural=(n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : "
-"n%100>=3 && n%100<=10 ? 3 : n%100>=0 && n%100<=2 ? 4 : 5);\n"
+"Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 ? 4 : 5;\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -16,4 +15,88 @@ msgstr ""
 
 msgid "health_status_ok"
 msgstr "النظام يعمل"
+
+msgid "invalid_token_subject"
+msgstr "رمز غير صالح: الموضوع مفقود"
+
+msgid "user_not_found_or_inactive"
+msgstr "المستخدم غير موجود أو غير نشط"
+
+msgid "admin_privileges_required"
+msgstr "المستخدم ليس لديه صلاحيات إدارية."
+
+msgid "user_has_no_role"
+msgstr "المستخدم ليس لديه دور محدد، تم رفض الوصول."
+
+msgid "permission_denied_for_action"
+msgstr "المستخدم ذو الدور '{role}' ليس لديه إذن لـ {action} {resource}"
+
+msgid "invalid_username_characters"
+msgstr "يجب أن يحتوي اسم المستخدم على أحرف وأرقام وشرطات سفلية أو شرطات فقط"
+
+msgid "invalid_username_or_password"
+msgstr "اسم المستخدم أو كلمة المرور غير صحيحة"
+
+msgid "user_account_inactive"
+msgstr "حساب المستخدم غير نشط"
+
+msgid "username_already_registered"
+msgstr "اسم المستخدم مسجل بالفعل"
+
+msgid "email_already_registered"
+msgstr "البريد الإلكتروني مسجل بالفعل"
+
+msgid "password_too_short"
+msgstr "يجب أن تكون كلمة المرور {length} حرفًا على الأقل"
+
+msgid "password_no_uppercase"
+msgstr "يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل"
+
+msgid "password_no_lowercase"
+msgstr "يجب أن تحتوي كلمة المرور على حرف صغير واحد على الأقل"
+
+msgid "password_no_digit"
+msgstr "يجب أن تحتوي كلمة المرور على رقم واحد على الأقل"
+
+msgid "token_expired"
+msgstr "انتهت صلاحية الرمز"
+
+msgid "invalid_oauth_user_info"
+msgstr "معلومات مستخدم OAuth غير صالحة"
+
+msgid "invalid_credentials"
+msgstr "بيانات الاعتماد غير صالحة"
+
+msgid "too_many_requests"
+msgstr "طلبات كثيرة جداً"
+
+msgid "rate_limit_exceeded"
+msgstr "تم تجاوز حد المعدل"
+
+msgid "metrics_endpoint_debug_only"
+msgstr "نقطة نهاية المقاييس متاحة فقط في وضع التصحيح"
+
+msgid "error_prefix"
+msgstr "خطأ: {message}"
+
+msgid "successful_response"
+msgstr "استجابة ناجحة"
+
+msgid "system_operational"
+msgstr "النظام يعمل"
+
+msgid "password_no_special_char"
+msgstr "يجب أن تحتوي كلمة المرور على حرف خاص واحد على الأقل"
+
+msgid "invalid_refresh_token"
+msgstr "رمز التحديث غير صالح"
+
+msgid "session_revoked_or_invalid"
+msgstr "الجلسة ملغاة أو غير صالحة"
+
+msgid "token_revoked_or_blacklisted"
+msgstr "تم إبطال أو إدراج الرمز في القائمة السوداء"
+
+msgid "user_is_invalid_or_inactive"
+msgstr "المستخدم غير صالح أو غير نشط"
 

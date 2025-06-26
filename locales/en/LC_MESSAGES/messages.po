@@ -16,3 +16,101 @@ msgstr ""
 msgid "health_status_ok"
 msgstr "System is operational"
 
+msgid "invalid_token_subject"
+msgstr "Invalid token: Subject missing"
+
+msgid "user_not_found_or_inactive"
+msgstr "User not found or inactive"
+
+msgid "admin_privileges_required"
+msgstr "The user does not have administrative privileges."
+
+msgid "user_has_no_role"
+msgstr "User has no assigned role, access denied."
+
+msgid "permission_denied_for_action"
+msgstr "User with role '{role}' does not have permission to {action} {resource}"
+
+msgid "invalid_username_characters"
+msgstr "Username must contain only letters, numbers, underscores, or hyphens"
+
+msgid "invalid_username_or_password"
+msgstr "Invalid username or password"
+
+msgid "user_account_inactive"
+msgstr "User account is inactive"
+
+msgid "username_already_registered"
+msgstr "Username already registered"
+
+msgid "email_already_registered"
+msgstr "Email already registered"
+
+msgid "password_too_short"
+msgstr "Password must be at least {length} characters long"
+
+msgid "password_no_uppercase"
+msgstr "Password must contain at least one uppercase letter"
+
+msgid "password_no_lowercase"
+msgstr "Password must contain at least one lowercase letter"
+
+msgid "password_no_digit"
+msgstr "Password must contain at least one digit"
+
+msgid "token_expired"
+msgstr "Token has expired"
+
+msgid "invalid_oauth_user_info"
+msgstr "Invalid OAuth user info"
+
+msgid "invalid_credentials"
+msgstr "Invalid credentials"
+
+msgid "too_many_requests"
+msgstr "Too many requests"
+
+msgid "rate_limit_exceeded"
+msgstr "Rate limit exceeded"
+
+msgid "metrics_endpoint_debug_only"
+msgstr "Metrics endpoint is only available in debug mode"
+
+msgid "error_prefix"
+msgstr "Error: {message}"
+
+msgid "successful_response"
+msgstr "Successful Response"
+
+msgid "system_operational"
+msgstr "System is operational"
+
+msgid "invalid_id_token"
+msgstr "Invalid ID token"
+
+msgid "invalid_id_token_issuer"
+msgstr "Invalid ID token issuer"
+
+# Newly added keys (2025-06-23)
+
+msgid "password_no_special_char"
+msgstr "Password must contain at least one special character"
+
+msgid "invalid_refresh_token"
+msgstr "Invalid refresh token"
+
+msgid "session_revoked_or_invalid"
+msgstr "Session revoked or invalid"
+
+msgid "token_revoked_or_blacklisted"
+msgstr "Token revoked or blacklisted"
+
+msgid "user_is_invalid_or_inactive"
+msgstr "User is invalid or inactive"
+
+msgid "invalid_token"
+msgstr "Invalid token"
+
+msgid "session_already_revoked_or_invalid"
+msgstr "Session already revoked or invalid"
+

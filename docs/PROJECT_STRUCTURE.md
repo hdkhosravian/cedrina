@@ -8,18 +8,17 @@ The project root contains configuration files, Docker-related files, and top-lev
 
 - **.env**: Default environment file for development, copied from `.env.development`. Contains project metadata, API settings, logging, security, database, Redis, and Docker configurations.
 - **.env.development**: Environment file for local development with debug settings, local PostgreSQL/Redis, and default credentials.
-- **.env.test**: Environment file for testing with isolated database settings and local instance defaults.
 - **.env.staging**: Environment file for staging with external PostgreSQL/Redis server settings and SSL enabled.
 - **.env.production**: Environment file for production with external PostgreSQL/Redis server settings, SSL, and optimized worker settings.
 - **Dockerfile**: Multi-stage Docker configuration for building, precompiling, and running the application. Defines `builder`, `precompiler`, and `runtime` stages.
 - **docker-compose.yml**: Docker Compose configuration for development and testing, defining `api`, `postgres`, and `redis` services with conditional profiles and persistent volumes.
-- **entrypoint.sh**: Shell script executed as the Docker container’s entrypoint, handling startup tasks (e.g., migrations, server start).
+- **entrypoint.sh**: Shell script executed as the Docker container's entrypoint, handling startup tasks (e.g., migrations, server start).
 - **pyproject.toml**: Poetry configuration file defining project metadata, dependencies (e.g., FastAPI, SQLModel, Redis), development dependencies, and tool settings (mypy, ruff, black).
 - **poetry.lock**: Lock file ensuring reproducible dependency installations.
 - **Makefile**: Defines build, run, test, lint, format, translation, and migration tasks for local and Docker workflows.
 - **README.md**: Project documentation with setup instructions, usage, and troubleshooting (not detailed here).
 - **babel.cfg**: Configuration for Babel to extract translation keys from source code.
-- **pytest.ini**: Pytest configuration, setting `pythonpath = src` and loading `.env.test` via `pytest-dotenv`.
+- **pytest.ini**: Pytest configuration, setting `pythonpath = src` and loading `.env` via `pytest-dotenv`.
 
 ### Directories
 - **alembic/**: Database migration scripts and configuration.
@@ -39,7 +38,9 @@ Contains Alembic configuration and migration scripts for managing PostgreSQL dat
 - **versions/**: Directory for auto-generated migration scripts (e.g., `<revision_id>_<message>.py`), each containing database schema changes.
 
 ### docs/
-Stores documentation files, such as Markdown guides, architecture diagrams, or API specifications. Currently empty or placeholder, intended for project-specific documentation.
+Stores documentation files, such as Markdown guides, architecture diagrams, or API specifications.
+
+- **authentication/**: Documentation for authentication system, including models, services, and setup instructions.
 
 ### locales/
 Holds translation files for i18n, supporting English (`en`), Persian (`fa`), and Arabic (`ar`).
@@ -82,14 +83,21 @@ The core application code, organized into DDD-inspired layers: adapters, core, d
     - **logger.py**: Configures `structlog` for structured JSON logging.
   - **dependencies/**:
     - **__init__.py**: Exposes dependency injection utilities.
-    - **auth.py**: Placeholder for JWT authentication dependencies (not implemented).
+    - **auth.py**: Provides `get_current_user` and `get_current_admin_user` dependencies for JWT authentication.
 - **domain/**: Business logic and entities.
   - **entities/**:
     - **__init__.py**: Exposes domain entities.
-    - (Placeholder for SQLModel models, e.g., `user.py` for User entity, not yet implemented.)
+    - **user.py**: Defines `User` entity with SQLModel for user data (e.g., username, email, hashed password).
+    - **oauth_profile.py**: Defines `OAuthProfile` entity for storing OAuth provider data and encrypted tokens.
+    - **session.py**: Defines `Session` entity for tracking user sessions and refresh tokens.
   - **services/**:
     - **__init__.py**: Exposes domain services.
-    - (Placeholder for business logic services, not yet implemented.)
+    - **auth/**:
+      - **__init__.py**: Exposes authentication services.
+      - **user_authentication.py**: Handles username/password authentication and user registration with password policy enforcement.
+      - **oauth.py**: Manages OAuth 2.0 flows for external providers (Google, Microsoft, Facebook).
+      - **token.py**: Issues, validates, and refreshes JWT tokens with blacklisting capabilities.
+      - **session.py**: Manages user sessions and refresh token revocation.
 - **infrastructure/**: External system implementations (e.g., database, message brokers).
   - **database/**:
     - **__init__.py**: Exposes database functions (`create_db_and_tables`, `check_database_health`, `get_db`).
@@ -98,6 +106,12 @@ The core application code, organized into DDD-inspired layers: adapters, core, d
 - **utils/**: Helper functions and cross-cutting concerns.
   - **__init__.py**: Exposes utility functions.
   - **i18n.py**: Configures i18n with `python-i18n`, handling translation loading and language selection.
+- **permissions/**: Access control and permission management.
+  - **__init__.py**: Exposes permission-related utilities.
+  - **config.py**: Defines configuration settings for the Casbin enforcer.
+  - **enforcer.py**: Manages the Casbin enforcer instance for policy evaluation.
+  - **dependencies.py**: Provides FastAPI dependencies for permission checks.
+  - **policies.py**: Manages policy definitions for access rules.
 - **main.py**: Application entry point, defining FastAPI app, middleware (CORS, language), routers, and startup/shutdown events.
 
 ### tests/
@@ -106,6 +120,12 @@ Contains unit and integration tests, mirroring the `src/` structure.
 - **unit/**: Unit tests for individual components.
   - **__init__.py**: Empty, marks directory as a package.
   - **test_database.py**: Tests for `src/infrastructure/database/database.py` (e.g., health check, session management).
+  - **services/**:
+    - **auth/**:
+      - **test_user_authentication.py**: Tests for user authentication and registration logic.
+      - **test_oauth.py**: Tests for OAuth 2.0 authentication flows.
+      - **test_token.py**: Tests for JWT token creation, validation, and blacklisting.
+      - **test_session.py**: Tests for session management and revocation.
   - (Placeholder for additional unit tests, e.g., `test_i18n.py`.)
 - **integration/**: Integration tests for API and WebSocket endpoints.
   - **__init__.py**: Empty, marks directory as a package.
@@ -114,17 +134,18 @@ Contains unit and integration tests, mirroring the `src/` structure.
 ## File and Folder Summary
 - **Root Files**: Configuration (`pyproject.toml`, `poetry.lock`, `.env*`), Docker (`Dockerfile`, `docker-compose.yml`, `entrypoint.sh`), and build tools (`Makefile`, `babel.cfg`, `pytest.ini`).
 - **alembic/**: Manages database migrations with configuration (`env.py`, `script.py.mako`) and version scripts (`versions/`).
-- **docs/**: Placeholder for documentation.
+- **docs/**: Documentation including authentication system details.
 - **locales/**: Translation files for i18n (`en`, `fa`, `ar` with `.po` and `.mo` files).
 - **scripts/**: Placeholder for utility scripts.
 - **src/**: DDD-structured application code:
   - `adapters/`: REST (`api/v1`) and WebSocket (`websockets`) interfaces.
   - `core/`: Configuration (`settings`), logging, and dependencies.
-  - `domain/`: Business entities and services (placeholder).
+  - `domain/`: Business entities (`user.py`, `oauth_profile.py`, `session.py`) and services (`auth/`).
   - `infrastructure/`: Database (`database.py`) and future brokers.
   - `utils/`: i18n and helpers.
+  - `permissions/`: Access control and permission management.
   - `main.py`: FastAPI application entry point.
-- **tests/**: Unit (`unit/`) and integration (`integration/`) tests, mirroring `src/`.
+- **tests/**: Unit (`unit/`) and integration (`integration/`) tests, mirroring `src/` with detailed authentication tests.
 
 ## Structure Design
 - **DDD Alignment**: Separates concerns into adapters (external interfaces), core (configuration), domain (business logic), infrastructure (external systems), and utils (cross-cutting).

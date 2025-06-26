@@ -8,6 +8,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+*.DS_Store
 
 # Environment
 .env
@@ -28,3 +29,7 @@ coverage/
 # Docker
 Dockerfile.local
 docker-compose.local.yml
+
+# Secu
+private.pem
+public.pem

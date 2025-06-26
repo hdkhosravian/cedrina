@@ -1,0 +1,60 @@
+# Spanish translations for PROJECT.
+# Copyright (C) 2025 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2025-06-25 13:13+0330\n"
+"PO-Revision-Date: 2025-06-25 13:13+0330\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: es\n"
+"Language-Team: es <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: src/domain/services/auth/policy.py:59
+msgid "policy_params_empty"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:64
+msgid "policy_param_too_long"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:66
+msgid "policy_param_invalid_chars"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:70
+msgid "policy_wildcards_not_allowed"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:76
+msgid "policy_invalid_attribute"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:78
+msgid "policy_attribute_too_long"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:80
+msgid "policy_attribute_invalid_chars"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:160
+msgid "policy_add_failed"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:194
+msgid "policy_remove_failed"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:216
+msgid "policy_retrieve_failed"
+msgstr ""
+

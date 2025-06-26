@@ -1,6 +1,6 @@
-from fastapi import APIRouter, WebSocket
 from src.core.logging import logger
 from src.utils.i18n import get_translated_message
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 ws_router = APIRouter()
 

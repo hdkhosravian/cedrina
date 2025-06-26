@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-05-14 18:50+0330\n"
+"POT-Creation-Date: 2025-06-25 13:14+0330\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,4 +16,60 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
+
+#: src/adapters/api/v1/admin/policies.py:80
+msgid "policy_added_successfully"
+msgstr ""
+
+#: src/adapters/api/v1/admin/policies.py:82
+msgid "policy_already_exists"
+msgstr ""
+
+#: src/adapters/api/v1/admin/policies.py:122
+msgid "policy_removed_successfully"
+msgstr ""
+
+#: src/adapters/api/v1/admin/policies.py:124
+msgid "policy_not_found"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:59
+msgid "policy_params_empty"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:64
+msgid "policy_param_too_long"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:66
+msgid "policy_param_invalid_chars"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:70
+msgid "policy_wildcards_not_allowed"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:76
+msgid "policy_invalid_attribute"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:78
+msgid "policy_attribute_too_long"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:80
+msgid "policy_attribute_invalid_chars"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:160
+msgid "policy_add_failed"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:194
+msgid "policy_remove_failed"
+msgstr ""
+
+#: src/domain/services/auth/policy.py:216
+msgid "policy_retrieve_failed"
+msgstr ""
 

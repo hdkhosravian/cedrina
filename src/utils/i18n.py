@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Internationalization (i18n) utility module for handling translations and language preferences.
 
@@ -14,133 +16,157 @@ multiple languages as configured in the application settings.
 
 import os
 import gettext
+from typing import Dict, Optional
 from fastapi import Request
+from babel.support import Translations
 from src.core.config.settings import settings
 from src.core.logging import logger
 
 # Store translations for each language
-_translations = {}
+_translations: Dict[str, gettext.GNUTranslations] = {}
 
-def setup_i18n():
+# ---------------------------------------------------------------------------
+# Internal fallback catalog (parsed from *.po* files)
+# ---------------------------------------------------------------------------
+
+# In scenarios where the compiled *.mo* files are out of date (e.g. during local
+# development or in CI pipelines where the Babel compilation step was skipped),
+# newly-added translations would not be picked up by *gettext* and the call
+# would simply return the original *msgid*.  To avoid shipping untranslated
+# (and often user-visible) strings, we parse the corresponding *.po* files at
+# startup and keep a lightweight in-memory catalogue as a secondary lookup.
+
+_fallback_catalogs: Dict[str, Dict[str, str]] = {}
+
+def setup_i18n() -> None:
     """
-    Initializes the internationalization system.
-    
-    This function:
-    1. Locates the translations directory
-    2. Loads translation files for each supported language
-    3. Sets up fallback mechanisms
-    4. Logs initialization status
+    Initialize the internationalization system by loading translations.
+
+    Loads translation files for each supported language from the locales directory
+    and parses .po files as a fallback for development environments where .mo
+    files may not be updated. Logs initialization status for debugging.
     
     Raises:
-        FileNotFoundError: If the locales directory is not found
-        Exception: For other initialization errors
+        FileNotFoundError: If the locales directory is not found.
+        Exception: For other initialization errors during .po file parsing.
+
+    Performance:
+        - Loads all translations into memory at startup, which may impact memory
+          usage with many languages or large translation files.
+        - Consider lazy loading or caching for scalability in future iterations.
     """
     # Ensure absolute path for locales
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
     locales_path = os.path.join(base_dir, "locales")
-    try:
-        # Verify locales path exists
-        if not os.path.exists(locales_path):
-            raise FileNotFoundError(f"Locales directory not found: {locales_path}")
-        
-        # Initialize gettext for each supported language
-        for lang in settings.SUPPORTED_LANGUAGES:
+    
+    # Verify locales path exists
+    if not os.path.exists(locales_path):
+        raise FileNotFoundError(f"Locales directory not found: {locales_path}")
+    
+    # Initialize gettext and parse .po files for each supported language
+    for lang in settings.SUPPORTED_LANGUAGES:
+        translation = gettext.translation(
+            domain="messages",
+            localedir=locales_path,
+            languages=[lang],
+            fallback=True,
+        )
+        _translations[lang] = translation
+
+        # Parse .po file as fallback for newly added translations not in .mo
+        po_path = os.path.join(locales_path, lang, "LC_MESSAGES", "messages.po")
+        catalog: Dict[str, str] = {}
+        if os.path.exists(po_path):
             try:
-                translation = gettext.translation(
-                    domain="messages",
-                    localedir=locales_path,
-                    languages=[lang],
-                    fallback=True
-                )
-                _translations[lang] = translation
-                logger.info("i18n_initialized", language=lang, locales_path=locales_path)
-            except Exception as e:
-                logger.error("i18n_init_failed", language=lang, error=str(e))
-        
-        logger.info("i18n_setup_complete", default_locale=settings.DEFAULT_LANGUAGE)
-    except Exception as e:
-        logger.error("i18n_setup_failed", error=str(e))
+                # Basic security: Limit file size to prevent memory exhaustion
+                file_size = os.path.getsize(po_path)
+                if file_size > 10 * 1024 * 1024:  # 10MB limit
+                    logger.warning("i18n_po_file_too_large", lang=lang, size=file_size)
+                    continue
+                
+                with open(po_path, "r", encoding="utf-8") as po_file:
+                    current_msgid: Optional[str] = None
+                    for raw_line in po_file:
+                        line = raw_line.strip()
+                        if line.startswith("msgid "):
+                            current_msgid = line[6:].strip().strip('"')
+                        elif line.startswith("msgstr ") and current_msgid is not None:
+                            msgstr = line[7:].strip().strip('"')
+                            catalog[current_msgid] = msgstr or current_msgid
+                            current_msgid = None
+            except Exception as exc:  # pragma: no cover
+                logger.warning("i18n_po_parse_failed", lang=lang, error=str(exc))
+
+        _fallback_catalogs[lang] = catalog
+        logger.info("i18n_initialized", language=lang, entries=len(catalog))
+
+    logger.info("i18n_setup_complete", default_locale=settings.DEFAULT_LANGUAGE)
 
 def get_translated_message(key: str, locale: str = settings.DEFAULT_LANGUAGE) -> str:
     """
-    Retrieves a translated message for the given key and locale.
+    Retrieve a translated message for the given key and locale.
     
-    This function:
-    1. Validates the requested locale
-    2. Attempts to find the translation
-    3. Falls back to default language if needed
-    4. Handles missing translations gracefully
-    5. Logs translation events
+    Validates the requested locale, attempts translation, and falls back to the
+    default language or key if needed. Logs failures for debugging.
     
     Args:
-        key (str): The message key to translate
-        locale (str): The target language code (defaults to settings.DEFAULT_LANGUAGE)
+        key: The message key to translate.
+        locale: The target language code (defaults to DEFAULT_LANGUAGE).
         
     Returns:
-        str: The translated message or the original key if translation fails
+        The translated message or the original key if translation fails.
+
+    Security:
+        - Validates locale against supported languages to prevent injection or
+          unexpected behavior.
     """
-    if locale not in settings.SUPPORTED_LANGUAGES:
+    if locale not in _translations:
+        logger.warning("unsupported_locale_requested", requested_locale=locale,
+                       fallback_locale=settings.DEFAULT_LANGUAGE)
         locale = settings.DEFAULT_LANGUAGE
     
-    try:
-        translation = _translations.get(locale)
-        if translation is None:
-            logger.error("translation_not_found_for_locale", locale=locale, available_translations=list(_translations.keys()))
-            # Attempt to reload translations for the specific locale if setup failed generally
-            # This is a fallback, ideally setup_i18n should succeed for all locales
-            base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-            locales_path = os.path.join(base_dir, "locales")
-            try:
-                specific_translation = gettext.translation(
-                    domain="messages",
-                    localedir=locales_path,
-                    languages=[locale],
-                    fallback=True # Fallback to default if specific lang .mo not found
-                )
-                _translations[locale] = specific_translation
-                translation = specific_translation
-                logger.info("i18n_reinitialized_for_locale", language=locale)
-            except Exception as ex:
-                logger.error("i18n_reinit_failed_for_locale", language=locale, error=str(ex))
-                return key # Return key if re-initialization also fails
-
-        if translation is None: # Check again after attempting re-initialization
-             logger.error("translation_still_not_found", locale=locale)
-             return key
-
-        translated = translation.gettext(key)
-        # If gettext returns the key itself, it means translation was not found for that key
+    translation = _translations.get(locale)
+    if not translation:  # Safeguard if setup_i18n fails
+        logger.error("translation_missing_for_locale", locale=locale)
+        return key
+        
+    translated = translation.gettext(key)
+    if translated == key:  # Translation not found in .mo
+        catalog = _fallback_catalogs.get(locale, {})
+        translated = catalog.get(key, key)
         if translated == key:
             logger.warning("translation_key_not_found", key=key, locale=locale)
-        
-        return translated
-    except Exception as e:
-        logger.error("translation_failed", key=key, locale=locale, error=str(e))
-        return key  # Fallback to key if translation fails
+    
+    return translated
 
 def get_request_language(request: Request) -> str:
     """
-    Determines the preferred language from the request.
+    Determine the preferred language from a request.
     
-    This function checks for language preference in the following order:
-    1. Query parameter 'lang'
-    2. Accept-Language header
-    3. Default language from settings
+    Checks language preference in order: query parameter 'lang',
+    Accept-Language header, then default language from settings.
     
     Args:
-        request (Request): The FastAPI request object
+        request: The FastAPI request object.
         
     Returns:
-        str: The determined language code
+        The determined language code.
+
+    Security:
+        - Validates language codes against supported languages to prevent
+          unexpected behavior from malformed input.
     """
     # Check query parameter first
     lang = request.query_params.get("lang")
     if lang and lang in settings.SUPPORTED_LANGUAGES:
         return lang
+    
     # Fallback to Accept-Language header
-    accept_language = request.headers.get("Accept-Language", settings.DEFAULT_LANGUAGE)
+    accept_language = request.headers.get("Accept-Language",
+                                          settings.DEFAULT_LANGUAGE)
     for lang in accept_language.split(","):
         lang = lang.split(";")[0].strip().split("-")[0]
         if lang in settings.SUPPORTED_LANGUAGES:
             return lang
+    
     return settings.DEFAULT_LANGUAGE

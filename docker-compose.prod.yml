@@ -10,16 +10,16 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env.${APP_ENV:-production}
+      - .env
     environment:
       - APP_ENV=${APP_ENV:-production}
-      - PYTHONPATH=/app
+      - PYTHONPATH=/app:/app/src
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      test: ["CMD", "sh", "-c", "curl -f http://localhost:8000/api/v1/health && PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c 'SELECT 1 FROM alembic_version'"]
       interval: 30s
       timeout: 5s
-      retries: 3
-      start_period: 10s
+      retries: 5
+      start_period: 60s  # Allow time for migrations
     networks:
       - cedrina-network
 
