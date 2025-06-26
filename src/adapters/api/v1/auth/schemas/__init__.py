@@ -13,7 +13,13 @@ and tests.
 
 # flake8: noqa: F401 – re-export
 
-from .requests import RegisterRequest, LoginRequest, OAuthAuthenticateRequest, UsernameStr
+from .requests import (
+    RegisterRequest,
+    LoginRequest,
+    OAuthAuthenticateRequest,
+    LogoutRequest,
+    UsernameStr,
+)
 from .responses.user import UserOut
 from .responses.token import TokenPair
 from .responses.auth import AuthResponse, OAuthAuthResponse
@@ -23,6 +29,7 @@ __all__ = [
     "RegisterRequest",
     "LoginRequest",
     "OAuthAuthenticateRequest",
+    "LogoutRequest",
     "UsernameStr",
     "UserOut",
     "TokenPair",

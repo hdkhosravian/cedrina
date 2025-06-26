@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from .routes import register as register_route  # noqa: WPS433 – re-export via package
 from .routes import login as login_route  # noqa: WPS433
 from .routes import oauth as oauth_route  # noqa: WPS433
+from .routes import logout as logout_route  # noqa: WPS433
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -15,5 +16,6 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 router.include_router(register_route.router, prefix="/register")
 router.include_router(login_route.router, prefix="/login")
 router.include_router(oauth_route.router, prefix="/oauth")
+router.include_router(logout_route.router, prefix="/logout")
 
 __all__ = ["router"] 

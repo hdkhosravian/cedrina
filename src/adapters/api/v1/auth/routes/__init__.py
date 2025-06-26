@@ -6,4 +6,5 @@ __all__ = [
     "register",
     "login",
     "oauth",
-] 
+    "logout",
+]

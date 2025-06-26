@@ -1,10 +1,14 @@
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from uuid import UUID
+
+from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from redis.asyncio import Redis
 from sqlmodel import select
 from structlog import get_logger
+
+from src.core.config.settings import settings
 
 from src.domain.entities.session import Session
 from src.core.exceptions import AuthenticationError
@@ -106,3 +110,23 @@ class SessionService:
             await logger.adebug("Invalid session", jti=jti, user_id=user_id)
             return False
         return True
+
+    async def revoke_token(self, encoded_token: str) -> None:
+        """Decode a refresh token and revoke the associated session."""
+
+        try:
+            payload = jwt.decode(
+                encoded_token,
+                settings.JWT_PUBLIC_KEY,
+                algorithms=["RS256"],
+                issuer=settings.JWT_ISSUER,
+                audience=settings.JWT_AUDIENCE,
+            )
+            jti = payload["jti"]
+            user_id = int(payload["sub"])
+        except JWTError as exc:  # pragma: no cover - error path
+            raise AuthenticationError(
+                get_translated_message("invalid_refresh_token", "en")
+            ) from exc
+
+        await self.revoke_session(jti, user_id)

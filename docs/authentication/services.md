@@ -105,6 +105,7 @@ This document describes each service, its responsibilities, methods, security me
 - `revoke_session(jti: str, user_id: int) -> None`: Revokes a session.
 - `get_session(jti: str, user_id: int) -> Optional[Session]`: Retrieves a session.
 - `is_session_valid(jti: str, user_id: int) -> bool`: Checks session validity.
+- `revoke_token(encoded_token: str) -> None`: Decodes a refresh token and revokes the corresponding session.
 
 **Security**:
 - Session revocation in PostgreSQL and Redis.

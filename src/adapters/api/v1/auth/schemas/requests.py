@@ -35,4 +35,10 @@ class OAuthAuthenticateRequest(BaseModel):
     """Payload sent to ``POST /auth/oauth`` after client‐side token exchange."""
 
     provider: Literal["google", "microsoft", "facebook"]
-    token: Dict[str, Any] 
+    token: Dict[str, Any]
+
+
+class LogoutRequest(BaseModel):
+    """Payload expected by ``DELETE /auth/logout``."""
+
+    refresh_token: str
