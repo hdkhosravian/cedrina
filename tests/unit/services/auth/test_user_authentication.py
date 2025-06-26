@@ -46,7 +46,7 @@ async def test_authenticate_by_credentials_success(user_auth_service, mock_db_se
     )
     # Mock the context manager to return a session with execute method
     result = MagicMock()
-    result.first.return_value = user
+    result.scalar_one_or_none.return_value = user
     mock_db_session.execute.return_value = result
 
     # Act
@@ -70,7 +70,7 @@ async def test_authenticate_by_credentials_invalid_password(user_auth_service, m
     )
     # Mock the context manager to return a session with execute method
     result = MagicMock()
-    result.first.return_value = user
+    result.scalar_one_or_none.return_value = user
     mock_db_session.execute.return_value = result
 
     # Act & Assert
@@ -91,7 +91,7 @@ async def test_authenticate_by_credentials_inactive_user(user_auth_service, mock
     )
     # Mock the context manager to return a session with execute method
     result = MagicMock()
-    result.first.return_value = user
+    result.scalar_one_or_none.return_value = user
     mock_db_session.execute.return_value = result
 
     # Act & Assert
@@ -106,7 +106,7 @@ async def test_register_user_success(user_auth_service, mock_db_session, mocker)
     password = "Newpass123!"
     # Mock the context manager to return a session with execute method
     result = MagicMock()
-    result.first.return_value = None
+    result.scalar_one_or_none.return_value = None
     mock_db_session.execute.return_value = result
     mock_db_session.add = MagicMock()
     mock_db_session.commit = mocker.AsyncMock()
@@ -128,7 +128,7 @@ async def test_register_user_invalid_password(user_auth_service, mock_db_session
     password = "short"
     # Mock the context manager to return a session with execute method
     result = MagicMock()
-    result.first.return_value = None
+    result.scalar_one_or_none.return_value = None
     mock_db_session.execute.return_value = result
 
     # Act & Assert
@@ -144,7 +144,7 @@ async def test_register_user_existing_username(user_auth_service, mock_db_sessio
     existing_user = User(id=1, username=username, email="old@example.com")
     # Mock the context manager to return a session with execute method
     result = MagicMock()
-    result.first.return_value = existing_user
+    result.scalar_one_or_none.return_value = existing_user
     mock_db_session.execute.return_value = result
 
     # Act & Assert
@@ -160,7 +160,7 @@ async def test_register_user_existing_email(user_auth_service, mock_db_session):
     existing_user = User(id=1, username="olduser", email=email)
     # Mock the context manager to return a session with execute method
     result_existing = MagicMock()
-    result_existing.first.return_value = existing_user
+    result_existing.scalar_one_or_none.return_value = existing_user
     mock_db_session.execute.return_value = result_existing
 
     # Act & Assert

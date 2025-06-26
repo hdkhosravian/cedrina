@@ -55,7 +55,8 @@ class UserAuthenticationService:
         """
         statement = select(User).where(User.username == username)
         async with self.db_session as session:
-            user = (await session.execute(statement)).first()
+            result = await session.execute(statement)
+            user = result.scalar_one_or_none()
 
         if not user or not self.pwd_context.verify(password, user.hashed_password):
             logger.warning("Invalid credentials for user", username=username)
@@ -87,7 +88,7 @@ class UserAuthenticationService:
             # Check for existing user
             statement = select(User).where((User.username == username) | (User.email == email))
             result = await session.execute(statement)
-            existing = result.first()
+            existing = result.scalar_one_or_none()
             if existing:
                 if existing.username == username:
                     raise AuthenticationError(get_translated_message("username_already_registered", "en"))
