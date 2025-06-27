@@ -9,6 +9,7 @@ from src.core.exceptions import (
     UserAlreadyExistsError,
     InvalidCredentialsError,
     PasswordPolicyError,
+    DuplicateUserError,
 )
 from src.domain.entities.user import User, Role
 from src.domain.services.auth.password_policy import PasswordPolicyValidator
@@ -54,8 +55,8 @@ class UserAuthenticationService:
             should be applied at the API layer to prevent brute force attacks.
         """
         statement = select(User).where(User.username == username)
-        async with self.db_session as session:
-            user = (await session.execute(statement)).first()
+        result = await self.db_session.execute(statement)
+        user = result.scalars().first()
 
         if not user or not self.pwd_context.verify(password, user.hashed_password):
             logger.warning("Invalid credentials for user", username=username)
@@ -83,23 +84,22 @@ class UserAuthenticationService:
             AuthenticationError: If username or email already exists, or if password
                 does not meet policy requirements.
         """
-        async with self.db_session as session:
-            # Check for existing user
-            statement = select(User).where((User.username == username) | (User.email == email))
-            result = await session.execute(statement)
-            existing = result.first()
-            if existing:
-                if existing.username == username:
-                    raise AuthenticationError(get_translated_message("username_already_registered", "en"))
-                if existing.email == email:
-                    raise AuthenticationError(get_translated_message("email_already_registered", "en"))
+        # Check for existing user
+        statement = select(User).where((User.username == username) | (User.email == email))
+        result = await self.db_session.execute(statement)
+        existing = result.scalars().first()
+        if existing:
+            if existing.username == username:
+                raise DuplicateUserError(get_translated_message("username_already_registered", "en"))
+            if existing.email == email:
+                raise DuplicateUserError(get_translated_message("email_already_registered", "en"))
         
-            # Enforce password policy using PasswordPolicyValidator
-            validator = PasswordPolicyValidator()
-            try:
-                validator.validate(password)
-            except PasswordPolicyError as e:
-                raise AuthenticationError(str(e))
+        # Enforce password policy using PasswordPolicyValidator
+        validator = PasswordPolicyValidator()
+        try:
+            validator.validate(password)
+        except PasswordPolicyError as e:
+            raise AuthenticationError(str(e))
         
         hashed_password = self.pwd_context.hash(password)
         new_user = User(
@@ -109,10 +109,10 @@ class UserAuthenticationService:
             role=Role.USER,
             is_active=True
         )
-        async with self.db_session as session:
-            session.add(new_user)
-            await session.commit()
-            await session.refresh(new_user)
+        
+        self.db_session.add(new_user)
+        await self.db_session.commit()
+        await self.db_session.refresh(new_user)
         
         logger.info("New user registered", username=username)
         return new_user

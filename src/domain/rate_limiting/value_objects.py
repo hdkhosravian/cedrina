@@ -99,9 +99,18 @@ class RateLimitKey:
         parts = ip.split('.')
         if len(parts) == 4:
             try:
-                all(0 <= int(part) <= 255 for part in parts)
-            except ValueError:
-                raise ValueError(f"Invalid IP format: {ip}")
+                # Fix: Check the result of all() and raise ValueError if validation fails
+                if not all(0 <= int(part) <= 255 for part in parts):
+                    raise ValueError(f"Invalid IP format: {ip}")
+            except ValueError as e:
+                # Re-raise ValueError with our custom message if int() conversion failed
+                if "Invalid IP format" in str(e):
+                    raise  # Re-raise our custom error
+                else:
+                    raise ValueError(f"Invalid IP format: {ip}")
+        else:
+            # IPv4 must have exactly 4 octets
+            raise ValueError(f"Invalid IP format: {ip}")
     
     @property
     def composite_key(self) -> str:
