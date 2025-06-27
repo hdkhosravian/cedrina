@@ -158,7 +158,7 @@ class TokenService:
                 raise AuthenticationError(get_translated_message("user_account_inactive", language))
 
             # Revoke old session & rotate token concurrently
-            await self.session_service.revoke_session(jti, user_id)
+            await self.session_service.revoke_session(jti, user_id, language)
 
             # Create new tokens
             new_jti = secrets.token_urlsafe(24)

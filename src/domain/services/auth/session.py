@@ -56,13 +56,14 @@ class SessionService:
         await logger.adebug("Session created", user_id=user_id, jti=jti)
         return session
 
-    async def revoke_session(self, jti: str, user_id: int) -> None:
+    async def revoke_session(self, jti: str, user_id: int, language: str = "en") -> None:
         """
         Revoke a session by marking it as inactive.
 
         Args:
             jti (str): JWT ID of the session.
             user_id (int): User ID.
+            language (str): Language code for error messages. Defaults to "en".
 
         Raises:
             AuthenticationError: If session is invalid or already revoked.
@@ -70,7 +71,7 @@ class SessionService:
         session = await self.get_session(jti, user_id)
         if not session or session.revoked_at:
             await logger.awarning("Attempt to revoke invalid session", jti=jti)
-            raise AuthenticationError(get_translated_message("session_revoked_or_invalid", "en"))
+            raise AuthenticationError(get_translated_message("session_revoked_or_invalid", language))
 
         session.revoked_at = datetime.now(timezone.utc)
         self.db_session.add(session)
@@ -129,4 +130,4 @@ class SessionService:
                 get_translated_message("invalid_refresh_token", language)
             ) from exc
 
-        await self.revoke_session(jti, user_id)
+        await self.revoke_session(jti, user_id, language)
