@@ -63,7 +63,9 @@ async def get_current_user(  # noqa: D401
     """
 
     try:
-        payload = await TokenService(db_session, redis_client).validate_token(token)
+        # Get the language from request state, fallback to 'en' if not set
+        language = getattr(request.state, 'language', 'en')
+        payload = await TokenService(db_session, redis_client).validate_token(token, language)
         user_id = payload.get("sub")
         if user_id is None:
             raise _auth_fail(request, "invalid_token_subject")

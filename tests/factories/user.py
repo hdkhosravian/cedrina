@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Factory for generating fake user data for testing."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 
 from faker import Faker
@@ -47,7 +47,7 @@ def create_fake_user(
         hashed_password=hashed_password if hashed_password is not None else fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True),
         role=role,
         is_active=is_active,
-        created_at=created_at if created_at is not None else datetime.now(),
+        created_at=created_at if created_at is not None else datetime.now(timezone.utc),
         updated_at=updated_at,
         roles=roles if roles is not None else [role]
     ) 

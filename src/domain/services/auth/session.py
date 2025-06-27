@@ -111,7 +111,7 @@ class SessionService:
             return False
         return True
 
-    async def revoke_token(self, encoded_token: str) -> None:
+    async def revoke_token(self, encoded_token: str, language: str = "en") -> None:
         """Decode a refresh token and revoke the associated session."""
 
         try:
@@ -126,7 +126,7 @@ class SessionService:
             user_id = int(payload["sub"])
         except JWTError as exc:  # pragma: no cover - error path
             raise AuthenticationError(
-                get_translated_message("invalid_refresh_token", "en")
+                get_translated_message("invalid_refresh_token", language)
             ) from exc
 
         await self.revoke_session(jti, user_id)

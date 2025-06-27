@@ -136,7 +136,7 @@ These variables configure Redis for caching and rate limiting functionalities.
 ## Language Settings
 These settings configure internationalization (i18n) for the application.
 
-- **SUPPORTED_LANGUAGES**: Note: This is now hardcoded as `['en', 'fa', 'ar']` in the application settings (`src/core/config/settings.py`) and not read from the environment variable.
+- **SUPPORTED_LANGUAGES**: Note: This is now hardcoded as `['en', 'es', 'fa', 'ar']` in the application settings (`src/core/config/settings.py`) and not read from the environment variable.
 - **DEFAULT_LANGUAGE**: `en`
   - Default language to use if user preference is not specified.
 

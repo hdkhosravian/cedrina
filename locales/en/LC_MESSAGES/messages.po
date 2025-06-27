@@ -114,3 +114,6 @@ msgstr "Invalid token"
 msgid "session_already_revoked_or_invalid"
 msgstr "Session already revoked or invalid"
 
+msgid "logout_failed_internal_error"
+msgstr "Logout failed due to internal error"
+
