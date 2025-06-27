@@ -82,6 +82,7 @@ Defined in `src/adapters/api/v1/auth/routes/`, these FastAPI routes expose authe
 - **Login** (`login.py`): `POST /api/v1/auth/login` - Authenticates a user and issues tokens.
 - **OAuth** (`oauth.py`): `POST /api/v1/auth/oauth` - Handles OAuth authentication and token issuance.
 - **Change Password** (`change_password.py`): `POST /api/v1/auth/change-password` - Allows authenticated users to update their password.
+- **Logout** (`logout.py`): `DELETE /api/v1/auth/logout` - Revokes the user's tokens and removes the session.
 
 ### 4. Schemas
 

@@ -51,3 +51,8 @@ class ChangePasswordRequest(BaseModel):
 
     current_password: PasswordStr
     new_password: PasswordStr
+
+class LogoutRequest(BaseModel):
+    """Payload expected by ``DELETE /auth/logout``."""
+
+    refresh_token: str

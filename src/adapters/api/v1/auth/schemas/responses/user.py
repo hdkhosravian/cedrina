@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr, Field
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.domain.entities.user import Role, User
 
@@ -30,7 +30,7 @@ class UserOut(BaseModel):
         elif hasattr(user, 'role') and user.role:
             roles = [user.role]
         # Handle None value for created_at
-        created_at = user.created_at if user.created_at else datetime.now()
+        created_at = user.created_at if user.created_at else datetime.now(timezone.utc)
         return cls(
             id=user.id,
             username=user.username,

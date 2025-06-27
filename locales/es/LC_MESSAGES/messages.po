@@ -18,43 +18,145 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
 
+msgid "health_status_ok"
+msgstr "El sistema está operativo"
+
+msgid "invalid_token_subject"
+msgstr "Token inválido: Falta el sujeto"
+
+msgid "user_not_found_or_inactive"
+msgstr "Usuario no encontrado o inactivo"
+
+msgid "admin_privileges_required"
+msgstr "El usuario no tiene privilegios administrativos."
+
+msgid "user_has_no_role"
+msgstr "El usuario no tiene un rol asignado, acceso denegado."
+
+msgid "permission_denied_for_action"
+msgstr "El usuario con rol '{role}' no tiene permiso para {action} {resource}"
+
+msgid "invalid_username_characters"
+msgstr "El nombre de usuario solo debe contener letras, números, guiones bajos o guiones"
+
+msgid "invalid_username_or_password"
+msgstr "Nombre de usuario o contraseña inválidos"
+
+msgid "user_account_inactive"
+msgstr "La cuenta de usuario está inactiva"
+
+msgid "username_already_registered"
+msgstr "El nombre de usuario ya está registrado"
+
+msgid "email_already_registered"
+msgstr "El correo electrónico ya está registrado"
+
+msgid "password_too_short"
+msgstr "La contraseña debe tener al menos {length} caracteres"
+
+msgid "password_no_uppercase"
+msgstr "La contraseña debe contener al menos una letra mayúscula"
+
+msgid "password_no_lowercase"
+msgstr "La contraseña debe contener al menos una letra minúscula"
+
+msgid "password_no_digit"
+msgstr "La contraseña debe contener al menos un dígito"
+
+msgid "password_no_special_char"
+msgstr "La contraseña debe contener al menos un carácter especial"
+
+msgid "token_expired"
+msgstr "El token ha expirado"
+
+msgid "invalid_oauth_user_info"
+msgstr "Información de usuario OAuth inválida"
+
+msgid "invalid_credentials"
+msgstr "Credenciales inválidas"
+
+msgid "too_many_requests"
+msgstr "Demasiadas solicitudes"
+
+msgid "rate_limit_exceeded"
+msgstr "Límite de velocidad excedido"
+
+msgid "metrics_endpoint_debug_only"
+msgstr "El endpoint de métricas solo está disponible en modo debug"
+
+msgid "error_prefix"
+msgstr "Error: {message}"
+
+msgid "successful_response"
+msgstr "Respuesta exitosa"
+
+msgid "system_operational"
+msgstr "El sistema está operativo"
+
+msgid "invalid_id_token"
+msgstr "Token de ID inválido"
+
+msgid "invalid_id_token_issuer"
+msgstr "Emisor de token de ID inválido"
+
+msgid "invalid_refresh_token"
+msgstr "Token de actualización inválido"
+
+msgid "session_revoked_or_invalid"
+msgstr "Sesión revocada o inválida"
+
+msgid "token_revoked_or_blacklisted"
+msgstr "Token revocado o en lista negra"
+
+msgid "user_is_invalid_or_inactive"
+msgstr "El usuario es inválido o está inactivo"
+
+msgid "invalid_token"
+msgstr "Token inválido"
+
+msgid "session_already_revoked_or_invalid"
+msgstr "La sesión ya fue revocada o es inválida"
+
+msgid "logout_failed_internal_error"
+msgstr "El cierre de sesión falló debido a un error interno"
+
 #: src/domain/services/auth/policy.py:59
 msgid "policy_params_empty"
-msgstr ""
+msgstr "Los parámetros de la política están vacíos"
 
 #: src/domain/services/auth/policy.py:64
 msgid "policy_param_too_long"
-msgstr ""
+msgstr "El parámetro de la política es demasiado largo"
 
 #: src/domain/services/auth/policy.py:66
 msgid "policy_param_invalid_chars"
-msgstr ""
+msgstr "El parámetro de la política contiene caracteres inválidos"
 
 #: src/domain/services/auth/policy.py:70
 msgid "policy_wildcards_not_allowed"
-msgstr ""
+msgstr "Los comodines no están permitidos en la política"
 
 #: src/domain/services/auth/policy.py:76
 msgid "policy_invalid_attribute"
-msgstr ""
+msgstr "Atributo de política inválido"
 
 #: src/domain/services/auth/policy.py:78
 msgid "policy_attribute_too_long"
-msgstr ""
+msgstr "El atributo de la política es demasiado largo"
 
 #: src/domain/services/auth/policy.py:80
 msgid "policy_attribute_invalid_chars"
-msgstr ""
+msgstr "El atributo de la política contiene caracteres inválidos"
 
 #: src/domain/services/auth/policy.py:160
 msgid "policy_add_failed"
-msgstr ""
+msgstr "Falló la adición de la política"
 
 #: src/domain/services/auth/policy.py:194
 msgid "policy_remove_failed"
-msgstr ""
+msgstr "Falló la eliminación de la política"
 
 #: src/domain/services/auth/policy.py:216
 msgid "policy_retrieve_failed"
-msgstr ""
+msgstr "Falló la recuperación de la política"
 

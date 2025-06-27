@@ -81,7 +81,7 @@ class Settings(AppSettings, DatabaseSettings, RedisSettings, AuthSettings):
 # Create a singleton instance of the settings to be used across the application.
 settings = Settings()
 settings.validate_required_fields()
-settings.SUPPORTED_LANGUAGES = ["en", "fa", "ar"]
+settings.SUPPORTED_LANGUAGES = ["en", "es", "fa", "ar"]
 
 # Password Policy Settings
 PASSWORD_MIN_LENGTH = 8

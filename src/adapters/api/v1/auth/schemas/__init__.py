@@ -18,6 +18,7 @@ from .requests import (
     LoginRequest,
     OAuthAuthenticateRequest,
     ChangePasswordRequest,
+    LogoutRequest,
     UsernameStr,
 )
 from .responses.user import UserOut
@@ -30,10 +31,11 @@ __all__ = [
     "LoginRequest",
     "OAuthAuthenticateRequest",
     "ChangePasswordRequest",
+    "LogoutRequest",
     "UsernameStr",
     "UserOut",
     "TokenPair",
     "AuthResponse",
     "OAuthAuthResponse",
     "MessageResponse",
-]
+] 

@@ -109,12 +109,13 @@ class TokenService:
         logger.debug("Refresh token created", user_id=user.id, jti=jti)
         return refresh_token
 
-    async def refresh_tokens(self, refresh_token: str) -> Mapping[str, str]:
+    async def refresh_tokens(self, refresh_token: str, language: str = "en") -> Mapping[str, str]:
         """
         Refresh JWT tokens using a refresh token with rotation.
 
         Args:
             refresh_token (str): Current refresh token.
+            language (str): Language for error messages (defaults to 'en').
 
         Returns:
             Mapping[str, str]: New access and refresh tokens with metadata.
@@ -142,22 +143,22 @@ class TokenService:
             stored_hash = await self.redis_client.get(self._redis_key(jti))
             if not stored_hash or stored_hash.decode() != hashlib.sha256(refresh_token.encode()).hexdigest():
                 logger.warning("Invalid refresh token", jti=jti)
-                raise AuthenticationError(get_translated_message("invalid_refresh_token", "en"))
+                raise AuthenticationError(get_translated_message("invalid_refresh_token", language))
 
             # Verify session
             session = await self.session_service.get_session(jti, user_id)
             if not session or session.revoked_at:
                 logger.warning("Revoked or invalid session", jti=jti)
-                raise AuthenticationError(get_translated_message("session_revoked_or_invalid", "en"))
+                raise AuthenticationError(get_translated_message("session_revoked_or_invalid", language))
 
             # Get user
             user = await self.db_session.get(User, user_id)
             if not user or not user.is_active:
                 logger.warning("Inactive user refresh attempt", user_id=user_id)
-                raise AuthenticationError(get_translated_message("user_account_inactive", "en"))
+                raise AuthenticationError(get_translated_message("user_account_inactive", language))
 
             # Revoke old session & rotate token concurrently
-            await self.session_service.revoke_session(jti, user_id)
+            await self.session_service.revoke_session(jti, user_id, language)
 
             # Create new tokens
             new_jti = secrets.token_urlsafe(24)
@@ -172,14 +173,15 @@ class TokenService:
             }
         except JWTError as e:
             logger.error("JWT decode failed", error=str(e))
-            raise AuthenticationError(get_translated_message("invalid_refresh_token", "en"))
+            raise AuthenticationError(get_translated_message("invalid_refresh_token", language))
 
-    async def validate_token(self, token: str) -> Mapping[str, Any]:
+    async def validate_token(self, token: str, language: str = "en") -> Mapping[str, Any]:
         """
         Validate a JWT access token with advanced checks.
 
         Args:
             token (str): JWT access token.
+            language (str): Language for error messages (defaults to 'en').
 
         Returns:
             Mapping[str, Any]: Decoded payload.
@@ -209,17 +211,17 @@ class TokenService:
 
             if blacklisted:
                 logger.warning("Blacklisted token used", jti=payload["jti"], user_id=user_id)
-                raise AuthenticationError(get_translated_message("token_revoked_or_blacklisted", "en"))
+                raise AuthenticationError(get_translated_message("token_revoked_or_blacklisted", language))
 
             if not user or not user.is_active:
                 logger.warning("Invalid user in JWT", user_id=user_id)
-                raise AuthenticationError(get_translated_message("user_is_invalid_or_inactive", "en"))
+                raise AuthenticationError(get_translated_message("user_is_invalid_or_inactive", language))
 
             logger.debug("JWT validated", user_id=user_id, jti=payload["jti"])
             return payload
         except JWTError as e:
             logger.error("JWT validation failed", error=str(e))
-            raise AuthenticationError(get_translated_message("invalid_token", "en")) from e
+            raise AuthenticationError(get_translated_message("invalid_token", language)) from e
 
     async def _is_token_blacklisted(self, jti: str) -> bool:
         """
@@ -241,12 +243,13 @@ class TokenService:
         value = await self.redis_client.get(key)
         return value == "revoked"
 
-    async def revoke_refresh_token(self, encoded_token: str) -> None:
+    async def revoke_refresh_token(self, encoded_token: str, language: str = "en") -> None:
         """
         Revoke a refresh token.
 
         Args:
             encoded_token (str): Encoded refresh token.
+            language (str): Language for error messages (defaults to 'en').
 
         Raises:
             AuthenticationError: If token is invalid.
@@ -255,7 +258,7 @@ class TokenService:
             Ensures the token is validated before revocation and removes it from both
             Redis and PostgreSQL storage to prevent further use.
         """
-        await self.session_service.revoke_token(encoded_token)
+        await self.session_service.revoke_token(encoded_token, language)
 
     async def revoke_access_token(self, jti: str, expires_in: int | None = None) -> None:
         """Revoke (blacklist) an access-token by its *JTI*.

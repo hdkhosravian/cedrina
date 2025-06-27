@@ -93,7 +93,7 @@ async def test_refresh_tokens_success(token_service, db_session, redis_client, m
     assert "refresh_token" in result
     assert result["token_type"] == "bearer"
     token_service.session_service.get_session.assert_called_once_with(jti, user.id)
-    token_service.session_service.revoke_session.assert_called_once_with(jti, user.id)
+    token_service.session_service.revoke_session.assert_called_once_with(jti, user.id, "en")
 
 @pytest.mark.asyncio
 async def test_refresh_tokens_invalid_token(token_service, redis_client):

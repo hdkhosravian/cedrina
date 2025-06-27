@@ -7,4 +7,5 @@ __all__ = [
     "login",
     "oauth",
     "change_password",
+    "logout",
 ]

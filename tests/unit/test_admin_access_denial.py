@@ -8,8 +8,10 @@ from src.main import app
 from src.domain.entities.user import User, Role
 from src.core.dependencies.auth import get_current_user
 import casbin
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock, MagicMock, patch
 from fastapi import HTTPException
+import os
+from sqlalchemy import create_engine, text
 
 # Mock the Casbin enforcer to deny access for non-admin users to admin endpoints
 def mock_enforcer():
@@ -42,6 +44,56 @@ def mock_enforcer():
     enforcer.enforce.side_effect = enforce_side_effect
     return enforcer
 
+def load_policies_from_csv():
+    """Load policies from CSV file into the database for testing."""
+    from src.core.config.settings import settings
+    
+    # Read the policy CSV file - fix the path
+    policy_file_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src', 'permissions', 'policy.csv')
+    
+    # Alternative approach: use absolute path from project root
+    if not os.path.exists(policy_file_path):
+        # Try from project root
+        policy_file_path = os.path.join(os.getcwd(), 'src', 'permissions', 'policy.csv')
+    
+    if not os.path.exists(policy_file_path):
+        raise FileNotFoundError(f"Policy file not found at {policy_file_path}")
+    
+    # Connect to the database
+    engine = create_engine(settings.DATABASE_URL)
+    
+    with engine.connect() as conn:
+        # Clear existing policies
+        conn.execute(text("DELETE FROM casbin_rule"))
+        
+        # Read and insert policies from CSV
+        with open(policy_file_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith('#') or not line:
+                    continue
+                
+                # Parse CSV line: p, admin, /admin/policies, GET, *, *, *
+                parts = [part.strip() for part in line.split(',')]
+                if len(parts) >= 7:
+                    ptype, subject, object_, action, sub_dept, sub_loc, time_of_day = parts[:7]
+                    
+                    # Insert policy into database
+                    conn.execute(text("""
+                        INSERT INTO casbin_rule (ptype, v0, v1, v2, v3, v4, v5)
+                        VALUES (:ptype, :v0, :v1, :v2, :v3, :v4, :v5)
+                    """), {
+                        'ptype': ptype,
+                        'v0': subject,
+                        'v1': object_,
+                        'v2': action,
+                        'v3': sub_dept,
+                        'v4': sub_loc,
+                        'v5': time_of_day
+                    })
+        
+        conn.commit()
+
 # Test cases
 @pytest.mark.asyncio
 async def test_regular_user_denied_admin_access(mocker, mock_enforcer):
@@ -72,6 +124,9 @@ async def test_regular_user_denied_admin_access(mocker, mock_enforcer):
 
 def test_admin_user_allowed_admin_access():
     """Test that admin users are allowed access to admin endpoints."""
+    
+    # Load policies from CSV into database
+    load_policies_from_csv()
 
     # Create an admin user
     admin_user = User(

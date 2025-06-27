@@ -120,3 +120,6 @@ msgstr "Password successfully changed"
 msgid "incorrect_current_password"
 msgstr "Current password is incorrect"
 
+msgid "logout_failed_internal_error"
+msgstr "Logout failed due to internal error"
+
