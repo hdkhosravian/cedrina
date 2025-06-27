@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 import os
 import gettext
 
-from core.config.settings import settings
-from utils.i18n import setup_i18n, get_translated_message, get_request_language, _translations
+from src.core.config.settings import settings
+from src.utils.i18n import setup_i18n, get_translated_message, get_request_language, _translations
 
 
 def test_setup_i18n_success(mocker):
@@ -13,8 +13,8 @@ def test_setup_i18n_success(mocker):
     mocker.patch('os.path.exists', return_value=True)
     mock_translation = mocker.MagicMock()
     mocker.patch('gettext.translation', return_value=mock_translation)
-    mocker.patch('core.logging.logger.info')
-    mocker.patch('core.logging.logger.error')
+    mocker.patch('src.core.logging.logger.info')
+    mocker.patch('src.core.logging.logger.error')
     
     setup_i18n()
     
@@ -70,7 +70,7 @@ def test_get_translated_message_not_found(mocker):
     
     _translations['en'] = mock_translation
     
-    mock_logger = mocker.patch('utils.i18n.logger')
+    mock_logger = mocker.patch('src.utils.i18n.logger')
 
     result = get_translated_message("untranslated_key", "en")
     
