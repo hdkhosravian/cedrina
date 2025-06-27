@@ -10,6 +10,7 @@ from src.core.exceptions import (
     InvalidCredentialsError,
     PasswordPolicyError,
     IncorrectPasswordError,
+    DuplicateUserError,
 )
 from src.domain.entities.user import User, Role
 from src.domain.services.auth.password_policy import PasswordPolicyValidator
@@ -58,8 +59,8 @@ class UserAuthenticationService:
             should be applied at the API layer to prevent brute force attacks.
         """
         statement = select(User).where(User.username == username)
-        async with self.db_session as session:
-            user = (await session.execute(statement)).first()
+        result = await self.db_session.execute(statement)
+        user = result.scalars().first()
 
         if not user or not self.pwd_context.verify(password, user.hashed_password):
             logger.warning("Invalid credentials for user", username=username)

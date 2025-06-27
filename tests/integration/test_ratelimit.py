@@ -29,10 +29,15 @@ async def test_login_endpoint_is_rate_limited(client, mocker):
     url = "/api/v1/auth/login"
     login_credentials_1 = {"username": "user1", "password": "password123"}
     login_credentials_2 = {"username": "user2", "password": "password123"}
-    # Mock the authentication service to always return a failed authentication (401) after rate limit check
+    
+    # Mock the authentication service and override the app dependency
     mock_auth_service = mocker.AsyncMock()
     mock_auth_service.authenticate_by_credentials.side_effect = AuthenticationError("Invalid credentials")
-    mocker.patch("src.adapters.api.v1.auth.routes.login.get_user_auth_service", return_value=mock_auth_service)
+    
+    # Override the dependency in the app
+    from src.main import app
+    from src.adapters.api.v1.auth.dependencies import get_user_auth_service
+    app.dependency_overrides[get_user_auth_service] = lambda: mock_auth_service
 
     # Act
     # First request with first username - should pass (no rate limit)
@@ -57,4 +62,7 @@ async def test_login_endpoint_is_rate_limited(client, mocker):
 
     # This request with first username should now succeed again
     response = client.post(url, json=login_credentials_1)
-    assert response.status_code == 401 
+    assert response.status_code == 401
+    
+    # Cleanup: Remove dependency override
+    app.dependency_overrides.clear()

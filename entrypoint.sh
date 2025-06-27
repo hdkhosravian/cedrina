@@ -135,15 +135,27 @@ done
 
 # Start the application
 if [ "$APP_ENV" = "development" ]; then
-    log "Starting Uvicorn with hot reload..."
-    exec uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/src
+    # Check if custom command was provided
+    if [ $# -gt 0 ]; then
+        log "Executing custom command: $*"
+        exec "$@"
+    else
+        log "Starting Uvicorn with hot reload..."
+        exec uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/src
+    fi
 else
-    log "Starting Gunicorn with Uvicorn workers..."
-    exec gunicorn \
-        -w "${GUNICORN_WORKERS:-$(nproc)}" \
-        -k uvicorn.workers.UvicornWorker \
-        --timeout "${GUNICORN_TIMEOUT:-120}" \
-        --log-level "${GUNICORN_LOG_LEVEL:-info}" \
-        --bind 0.0.0.0:8000 \
-        src.main:app
+    # Check if custom command was provided
+    if [ $# -gt 0 ]; then
+        log "Executing custom command: $*"
+        exec "$@"
+    else
+        log "Starting Gunicorn with Uvicorn workers..."
+        exec gunicorn \
+            -w "${GUNICORN_WORKERS:-$(nproc)}" \
+            -k uvicorn.workers.UvicornWorker \
+            --timeout "${GUNICORN_TIMEOUT:-120}" \
+            --log-level "${GUNICORN_LOG_LEVEL:-info}" \
+            --bind 0.0.0.0:8000 \
+            src.main:app
+    fi
 fi

@@ -197,7 +197,7 @@ class RedisWatcher(Watcher):
         if self.pubsub:
             try:
                 self.pubsub.unsubscribe(self.channel)
-                self.pubsub.close()
+                self.pubsub.aclose()
             except Exception as e:
                 logger.warning(f"Error closing pubsub: {e}")
             finally:
@@ -212,7 +212,7 @@ class RedisWatcher(Watcher):
         # Close Redis connection
         if self.redis_client:
             try:
-                self.redis_client.close()
+                self.redis_client.aclose()
             except Exception as e:
                 logger.warning(f"Error closing Redis connection: {e}")
             finally:
