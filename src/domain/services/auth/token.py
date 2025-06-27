@@ -243,12 +243,13 @@ class TokenService:
         value = await self.redis_client.get(key)
         return value == "revoked"
 
-    async def revoke_refresh_token(self, encoded_token: str) -> None:
+    async def revoke_refresh_token(self, encoded_token: str, language: str = "en") -> None:
         """
         Revoke a refresh token.
 
         Args:
             encoded_token (str): Encoded refresh token.
+            language (str): Language for error messages (defaults to 'en').
 
         Raises:
             AuthenticationError: If token is invalid.
@@ -257,7 +258,7 @@ class TokenService:
             Ensures the token is validated before revocation and removes it from both
             Redis and PostgreSQL storage to prevent further use.
         """
-        await self.session_service.revoke_token(encoded_token)
+        await self.session_service.revoke_token(encoded_token, language)
 
     async def revoke_access_token(self, jti: str, expires_in: int | None = None) -> None:
         """Revoke (blacklist) an access-token by its *JTI*.

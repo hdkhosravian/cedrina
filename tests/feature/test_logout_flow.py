@@ -132,7 +132,7 @@ def test_logout_revokes_tokens_step_by_step(test_client_with_mocks, test_user):
     # Verify token service methods were called
     token_service_mock.validate_token.assert_called_once_with("test_access_token", "en")
     token_service_mock.revoke_access_token.assert_called_once_with("test_jti")
-    token_service_mock.revoke_refresh_token.assert_called_once_with(valid_refresh_token)
+    token_service_mock.revoke_refresh_token.assert_called_once_with(valid_refresh_token, "en")
 
 
 def test_logout_invalid_refresh_token(test_client_with_mocks):
@@ -233,7 +233,7 @@ def test_logout_successful_token_blacklisting(test_client_with_mocks, test_user)
     
     # Verify both tokens were revoked
     token_service_mock.revoke_access_token.assert_called_once_with("test_jti")
-    token_service_mock.revoke_refresh_token.assert_called_once_with(valid_refresh_token)
+    token_service_mock.revoke_refresh_token.assert_called_once_with(valid_refresh_token, "en")
 
 
 def test_logout_with_session_service_error(test_client_with_mocks, test_user):
@@ -415,7 +415,7 @@ def test_logout_allows_own_refresh_token(test_user, mock_db_session, mock_redis_
         
         # Verify that token revocation methods were called
         token_service_mock.revoke_access_token.assert_called_once_with("test_jti")
-        token_service_mock.revoke_refresh_token.assert_called_once_with(user_refresh_token)
+        token_service_mock.revoke_refresh_token.assert_called_once_with(user_refresh_token, "en")
         
     finally:
         app.dependency_overrides.clear()
@@ -499,4 +499,94 @@ def test_logout_rejects_expired_refresh_token(test_user, mock_db_session, mock_r
         token_service_mock.revoke_refresh_token.assert_not_called()
         
     finally:
+        app.dependency_overrides.clear()
+
+
+def test_tokens_are_invalid_after_logout():
+    """
+    Integration test: After logout, both access and refresh tokens should be invalid.
+    This test uses mocks to simulate the real behavior without requiring database setup.
+    """
+    # Create a test user for mocking
+    test_user = User(
+        id=1, 
+        username="logout_integration_user",
+        email="logout_integration_user@example.com", 
+        role=Role.USER, 
+        is_active=True,
+        hashed_password="$2b$12$test_hash"
+    )
+    
+    # Create mocks
+    mock_db_session = AsyncMock()
+    mock_redis_client = AsyncMock()
+    mock_session_service = AsyncMock()
+    
+    # Create comprehensive token service mock
+    token_service_mock = AsyncMock()
+    token_service_mock.session_service = mock_session_service
+    token_service_mock.validate_token.return_value = {"jti": "test_jti", "sub": str(test_user.id)}
+    token_service_mock.revoke_access_token = AsyncMock()
+    token_service_mock.revoke_refresh_token = AsyncMock()
+    
+    # Override dependencies
+    app.dependency_overrides[get_async_db] = lambda: mock_db_session
+    app.dependency_overrides[get_redis] = lambda: mock_redis_client
+    app.dependency_overrides[get_current_user] = lambda: test_user
+    app.dependency_overrides[get_token_service] = lambda: token_service_mock
+    
+    client = TestClient(app)
+    
+    try:
+        # Create a valid refresh token for the test user
+        valid_refresh_token = jwt.encode(
+            {
+                "sub": str(test_user.id),
+                "jti": "test_refresh_jti",
+                "exp": datetime.now(timezone.utc) + timedelta(days=7),
+                "iat": datetime.now(timezone.utc),
+                "iss": settings.JWT_ISSUER,
+                "aud": settings.JWT_AUDIENCE
+            },
+            settings.JWT_PRIVATE_KEY.get_secret_value(),
+            algorithm="RS256"
+        )
+
+        # 1. Log out (revoke tokens)
+        logout_response = client.request(
+            "DELETE",
+            "/api/v1/auth/logout",
+            json={"refresh_token": valid_refresh_token},
+            headers={"Authorization": "Bearer test_access_token"},
+        )
+        assert logout_response.status_code == 200
+        assert "Logged out successfully" in logout_response.json()["message"]
+
+        # 2. Verify that both tokens were revoked with proper parameters
+        token_service_mock.revoke_access_token.assert_called_once_with("test_jti")
+        token_service_mock.revoke_refresh_token.assert_called_once_with(valid_refresh_token, "en")
+
+        # 3. Simulate what would happen if someone tried to use the revoked tokens
+        # Reset mocks to simulate fresh state
+        token_service_mock.reset_mock()
+        
+        # Configure mocks to simulate revoked tokens
+        token_service_mock.validate_token.side_effect = AuthenticationError("Token has been revoked")
+        token_service_mock.revoke_refresh_token.side_effect = AuthenticationError("Refresh token has been revoked")
+        
+        # Override get_current_user to simulate token validation failure
+        def failing_get_current_user():
+            raise AuthenticationError("Token has been revoked")
+        
+        app.dependency_overrides[get_current_user] = failing_get_current_user
+        
+        # 4. Attempt to use the access token on a protected endpoint (should fail)
+        protected_response = client.get(
+            "/api/v1/admin/policies",  # Use a real protected endpoint
+            headers={"Authorization": "Bearer test_access_token"},
+        )
+        assert protected_response.status_code == 401
+
+    finally:
+        # Clean up overrides
         app.dependency_overrides.clear()

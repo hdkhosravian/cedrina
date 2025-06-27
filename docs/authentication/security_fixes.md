@@ -1,4 +1,4 @@
-پش# Authentication Security Fixes
+# Authentication Security Fixes
 
 This document outlines critical security vulnerabilities that have been identified and fixed in the authentication system.
 

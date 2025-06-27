@@ -7,6 +7,7 @@ This module provides the logout endpoint for the authentication system,
 handling token revocation and session cleanup with proper security measures.
 """
 
+import asyncio
 from fastapi import APIRouter, Depends, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from structlog import get_logger
@@ -123,10 +124,12 @@ async def logout_user(
             jti=jti
         )
         
-        # Revoke both access token (blacklist) and refresh token (session cleanup)
-        # These operations are performed concurrently for better performance
-        await token_service.revoke_access_token(jti)
-        await token_service.revoke_refresh_token(payload.refresh_token)
+        # Revoke both access token (blacklist) and refresh token (session cleanup) concurrently
+        # Using asyncio.gather() for better performance and true concurrency
+        await asyncio.gather(
+            token_service.revoke_access_token(jti),
+            token_service.revoke_refresh_token(payload.refresh_token, language)
+        )
         
         await logger.ainfo(
             "User successfully logged out", 
