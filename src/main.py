@@ -31,11 +31,15 @@ from starlette.middleware.cors import CORSMiddleware
 from src.core.exceptions import (
     AuthenticationError,
     PermissionError,
+    DuplicateUserError,
+    PasswordPolicyError,
 )
 from src.core.handlers import (
     authentication_error_handler,
     permission_error_handler,
     rate_limit_exception_handler,
+    duplicate_user_error_handler,
+    password_policy_error_handler,
 )
 from src.core.ratelimiter import get_limiter
 from slowapi.errors import RateLimitExceeded
@@ -95,6 +99,8 @@ app = FastAPI(
 app.add_exception_handler(RateLimitExceeded, rate_limit_exception_handler)
 app.add_exception_handler(AuthenticationError, authentication_error_handler)
 app.add_exception_handler(PermissionError, permission_error_handler)
+app.add_exception_handler(DuplicateUserError, duplicate_user_error_handler)
+app.add_exception_handler(PasswordPolicyError, password_policy_error_handler)
 
 # CORS middleware configuration
 app.add_middleware(

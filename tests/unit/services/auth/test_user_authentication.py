@@ -1,7 +1,7 @@
 import pytest
 from src.domain.entities.user import User, Role
 from src.domain.services.auth.user_authentication import UserAuthenticationService
-from src.core.exceptions import AuthenticationError
+from src.core.exceptions import AuthenticationError, DuplicateUserError
 import pytest_asyncio
 from unittest.mock import AsyncMock, MagicMock
 from src.domain.services.auth.password_policy import PasswordPolicyValidator
@@ -44,9 +44,11 @@ async def test_authenticate_by_credentials_success(user_auth_service, mock_db_se
         hashed_password=hashed_password,
         is_active=True
     )
-    # Mock the context manager to return a session with execute method
+    # Mock the execute method to return a result with scalars()
     result = MagicMock()
-    result.first.return_value = user
+    scalars_result = MagicMock()
+    scalars_result.first.return_value = user
+    result.scalars.return_value = scalars_result
     mock_db_session.execute.return_value = result
 
     # Act
@@ -68,9 +70,11 @@ async def test_authenticate_by_credentials_invalid_password(user_auth_service, m
         hashed_password=hashed_password,
         is_active=True
     )
-    # Mock the context manager to return a session with execute method
+    # Mock the execute method to return a result with scalars()
     result = MagicMock()
-    result.first.return_value = user
+    scalars_result = MagicMock()
+    scalars_result.first.return_value = user
+    result.scalars.return_value = scalars_result
     mock_db_session.execute.return_value = result
 
     # Act & Assert
@@ -89,9 +93,11 @@ async def test_authenticate_by_credentials_inactive_user(user_auth_service, mock
         hashed_password=hashed_password,
         is_active=False
     )
-    # Mock the context manager to return a session with execute method
+    # Mock the execute method to return a result with scalars()
     result = MagicMock()
-    result.first.return_value = user
+    scalars_result = MagicMock()
+    scalars_result.first.return_value = user
+    result.scalars.return_value = scalars_result
     mock_db_session.execute.return_value = result
 
     # Act & Assert
@@ -104,9 +110,11 @@ async def test_register_user_success(user_auth_service, mock_db_session, mocker)
     username = "newuser"
     email = "newuser@example.com"
     password = "Newpass123!"
-    # Mock the context manager to return a session with execute method
+    # Mock the execute method to return a result with scalars()
     result = MagicMock()
-    result.first.return_value = None
+    scalars_result = MagicMock()
+    scalars_result.first.return_value = None
+    result.scalars.return_value = scalars_result
     mock_db_session.execute.return_value = result
     mock_db_session.add = MagicMock()
     mock_db_session.commit = mocker.AsyncMock()
@@ -126,9 +134,11 @@ async def test_register_user_invalid_password(user_auth_service, mock_db_session
     username = "newuser"
     email = "newuser@example.com"
     password = "short"
-    # Mock the context manager to return a session with execute method
+    # Mock the execute method to return a result with scalars()
     result = MagicMock()
-    result.first.return_value = None
+    scalars_result = MagicMock()
+    scalars_result.first.return_value = None
+    result.scalars.return_value = scalars_result
     mock_db_session.execute.return_value = result
 
     # Act & Assert
@@ -142,13 +152,15 @@ async def test_register_user_existing_username(user_auth_service, mock_db_sessio
     email = "newuser@example.com"
     password = "Newpass123!"
     existing_user = User(id=1, username=username, email="old@example.com")
-    # Mock the context manager to return a session with execute method
+    # Mock the execute method to return a result with scalars()
     result = MagicMock()
-    result.first.return_value = existing_user
+    scalars_result = MagicMock()
+    scalars_result.first.return_value = existing_user
+    result.scalars.return_value = scalars_result
     mock_db_session.execute.return_value = result
 
     # Act & Assert
-    with pytest.raises(AuthenticationError, match="Username already registered"):
+    with pytest.raises(DuplicateUserError, match="Username already registered"):
         await user_auth_service.register_user(username, email, password)
 
 @pytest.mark.asyncio
@@ -158,13 +170,15 @@ async def test_register_user_existing_email(user_auth_service, mock_db_session):
     email = "existing@example.com"
     password = "Newpass123!"
     existing_user = User(id=1, username="olduser", email=email)
-    # Mock the context manager to return a session with execute method
-    result_existing = MagicMock()
-    result_existing.first.return_value = existing_user
-    mock_db_session.execute.return_value = result_existing
+    # Mock the execute method to return a result with scalars()
+    result = MagicMock()
+    scalars_result = MagicMock()
+    scalars_result.first.return_value = existing_user
+    result.scalars.return_value = scalars_result
+    mock_db_session.execute.return_value = result
 
     # Act & Assert
-    with pytest.raises(AuthenticationError, match="Email already registered"):
+    with pytest.raises(DuplicateUserError, match="Email already registered"):
         await user_auth_service.register_user(username, email, password)
 
 def test_pwd_context_work_factor(user_auth_service):

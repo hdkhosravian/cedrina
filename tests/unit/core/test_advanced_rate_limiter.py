@@ -115,6 +115,58 @@ class TestRateLimitValueObjects:
         assert key1 != key3, "Different keys should not be equal"
         assert key1.composite_key == key2.composite_key, "Composite keys should match"
 
+    def test_rate_limit_key_ip_validation_valid_ips(self):
+        """Test that valid IP addresses are accepted."""
+        # Valid IPv4 addresses should work
+        valid_ips = [
+            "127.0.0.1",
+            "192.168.1.1", 
+            "10.0.0.1",
+            "255.255.255.255",
+            "0.0.0.0"
+        ]
+        
+        for valid_ip in valid_ips:
+            # Should not raise an exception
+            key = RateLimitKey(user_id="test", client_ip=valid_ip)
+            assert key.client_ip == valid_ip
+
+    def test_rate_limit_key_ip_validation_invalid_ips(self):
+        """Test that invalid IP addresses are rejected."""
+        # Invalid IPv4 addresses should raise ValueError
+        invalid_ips = [
+            "999.999.999.999",  # Out of range octets
+            "256.1.1.1",        # First octet out of range
+            "1.256.1.1",        # Second octet out of range  
+            "1.1.256.1",        # Third octet out of range
+            "1.1.1.256",        # Fourth octet out of range
+            "300.1.1.1",        # Multiple out of range
+            "192.168.1",        # Too few octets
+            "192.168.1.1.1",    # Too many octets
+            "192.168.abc.1",    # Non-numeric octets
+            "not.an.ip.address" # Completely invalid format
+        ]
+        
+        for invalid_ip in invalid_ips:
+            with pytest.raises(ValueError, match=f"Invalid IP format: {invalid_ip}"):
+                RateLimitKey(user_id="test", client_ip=invalid_ip)
+
+    def test_rate_limit_key_ip_validation_special_cases(self):
+        """Test special IP address cases that should be allowed."""
+        # These special cases should be allowed
+        special_ips = [
+            "unknown",
+            "localhost",
+            "127.0.0.1",  # Localhost IP
+            "",           # Empty string (fallback value)
+            None          # None should be allowed as it's optional
+        ]
+        
+        for special_ip in special_ips:
+            # Should not raise an exception
+            key = RateLimitKey(user_id="test", client_ip=special_ip)
+            assert key.client_ip == special_ip
+
     def test_rate_limit_quota_validation_and_calculation(self):
         """Test RateLimitQuota validation and rate calculation."""
         quota = RateLimitQuota(
