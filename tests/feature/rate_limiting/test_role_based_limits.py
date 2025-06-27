@@ -118,3 +118,4 @@ async def test_role_based_limits_during_peak_load(monkeypatch):
         assert False, "Enterprise User should be rate limited after exceeding limit"
     except RateLimitError as e:
         assert str(e) == "Rate limit exceeded for Enterprise User", "Rate limit error message should match" 
+ 

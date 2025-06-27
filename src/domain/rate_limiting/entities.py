@@ -66,11 +66,10 @@ class RateLimitPolicy:
     
     def __post_init__(self):
         """Validate policy configuration at creation"""
-        if not self.quotas:
-            raise ValueError("Policy must have at least one quota defined")
-        
-        # Validate quota hierarchy makes sense
-        self._validate_quota_hierarchy()
+        # Allow creation without quotas initially for configuration purposes
+        # Quotas will be validated when the policy is actually used
+        if self.quotas:
+            self._validate_quota_hierarchy()
     
     def _validate_quota_hierarchy(self) -> None:
         """Validate that hierarchical quotas are logically consistent"""
@@ -195,6 +194,12 @@ class RateLimitPolicy:
                 setattr(new_policy, key, value)
         
         return new_policy
+    
+    def validate_quotas(self) -> None:
+        """Validate that the policy has at least one quota defined"""
+        if not self.quotas:
+            raise ValueError("Policy must have at least one quota defined")
+        self._validate_quota_hierarchy()
 
 
 @dataclass

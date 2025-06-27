@@ -82,6 +82,24 @@ class AdvancedRateLimiter:
         self._result_cache: Dict[str, RateLimitResult] = {}
         self._cache_ttl_seconds = 1  # Very short cache for performance
     
+    def _check_bypass_conditions(self, request: RateLimitRequest) -> Optional[str]:
+        """
+        Check if rate limiting should be bypassed for this request.
+        
+        Args:
+            request: The rate limiting request
+            
+        Returns:
+            String describing the bypass reason, or None if no bypass
+        """
+        from src.config.rate_limiting import rate_limiting_config
+        return rate_limiting_config.get_bypass_reason(
+            client_ip=request.client_ip,
+            user_id=request.user_id,
+            endpoint=request.endpoint,
+            user_tier=request.user_tier
+        )
+    
     async def check_rate_limit(self, request: RateLimitRequest) -> RateLimitResult:
         """
         Main entry point for rate limiting decisions.
@@ -102,6 +120,21 @@ class AdvancedRateLimiter:
         processing_start = time.time()
         
         try:
+            # Step 0: Check if rate limiting should be bypassed
+            bypass_reason = self._check_bypass_conditions(request)
+            if bypass_reason:
+                logger.info(f"Rate limiting bypassed: {bypass_reason}")
+                bypass_result = RateLimitResult.allowed_result(
+                    request_key=request.rate_limit_key,
+                    remaining_requests=float('inf'),
+                    reset_time=datetime.now() + timedelta(hours=1),
+                    algorithm=RateLimitAlgorithm.FIXED_WINDOW,
+                    metadata={"bypass_reason": bypass_reason, "bypassed": True}
+                )
+                processing_time = time.time() - processing_start
+                await self._record_metrics(request, bypass_result, processing_time)
+                return bypass_result
+            
             # Step 1: Security validation and request enhancement
             if self.security_service:
                 request = await self.security_service.enhance_request_security(request)

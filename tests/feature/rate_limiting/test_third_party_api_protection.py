@@ -51,3 +51,4 @@ async def test_third_party_api_protection(monkeypatch):
         assert False, "Payment processing should be rate limited after exceeding hourly limit"
     except RateLimitError as e:
         assert str(e) == "Rate limit exceeded for third-party API", "Rate limit error message should match" 
+ 
