@@ -82,6 +82,7 @@ Defined in `src/adapters/api/v1/auth/routes/`, these FastAPI routes expose authe
 - **Login** (`login.py`): `POST /api/v1/auth/login` - Authenticates a user and issues tokens.
 - **OAuth** (`oauth.py`): `POST /api/v1/auth/oauth` - Handles OAuth authentication and token issuance.
 - **Logout** (`logout.py`): `DELETE /api/v1/auth/logout` - Revokes the user's tokens and removes the session.
+- **Change Password** (`change_password.py`): `PUT /api/v1/auth/change-password` - Allows authenticated users to change their password securely.
 
 ### 4. Schemas
 
@@ -194,6 +195,35 @@ Response:
   "tokens": { "access_token": "eyJ...", "refresh_token": "eyJ...", "token_type": "Bearer", "expires_in": 1800 }
 }
 ```
+
+### Change Password
+
+```bash
+curl -X PUT http://localhost:8000/api/v1/auth/change-password \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -d '{"old_password": "CurrentPass123!", "new_password": "NewSecurePass456!"}'
+```
+
+Response:
+```json
+{
+  "message": "Password changed successfully"
+}
+```
+
+**Security Features**:
+- Requires valid JWT access token in Authorization header
+- Validates old password before allowing change
+- Enforces password policy on new password
+- Prevents password reuse (new password must differ from old)
+- Logs password change events for audit purposes
+- Returns appropriate HTTP status codes:
+  - 200: Success
+  - 400: Invalid old password, password reuse, or validation errors
+  - 401: Invalid or missing authentication token
+  - 422: New password doesn't meet policy requirements
+  - 500: Database errors
 
 ## Troubleshooting
 

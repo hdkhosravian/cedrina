@@ -71,6 +71,16 @@ The core application code, organized into DDD-inspired layers: adapters, core, d
       - **__init__.py**: Exposes API router for version 1.
       - **health.py**: Defines health check endpoint (`/api/v1/health`).
       - **routes.py**: Aggregates API routes for version 1.
+      - **auth/**: Authentication API endpoints.
+        - **routes/**: Individual route modules for authentication operations.
+          - **register.py**: User registration endpoint (`POST /api/v1/auth/register`).
+          - **login.py**: User login endpoint (`POST /api/v1/auth/login`).
+          - **oauth.py**: OAuth authentication endpoint (`POST /api/v1/auth/oauth`).
+          - **logout.py**: User logout endpoint (`DELETE /api/v1/auth/logout`).
+          - **change_password.py**: Password change endpoint (`PUT /api/v1/auth/change-password`).
+        - **dependencies.py**: FastAPI dependency injection for authentication services.
+        - **schemas/**: Pydantic models for request/response validation.
+        - **utils.py**: Shared utilities for authentication endpoints.
   - **websockets/**:
     - **__init__.py**: Exposes WebSocket router.
     - **health.py**: Defines WebSocket health check endpoint (`/ws/health`).
@@ -123,6 +133,7 @@ Contains unit and integration tests, mirroring the `src/` structure.
   - **services/**:
     - **auth/**:
       - **test_user_authentication.py**: Tests for user authentication and registration logic.
+      - **test_change_password.py**: Tests for password change functionality with comprehensive security validation.
       - **test_oauth.py**: Tests for OAuth 2.0 authentication flows.
       - **test_token.py**: Tests for JWT token creation, validation, and blacklisting.
       - **test_session.py**: Tests for session management and revocation.
@@ -130,11 +141,14 @@ Contains unit and integration tests, mirroring the `src/` structure.
 - **integration/**: Integration tests for API and WebSocket endpoints.
   - **__init__.py**: Empty, marks directory as a package.
   - (Placeholder for integration tests, not yet implemented.)
+- **feature/**: Feature tests for complete authentication flows.
+  - **auth/**:
+    - **test_change_password_api.py**: Comprehensive integration tests for the change password API endpoint.
 
 ## File and Folder Summary
 - **Root Files**: Configuration (`pyproject.toml`, `poetry.lock`, `.env*`), Docker (`Dockerfile`, `docker-compose.yml`, `entrypoint.sh`), and build tools (`Makefile`, `babel.cfg`, `pytest.ini`).
 - **alembic/**: Manages database migrations with configuration (`env.py`, `script.py.mako`) and version scripts (`versions/`).
-- **docs/**: Documentation including authentication system details.
+- **docs/**: Documentation including authentication system details and change password API documentation.
 - **locales/**: Translation files for i18n (`en`, `fa`, `ar` with `.po` and `.mo` files).
 - **scripts/**: Placeholder for utility scripts.
 - **src/**: DDD-structured application code:
@@ -145,7 +159,7 @@ Contains unit and integration tests, mirroring the `src/` structure.
   - `utils/`: i18n and helpers.
   - `permissions/`: Access control and permission management.
   - `main.py`: FastAPI application entry point.
-- **tests/**: Unit (`unit/`) and integration (`integration/`) tests, mirroring `src/` with detailed authentication tests.
+- **tests/**: Unit (`unit/`), integration (`integration/`), and feature (`feature/`) tests, mirroring `src/` with detailed authentication tests including change password functionality.
 
 ## Structure Design
 - **DDD Alignment**: Separates concerns into adapters (external interfaces), core (configuration), domain (business logic), infrastructure (external systems), and utils (cross-cutting).
