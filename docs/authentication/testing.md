@@ -17,6 +17,7 @@ Tests are located in the `tests/` directory, mirroring the source structure:
 - **Unit Tests**:
   - `tests/unit/services/auth/`: Tests for authentication services.
     - `test_user_authentication.py`: Tests `UserAuthenticationService` for login and registration.
+    - `test_change_password.py`: Tests `UserAuthenticationService.change_password()` method with comprehensive security validation.
     - `test_oauth.py`: Tests `OAuthService` for provider authentication.
     - `test_token.py`: Tests `TokenService` for JWT creation and validation.
     - `test_session.py`: Tests `SessionService` for session management.
@@ -24,6 +25,8 @@ Tests are located in the `tests/` directory, mirroring the source structure:
     - `test_auth_endpoints.py`: Tests registration, login, and OAuth endpoints with mocked services.
 - **Integration Tests**:
   - `tests/integration/api/auth/`: End-to-end tests for API endpoints (to be expanded).
+  - `tests/feature/auth/`: Feature tests for complete authentication flows.
+    - `test_change_password_api.py`: Comprehensive integration tests for the change password API endpoint.
 - **Factories**:
   - `tests/factories/`: Faker-based factories for generating test data.
     - `user.py`: Factory for `User` entities and related schemas.
@@ -70,6 +73,7 @@ This approach minimizes hardcoded data, improves test maintainability, and cover
 - Valid and invalid login attempts.
 - Registration with duplicate username/email.
 - Password policy enforcement (length, character types).
+- **Change Password**: Comprehensive security validation including old password verification, password policy enforcement, and password reuse prevention.
 
 ### OAuthService
 - Authentication with valid and expired OAuth tokens.
@@ -89,6 +93,28 @@ This approach minimizes hardcoded data, improves test maintainability, and cover
 - **Registration**: Success (201), duplicate user (409), weak password (422).
 - **Login**: Success (200), invalid credentials (401), inactive user (401).
 - **OAuth**: Success (200), invalid token (400), expired token (400).
+
+### Change Password API Testing
+The change password functionality includes extensive test coverage:
+
+**Unit Tests** (`test_change_password.py`):
+- Success scenarios with valid password changes
+- Security validation (old password verification)
+- Password policy enforcement (all policy requirements)
+- Error handling (all exception types)
+- Edge cases (empty passwords, None values)
+- Database error scenarios
+
+**Integration Tests** (`test_change_password_api.py`):
+- API endpoint testing with real HTTP requests
+- Authentication token validation
+- I18N support for multilingual error messages
+- Security headers validation
+- Real-world usage scenarios
+- All HTTP status code validations (200, 400, 401, 422, 500)
+- SQL injection and XSS protection testing
+- Unicode password handling
+- Admin user access patterns
 
 ## Writing Tests
 - **Mocking**: Use `unittest.mock` to isolate dependencies (e.g., database, Redis, OAuth providers).

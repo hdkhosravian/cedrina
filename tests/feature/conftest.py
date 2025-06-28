@@ -1,23 +1,26 @@
 import pytest
-import asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.main import app
+
+from src.domain.entities.user import Role, User
 from src.infrastructure.database.async_db import get_async_db
-from src.domain.entities.user import User, Role
-from src.domain.services.auth.user_authentication import UserAuthenticationService
+from src.main import app
 
 # Remove the custom event_loop fixture and use pytest-asyncio's built-in event loop management
+
 
 @pytest.fixture(scope="module")
 def client():
     # Override the get_current_user dependency for tests
-    async def override_get_current_user(request=None, token=None, db_session=None, redis_client=None):
+    async def override_get_current_user(
+        request=None, token=None, db_session=None, redis_client=None
+    ):
         from src.domain.entities.user import Role
+
         # Debug token value and request headers
         auth_header = None
         if request:
-            auth_header = request.headers.get('Authorization', '')
+            auth_header = request.headers.get("Authorization", "")
             print(f"Authorization header from request: {auth_header}")
         print(f"Token received: {token}")
         if auth_header and "admin" in auth_header.lower():
@@ -30,7 +33,7 @@ def client():
                 role=Role.ADMIN,
                 department="IT",
                 location="NY",
-                time_of_day="working_hours"
+                time_of_day="working_hours",
             )
         elif token and "admin" in token.lower():
             print("Admin token detected from token")
@@ -42,7 +45,7 @@ def client():
                 role=Role.ADMIN,
                 department="IT",
                 location="NY",
-                time_of_day="working_hours"
+                time_of_day="working_hours",
             )
         else:
             print("Non-admin token detected")
@@ -54,44 +57,47 @@ def client():
                 role=Role.USER,
                 department="IT",
                 location="NY",
-                time_of_day="working_hours"
+                time_of_day="working_hours",
             )
-    
+
     from src.core.dependencies.auth import get_current_user
+
     app.dependency_overrides[get_current_user] = override_get_current_user
-    
+
     # Mock Casbin enforcer to allow admin actions for feature tests
     from unittest.mock import patch
+
     def mock_enforce(self, *args, **kwargs):
         print(f"Mock enforce called with args: {args}, kwargs: {kwargs}")
         # Check if request object is available in kwargs or args to get headers
         auth_header = None
         request = None
-        if 'request' in kwargs:
-            request = kwargs['request']
-        elif len(args) > 6 and hasattr(args[6], 'headers'):
+        if "request" in kwargs:
+            request = kwargs["request"]
+        elif len(args) > 6 and hasattr(args[6], "headers"):
             request = args[6]
         if request:
-            auth_header = request.headers.get('Authorization', '')
+            auth_header = request.headers.get("Authorization", "")
             print(f"Authorization header from request in enforce: {auth_header}")
-        if len(args) > 1 and '/admin/policies' in args[1]:
+        if len(args) > 1 and "/admin/policies" in args[1]:
             print("Mock enforce: Allowing access to admin policy endpoints")
             return True
-        elif len(args) > 0 and args[0] == 'admin':
+        elif len(args) > 0 and args[0] == "admin":
             print("Mock enforce: Allowing admin access based on subject")
             return True
         print("Mock enforce: Allowing access to endpoints")
         return True
-    
-    import casbin
-    patch('casbin.Enforcer.enforce', mock_enforce).start()
-    
+
+    patch("casbin.Enforcer.enforce", mock_enforce).start()
+
     return TestClient(app)
+
 
 @pytest.fixture(scope="function")
 async def db_session():
     async with get_async_db() as session:
         yield session
+
 
 @pytest.fixture(scope="function")
 async def regular_user(db_session: AsyncSession):
@@ -103,9 +109,10 @@ async def regular_user(db_session: AsyncSession):
         role=Role.USER,
         department="IT",
         location="NY",
-        time_of_day="working_hours"
+        time_of_day="working_hours",
     )
     return user
+
 
 @pytest.fixture(scope="function")
 async def admin_user(db_session: AsyncSession):
@@ -117,14 +124,16 @@ async def admin_user(db_session: AsyncSession):
         role=Role.ADMIN,
         department="IT",
         location="NY",
-        time_of_day="working_hours"
+        time_of_day="working_hours",
     )
     return admin
+
 
 @pytest.fixture(scope="function")
 async def regular_user_headers(regular_user: User):
     # Mock token creation or authentication header
-    return {"Authorization": f"Bearer token_for_regular_user"}
+    return {"Authorization": "Bearer token_for_regular_user"}
+
 
 @pytest.fixture(scope="function")
 async def admin_user_headers(admin_user: User):

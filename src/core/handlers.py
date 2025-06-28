@@ -9,19 +9,21 @@ translating them into appropriate HTTP responses.
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 from starlette import status
 from structlog import get_logger
-from slowapi.errors import RateLimitExceeded
 
 from src.core.exceptions import (
-    CedrinaError,
     AuthenticationError,
+    CedrinaError,
     DuplicateUserError,
+    InvalidOldPasswordError,
     PasswordPolicyError,
+    PasswordReuseError,
+    PasswordValidationError,
     PermissionError,
-    DatabaseError,
 )
-from src.utils.i18n import get_translated_message, get_request_language
+from src.utils.i18n import get_request_language, get_translated_message
 
 __all__ = [
     "authentication_error_handler",
@@ -30,15 +32,16 @@ __all__ = [
     "permission_error_handler",
     "rate_limit_exception_handler",
     "cedrina_error_handler",
+    "password_validation_error_handler",
+    "invalid_old_password_error_handler",
+    "password_reuse_error_handler",
 ]
 
 logger = get_logger(__name__)
 
 
 async def authentication_error_handler(request: Request, exc: AuthenticationError):
-    """
-    Handles AuthenticationError exceptions, returning a 401 Unauthorized response.
-    """
+    """Handles AuthenticationError exceptions, returning a 401 Unauthorized response."""
     return JSONResponse(
         status_code=status.HTTP_401_UNAUTHORIZED,
         content={"detail": str(exc)},
@@ -61,10 +64,36 @@ async def password_policy_error_handler(request: Request, exc: PasswordPolicyErr
     )
 
 
+async def password_validation_error_handler(
+    request: Request, exc: PasswordValidationError
+) -> JSONResponse:
+    """Handles PasswordValidationError exceptions, returning a 400 Bad Request response."""
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": exc.message},
+    )
+
+
+async def invalid_old_password_error_handler(
+    request: Request, exc: InvalidOldPasswordError
+) -> JSONResponse:
+    """Handles InvalidOldPasswordError exceptions, returning a 400 Bad Request response."""
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": exc.message},
+    )
+
+
+async def password_reuse_error_handler(request: Request, exc: PasswordReuseError) -> JSONResponse:
+    """Handles PasswordReuseError exceptions, returning a 400 Bad Request response."""
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": exc.message},
+    )
+
+
 async def permission_error_handler(request: Request, exc: PermissionError):
-    """
-    Handles PermissionError exceptions, returning a 403 Forbidden response.
-    """
+    """Handles PermissionError exceptions, returning a 403 Forbidden response."""
     return JSONResponse(
         status_code=status.HTTP_403_FORBIDDEN,
         content={"detail": str(exc)},
@@ -72,8 +101,7 @@ async def permission_error_handler(request: Request, exc: PermissionError):
 
 
 async def rate_limit_exception_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
-    """
-    Handles exceptions raised by slowapi when a rate limit is exceeded.
+    """Handles exceptions raised by slowapi when a rate limit is exceeded.
 
     This handler logs the event for security monitoring (SIEM) and returns a
     standardized 429 Too Many Requests response to the client. It includes the
@@ -86,6 +114,7 @@ async def rate_limit_exception_handler(request: Request, exc: RateLimitExceeded)
 
     Returns:
         A JSONResponse with status code 429.
+
     """
     locale = get_request_language(request)
     # The limit object has a 'limit' attribute which is a 'Limit' object.
@@ -105,10 +134,8 @@ async def rate_limit_exception_handler(request: Request, exc: RateLimitExceeded)
 
 
 async def cedrina_error_handler(request: Request, exc: CedrinaError) -> JSONResponse:
-    """
-    Handles CedrinaError exceptions, returning a 500 Internal Server Error response.
-    """
+    """Handles CedrinaError exceptions, returning a 500 Internal Server Error response."""
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": str(exc)},
-    ) 
+    )

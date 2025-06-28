@@ -5,7 +5,6 @@ description = "Enterprise-grade FastAPI template for scalable REST and real-time
 authors = [{name = "Sam khosravian", email = "hd.khosravian@gmail.com"}]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = "^3.12"
 dynamic = ["version"]
 
 [project.scripts]

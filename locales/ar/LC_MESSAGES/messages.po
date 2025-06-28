@@ -100,3 +100,29 @@ msgstr "تم إبطال أو إدراج الرمز في القائمة السو�
 msgid "user_is_invalid_or_inactive"
 msgstr "المستخدم غير صالح أو غير نشط"
 
+msgid "invalid_token"
+msgstr "رمز غير صالح"
+
+msgid "session_already_revoked_or_invalid"
+msgstr "الجلسة ملغاة بالفعل أو غير صالحة"
+
+msgid "logout_failed_internal_error"
+msgstr "فشل تسجيل الخروج بسبب خطأ داخلي"
+
+# Change password functionality (2025-06-28)
+
+msgid "user_not_found"
+msgstr "المستخدم غير موجود"
+
+msgid "invalid_old_password"
+msgstr "كلمة المرور القديمة غير صحيحة"
+
+msgid "new_password_must_be_different"
+msgstr "يجب أن تكون كلمة المرور الجديدة مختلفة عن القديمة"
+
+msgid "password_changed_successfully"
+msgstr "تم تغيير كلمة المرور بنجاح"
+
+msgid "password_change_failed"
+msgstr "فشل تغيير كلمة المرور بسبب خطأ داخلي"
+

@@ -1,21 +1,23 @@
 import re
-from src.utils.i18n import get_translated_message
-from src.core.exceptions import PasswordPolicyError
+
 from src.core.config.settings import (
     PASSWORD_MIN_LENGTH,
-    PASSWORD_REQUIRE_UPPERCASE,
-    PASSWORD_REQUIRE_LOWERCASE,
     PASSWORD_REQUIRE_DIGIT,
+    PASSWORD_REQUIRE_LOWERCASE,
     PASSWORD_REQUIRE_SPECIAL_CHAR,
+    PASSWORD_REQUIRE_UPPERCASE,
 )
+from src.core.exceptions import PasswordPolicyError
+from src.utils.i18n import get_translated_message
+
 
 class PasswordPolicyValidator:
-    """
-    Validates passwords against a defined security policy.
-    
-    The policy requires passwords to meet minimum length, and include a mix of 
+    """Validates passwords against a defined security policy.
+
+    The policy requires passwords to meet minimum length, and include a mix of
     uppercase letters, lowercase letters, numbers, and special characters.
     """
+
     def __init__(self):
         self.min_length = PASSWORD_MIN_LENGTH
         self.require_uppercase = PASSWORD_REQUIRE_UPPERCASE
@@ -24,14 +26,14 @@ class PasswordPolicyValidator:
         self.require_special_char = PASSWORD_REQUIRE_SPECIAL_CHAR
 
     def validate(self, password: str):
-        """
-        Validates the given password against the policy.
+        """Validates the given password against the policy.
 
         Args:
             password (str): The password to validate.
 
         Raises:
             PasswordPolicyError: If the password does not meet the policy requirements.
+
         """
         if len(password) < self.min_length:
             raw = get_translated_message("password_too_short", "en")
@@ -48,4 +50,4 @@ class PasswordPolicyValidator:
             raise PasswordPolicyError(get_translated_message("password_no_digit", "en"))
 
         if self.require_special_char and not re.search(r"[!@#$%^&*(),.?:{}|<>_=-]", password):
-            raise PasswordPolicyError(get_translated_message("password_no_special_char", "en")) 
+            raise PasswordPolicyError(get_translated_message("password_no_special_char", "en"))

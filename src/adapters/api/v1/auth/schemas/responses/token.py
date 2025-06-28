@@ -10,5 +10,5 @@ class TokenPair(BaseModel):
 
     access_token: str
     refresh_token: str
-    token_type: str = "Bearer" 
-    expires_in: int  # Access token expiration time in seconds 
+    token_type: str = "Bearer"
+    expires_in: int  # Access token expiration time in seconds

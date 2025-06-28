@@ -100,3 +100,29 @@ msgstr "توکن لغو شده یا در فهرست سیاه قرار دارد"
 msgid "user_is_invalid_or_inactive"
 msgstr "کاربر نامعتبر یا غیرفعال است"
 
+msgid "invalid_token"
+msgstr "توکن نامعتبر است"
+
+msgid "session_already_revoked_or_invalid"
+msgstr "نشست قبلاً لغو شده یا نامعتبر است"
+
+msgid "logout_failed_internal_error"
+msgstr "خروج ناموفق به دلیل خطای داخلی"
+
+# Change password functionality (2025-06-28)
+
+msgid "user_not_found"
+msgstr "کاربر یافت نشد"
+
+msgid "invalid_old_password"
+msgstr "رمز عبور قدیمی نامعتبر است"
+
+msgid "new_password_must_be_different"
+msgstr "رمز عبور جدید باید با رمز عبور قدیمی متفاوت باشد"
+
+msgid "password_changed_successfully"
+msgstr "رمز عبور با موفقیت تغییر کرد"
+
+msgid "password_change_failed"
+msgstr "تغییر رمز عبور به دلیل خطای داخلی ناموفق بود"
+

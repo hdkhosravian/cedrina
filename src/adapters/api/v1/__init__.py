@@ -1,11 +1,12 @@
+"""API v1 router configuration.
 """
-API v1 router configuration.
-"""
+
 from fastapi import APIRouter
+
+from .admin.policies import router as admin_policies_router
+from .auth import router as auth_router
 from .health import router as health_router
 from .metrics import router as metrics_router
-from .auth import router as auth_router
-from .admin.policies import router as admin_policies_router
 
 api_router = APIRouter()
 

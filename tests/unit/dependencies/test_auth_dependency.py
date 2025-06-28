@@ -1,24 +1,22 @@
+import datetime
+from unittest.mock import AsyncMock
+
+import jwt
 import pytest
 import pytest_asyncio
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, patch, MagicMock
-import jwt
-import datetime
-
-from sqlalchemy.ext.asyncio import AsyncSession
 from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.dependencies.auth import get_current_user, get_current_admin_user
-from src.domain.entities.user import User, Role
+from src.core.config.settings import settings
+from src.core.dependencies.auth import get_current_admin_user, get_current_user
+from src.core.ratelimiter import get_limiter
+from src.domain.entities.user import Role, User
 from src.domain.services.auth.token import TokenService
 from src.infrastructure.database import get_db
 from src.infrastructure.redis import get_redis
-from src.core.exceptions import PermissionError, AuthenticationError
-from src.core.handlers import permission_error_handler
 from src.main import app as main_app  # Import with an alias to avoid conflicts
-from src.core.ratelimiter import get_limiter
-from src.core.config.settings import settings
 
 
 @pytest_asyncio.fixture
@@ -50,8 +48,7 @@ def app():
 
 @pytest.fixture
 def client(app, db_session, redis_client):
-    """
-    Override get_db and get_redis dependencies, and provide a TestClient.
+    """Override get_db and get_redis dependencies, and provide a TestClient.
     This fixture now correctly uses the 'app' fixture.
     """
     app.dependency_overrides[get_db] = lambda: db_session
@@ -66,14 +63,14 @@ async def token_service(mocker):
     mock = mocker.AsyncMock(spec=TokenService)
     # Create a properly formatted JWT token for testing
     payload = {
-        'sub': '1',
-        'jti': 'mocked_jti',
-        'iat': datetime.datetime.now(datetime.timezone.utc),
-        'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1),
-        'iss': settings.JWT_ISSUER,
-        'aud': settings.JWT_AUDIENCE
+        "sub": "1",
+        "jti": "mocked_jti",
+        "iat": datetime.datetime.now(datetime.timezone.utc),
+        "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1),
+        "iss": settings.JWT_ISSUER,
+        "aud": settings.JWT_AUDIENCE,
     }
-    token = jwt.encode(payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm='RS256')
+    token = jwt.encode(payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="RS256")
     mock.create_access_token = mocker.AsyncMock(return_value=token)
     mock.validate_token = mocker.AsyncMock(return_value=payload)
     mock.is_token_blacklisted = mocker.AsyncMock(return_value=False)
@@ -84,7 +81,9 @@ class TestGetCurrentUser:
     """Unit tests for authentication dependencies (get_current_user & get_current_admin_user)."""
 
     @pytest.mark.asyncio
-    async def test_get_current_user_valid_token(self, app, client, db_session, user, token_service, mocker):
+    async def test_get_current_user_valid_token(
+        self, app, client, db_session, user, token_service, mocker
+    ):
         """Ensure that a valid JWT allows retrieval of the current user."""
         # Arrange
         token = await token_service.create_access_token(user)
@@ -119,7 +118,9 @@ class TestGetCurrentUser:
         assert "Invalid token" in response.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_admin_route_permission_denied(self, app, client, db_session, user, token_service, mocker):
+    async def test_admin_route_permission_denied(
+        self, app, client, db_session, user, token_service, mocker
+    ):
         """Non-admin users must not access admin routes."""
         token = await token_service.create_access_token(user)
         headers = {"Authorization": f"Bearer {token}"}
@@ -136,7 +137,9 @@ class TestGetCurrentUser:
         assert response.status_code == 403 or response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_admin_route_success(self, app, client, admin_user, token_service, db_session, mocker):
+    async def test_admin_route_success(
+        self, app, client, admin_user, token_service, db_session, mocker
+    ):
         """Admin users should access admin endpoints successfully."""
         token = await token_service.create_access_token(admin_user)
         headers = {"Authorization": f"Bearer {token}"}

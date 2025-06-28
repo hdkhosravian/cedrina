@@ -8,15 +8,16 @@ runtime it uses Redis for distributed accuracy; in *TEST_MODE* it falls back to
 an in-process dictionary so the test-suite remains hermetic.
 """
 
-from typing import Callable, Awaitable, Dict, Tuple
 from time import time
-from fastapi import Request, HTTPException, status, Depends
+from typing import Awaitable, Callable, Dict, Tuple
+
+from fastapi import Depends, Request
 from redis.asyncio import Redis
 from structlog import get_logger
 
-from src.infrastructure.redis import get_redis
 from src.core.config.settings import settings
 from src.core.exceptions import RateLimitError
+from src.infrastructure.redis import get_redis
 
 logger = get_logger(__name__)
 
@@ -28,9 +29,8 @@ logger = get_logger(__name__)
 _memory_store: Dict[str, Tuple[int, float]] = {}
 
 
-def _use_memory_backend() -> bool:  # noqa: D401
+def _use_memory_backend() -> bool:
     """Determine whether to fall back to the in-memory backend."""
-
     return bool(getattr(settings, "TEST_MODE", False))
 
 
@@ -38,17 +38,17 @@ def _use_memory_backend() -> bool:  # noqa: D401
 # Public helper – factory returning a FastAPI dependency
 # ---------------------------------------------------------------------------
 
-def rate_limit(times: int = 5, seconds: int = 60) -> Callable[[Request, Redis], Awaitable[None]]:  # noqa: D401
+
+def rate_limit(times: int = 5, seconds: int = 60) -> Callable[[Request, Redis], Awaitable[None]]:
     """Return a FastAPI *dependency* that applies simple fixed-window limiting.
 
     Args:
         times: Maximum number of requests.
         seconds: Window size in seconds.
+
     """
 
-    async def _dependency(
-        request: Request, redis: Redis = Depends(get_redis)  # noqa: D401
-    ) -> None:
+    async def _dependency(request: Request, redis: Redis = Depends(get_redis)) -> None:
         if not settings.RATE_LIMIT_ENABLED:
             return  # short-circuit if feature toggled off
 
@@ -65,9 +65,7 @@ def rate_limit(times: int = 5, seconds: int = 60) -> Callable[[Request, Redis], 
                 if current == 1:
                     await redis.expire(key, seconds)
                 if current > times:
-                    logger.warning(
-                        "rate_limit_exceeded", ip=identifier, key=key, count=current
-                    )
+                    logger.warning("rate_limit_exceeded", ip=identifier, key=key, count=current)
                     raise RateLimitError()
                 return
             except Exception as exc:  # pragma: no cover – network issues
@@ -87,4 +85,4 @@ def rate_limit(times: int = 5, seconds: int = 60) -> Callable[[Request, Redis], 
             logger.warning("rate_limit_exceeded", ip=identifier, key=key, count=counter)
             raise RateLimitError()
 
-    return _dependency 
+    return _dependency

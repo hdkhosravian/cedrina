@@ -1,5 +1,4 @@
-"""
-Casbin Permission Dependencies Module
+"""Casbin Permission Dependencies Module
 
 This module defines FastAPI dependencies for checking permissions using Casbin, an advanced access control library.
 These dependencies are used to protect API endpoints by ensuring that only authorized users with the appropriate
@@ -23,22 +22,24 @@ This module ensures that access control logic is decoupled from business logic, 
 Responsibility Principle and making the system easier to maintain and extend.
 """
 
-from fastapi import Depends, HTTPException, status, Request
-import casbin
 import logging
 
+import casbin
+from fastapi import Depends, Request
+
 from src.core.dependencies.auth import get_current_user
-from src.domain.entities.user import User
-from .enforcer import get_enforcer
 from src.core.exceptions import PermissionError
+from src.domain.entities.user import User
 from src.utils.i18n import get_translated_message
+
+from .enforcer import get_enforcer
 
 # Configure logging for permission denial events
 logger = logging.getLogger(__name__)
 
+
 def check_permission(resource: str, action: str) -> callable:
-    """
-    Create a dependency to check if the current user has permission to access a resource.
+    """Create a dependency to check if the current user has permission to access a resource.
 
     This function generates a FastAPI dependency that evaluates whether the current user,
     based on their role, is allowed to perform the specified action on the given resource.
@@ -58,14 +59,15 @@ def check_permission(resource: str, action: str) -> callable:
     Example:
         To protect an endpoint for GET access to '/health':
         `@router.get('/health', dependencies=[Depends(check_permission('/health', 'GET'))])`
+
     """
+
     async def permission_dependency(
         request: Request,
         current_user: User = Depends(get_current_user),
-        enforcer: casbin.Enforcer = Depends(get_enforcer)
+        enforcer: casbin.Enforcer = Depends(get_enforcer),
     ) -> None:
-        """
-        The actual dependency that will be executed by FastAPI.
+        """The actual dependency that will be executed by FastAPI.
 
         Args:
             request (Request): The incoming HTTP request, used to access request context like language.
@@ -74,18 +76,19 @@ def check_permission(resource: str, action: str) -> callable:
 
         Raises:
             PermissionError: If the user has no role or permission is denied for the action/resource.
+
         """
         locale = request.state.language
         if current_user.role is None:
             message = get_translated_message("user_has_no_role", locale)
             logger.warning(f"Permission denied: User {current_user.id} has no role assigned")
             raise PermissionError(message)
-        
+
         user_role = current_user.role.value
         # Use wildcard for ABAC attributes if not available from user context
-        sub_dept = getattr(current_user, 'department', '*')
-        sub_loc = getattr(current_user, 'location', '*')
-        time_of_day = getattr(current_user, 'time_of_day', '*')
+        sub_dept = getattr(current_user, "department", "*")
+        sub_loc = getattr(current_user, "location", "*")
+        time_of_day = getattr(current_user, "time_of_day", "*")
         result = enforcer.enforce(user_role, resource, action, sub_dept, sub_loc, time_of_day)
         if hasattr(result, "__await__"):
             result = await result
@@ -95,4 +98,5 @@ def check_permission(resource: str, action: str) -> callable:
             )
             logger.warning(f"Permission denied: Role {user_role} cannot {action} on {resource}")
             raise PermissionError(message)
-    return permission_dependency 
+
+    return permission_dependency

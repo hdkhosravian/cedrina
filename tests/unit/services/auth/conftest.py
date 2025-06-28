@@ -1,8 +1,9 @@
-import pytest
-import pytest_asyncio
 from unittest.mock import AsyncMock, MagicMock
-from sqlalchemy.ext.asyncio import AsyncSession
+
+import pytest_asyncio
 from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
+
 
 @pytest_asyncio.fixture
 def db_session():
@@ -15,8 +16,9 @@ def db_session():
     mock_session.add = MagicMock()
     mock_session.commit = AsyncMock()
     mock_session.refresh = AsyncMock()
-    
+
     return mock_session
+
 
 @pytest_asyncio.fixture
 def redis_client():
@@ -25,4 +27,4 @@ def redis_client():
     mock_redis.get = AsyncMock(return_value=None)
     mock_redis.setex = AsyncMock()
     mock_redis.delete = AsyncMock()
-    return mock_redis 
+    return mock_redis

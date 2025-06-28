@@ -1,5 +1,4 @@
-"""
-Main application entry point for the FastAPI application.
+"""Main application entry point for the FastAPI application.
 
 This module serves as the central configuration and initialization point for the application.
 It sets up the FastAPI application, configures middleware, initializes database connections,
@@ -13,37 +12,46 @@ Key responsibilities:
 - Application lifecycle management (startup/shutdown)
 """
 
-import os
+from contextlib import asynccontextmanager
+
+import i18n
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
-from src.core.config.settings import settings
-from src.core.logging import configure_logging, logger
-from src.adapters.api.v1 import api_router
-from src.adapters.websockets import ws_router
-from src.adapters.api.v1.docs import router as docs_router
-from src.utils.i18n import setup_i18n, get_request_language, get_translated_message
-import i18n
-from src.infrastructure.database import create_db_and_tables, check_database_health
-from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from starlette import status
 from starlette.middleware.cors import CORSMiddleware
+
+from src.adapters.api.v1 import api_router
+from src.adapters.api.v1.docs import router as docs_router
+from src.adapters.websockets import ws_router
+from src.core.config.settings import settings
 from src.core.exceptions import (
     AuthenticationError,
-    PermissionError,
+    DatabaseError,
     DuplicateUserError,
+    InvalidOldPasswordError,
     PasswordPolicyError,
+    PasswordReuseError,
+    PasswordValidationError,
+    PermissionError,
 )
 from src.core.handlers import (
     authentication_error_handler,
+    duplicate_user_error_handler,
+    invalid_old_password_error_handler,
+    password_policy_error_handler,
+    password_reuse_error_handler,
+    password_validation_error_handler,
     permission_error_handler,
     rate_limit_exception_handler,
-    duplicate_user_error_handler,
-    password_policy_error_handler,
 )
+from src.core.logging import configure_logging, logger
 from src.core.ratelimiter import get_limiter
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
+from src.infrastructure.database import check_database_health, create_db_and_tables
+from src.utils.i18n import get_request_language, get_translated_message, setup_i18n
 
 # Load environment variables
 load_dotenv(override=True)
@@ -54,19 +62,20 @@ configure_logging(log_level=settings.LOG_LEVEL, json_logs=settings.LOG_JSON)
 # Setup i18n
 setup_i18n()
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Application lifespan manager that handles startup and shutdown events.
-    
+    """Application lifespan manager that handles startup and shutdown events.
+
     This context manager ensures proper initialization and cleanup of application resources.
     It performs database health checks, creates necessary tables, and handles graceful shutdown.
-    
+
     Args:
         app (FastAPI): The FastAPI application instance
-        
+
     Raises:
         RuntimeError: If database is unavailable during startup
+
     """
     # Startup
     if not check_database_health():
@@ -74,26 +83,39 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("Database unavailable")
     create_db_and_tables()
     logger.info("application_startup", env=settings.APP_ENV, version=settings.VERSION)
-    
+
     # Attach the limiter to the app state
     app.state.limiter = get_limiter()
-    
+
     yield
-    
+
     # Shutdown
     logger.info("application_shutdown", env=settings.APP_ENV)
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description=getattr(settings, 'DESCRIPTION', 'A FastAPI application with role-based access control.'),
+    description=getattr(
+        settings, "DESCRIPTION", "A FastAPI application with role-based access control."
+    ),
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
     lifespan=lifespan,
     default_response_class=JSONResponse,
-    default_response_description=get_translated_message("successful_response", settings.DEFAULT_LANGUAGE)
+    default_response_description=get_translated_message(
+        "successful_response", settings.DEFAULT_LANGUAGE
+    ),
 )
+
+
+async def database_error_handler(request: Request, exc: DatabaseError) -> JSONResponse:
+    """Handles DatabaseError exceptions, returning a 500 Internal Server Error response."""
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"detail": exc.message}
+    )
+
 
 # Register custom exception handlers
 app.add_exception_handler(RateLimitExceeded, rate_limit_exception_handler)
@@ -101,6 +123,10 @@ app.add_exception_handler(AuthenticationError, authentication_error_handler)
 app.add_exception_handler(PermissionError, permission_error_handler)
 app.add_exception_handler(DuplicateUserError, duplicate_user_error_handler)
 app.add_exception_handler(PasswordPolicyError, password_policy_error_handler)
+app.add_exception_handler(PasswordValidationError, password_validation_error_handler)
+app.add_exception_handler(InvalidOldPasswordError, invalid_old_password_error_handler)
+app.add_exception_handler(PasswordReuseError, password_reuse_error_handler)
+app.add_exception_handler(DatabaseError, database_error_handler)
 
 # CORS middleware configuration
 app.add_middleware(
@@ -114,22 +140,23 @@ app.add_middleware(
 # Add Middleware
 app.add_middleware(SlowAPIMiddleware)
 
+
 @app.middleware("http")
 async def set_language_middleware(request: Request, call_next):
-    """
-    Middleware for handling language preferences in requests.
-    
+    """Middleware for handling language preferences in requests.
+
     This middleware:
     1. Extracts language preference from request headers or query parameters
     2. Sets the language for the current request
     3. Adds language information to response headers
-    
+
     Args:
         request (Request): The incoming request
         call_next: The next middleware or route handler
-        
+
     Returns:
         Response: The response with language headers
+
     """
     lang = get_request_language(request)
     i18n.set("locale", lang)
@@ -137,6 +164,7 @@ async def set_language_middleware(request: Request, call_next):
     response = await call_next(request)
     response.headers["Content-Language"] = lang
     return response
+
 
 # Include API and WebSocket routers
 app.include_router(api_router, prefix="/api/v1")

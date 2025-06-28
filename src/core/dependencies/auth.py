@@ -3,17 +3,18 @@ from __future__ import annotations
 # FastAPI & typing
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status, Request
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.exceptions import AuthenticationError, PermissionError
+
 # Project imports
-from src.domain.entities.user import User, Role
+from src.domain.entities.user import Role, User
 from src.domain.services.auth.token import TokenService
 from src.infrastructure.database import get_db
 from src.infrastructure.redis import get_redis
-from src.core.exceptions import PermissionError, AuthenticationError
 from src.utils.i18n import get_translated_message
 
 __all__ = [
@@ -37,7 +38,7 @@ RedisClient = Annotated[Redis, Depends(get_redis)]
 # ---------------------------------------------------------------------------
 
 
-def _auth_fail(request: Request, key: str) -> HTTPException:  # noqa: D401
+def _auth_fail(request: Request, key: str) -> HTTPException:
     """Consistently shaped *401* UNAUTHORIZED response."""
     detail = get_translated_message(key, request.state.language)
     return HTTPException(
@@ -52,7 +53,7 @@ def _auth_fail(request: Request, key: str) -> HTTPException:  # noqa: D401
 # ---------------------------------------------------------------------------
 
 
-async def get_current_user(  # noqa: D401
+async def get_current_user(
     request: Request, token: TokenStr, db_session: DBSession, redis_client: RedisClient
 ) -> User:
     """Return the authenticated :class:`~src.domain.entities.user.User`.
@@ -61,10 +62,9 @@ async def get_current_user(  # noqa: D401
     looks up the corresponding user-record.  Call :pyfunc:`get_current_admin_user`
     for role-enforced logic.
     """
-
     try:
         # Get the language from request state, fallback to 'en' if not set
-        language = getattr(request.state, 'language', 'en')
+        language = getattr(request.state, "language", "en")
         payload = await TokenService(db_session, redis_client).validate_token(token, language)
         user_id = payload.get("sub")
         if user_id is None:
@@ -81,10 +81,9 @@ async def get_current_user(  # noqa: D401
 
 def get_current_admin_user(
     request: Request, current_user: Annotated[User, Depends(get_current_user)]
-) -> User:  # noqa: D401
+) -> User:
     """Ensure the authenticated user has *ADMIN* role."""
-
     if current_user.role != Role.ADMIN:
         message = get_translated_message("admin_privileges_required", request.state.language)
         raise PermissionError(message)
-    return current_user 
+    return current_user

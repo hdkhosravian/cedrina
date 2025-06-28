@@ -1,8 +1,9 @@
+"""Authentication and authorization settings.
 """
-Authentication and authorization settings.
-"""
+
 import logging
 from pathlib import Path
+
 from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings
 
@@ -10,8 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class AuthSettings(BaseSettings):
-    """
-    Defines settings for authentication, including OAuth providers and JWT configuration.
+    """Defines settings for authentication, including OAuth providers and JWT configuration.
     It handles loading JWT keys from PEM files or environment variables.
 
     Security Note:
@@ -21,6 +21,7 @@ class AuthSettings(BaseSettings):
         - Ensure PEM files are readable only by the application user (chmod 600) to prevent
           unauthorized access to private keys.
     """
+
     # OAuth settings
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: SecretStr = SecretStr("")
@@ -37,14 +38,14 @@ class AuthSettings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    @model_validator(mode='after')
-    def _load_and_validate_jwt_keys(self) -> 'AuthSettings':
-        """
-        Loads JWT keys, prioritizing .pem files over environment variables.
+    @model_validator(mode="after")
+    def _load_and_validate_jwt_keys(self) -> "AuthSettings":
+        """Loads JWT keys, prioritizing .pem files over environment variables.
         Raises ValueError if keys are not found, ensuring secure configuration.
 
         Returns:
             Self instance with loaded keys.
+
         """
         self._load_keys_from_pem_files()
 
@@ -55,13 +56,12 @@ class AuthSettings(BaseSettings):
             )
             logger.error(error_msg)
             raise ValueError(error_msg)
-        
+
         logger.info("JWT keys validated successfully.")
         return self
 
     def _load_keys_from_pem_files(self) -> None:
-        """
-        Loads JWT keys from private.pem and public.pem if they exist.
+        """Loads JWT keys from private.pem and public.pem if they exist.
         These files will override any existing environment variables.
         Ensures secure file handling to prevent path traversal or unauthorized access.
         """
@@ -77,9 +77,11 @@ class AuthSettings(BaseSettings):
                 private_key = private_key_path.read_text().strip()
                 if private_key:
                     self.JWT_PRIVATE_KEY = SecretStr(private_key)
-                    logger.info("Loaded JWT private key from private.pem, overriding env var if set.")
+                    logger.info(
+                        "Loaded JWT private key from private.pem, overriding env var if set."
+                    )
             except Exception as e:
-                logger.error(f"Failed to read private.pem: {str(e)}")
+                logger.error(f"Failed to read private.pem: {e!s}")
 
         if public_key_path.is_file():
             try:
@@ -88,4 +90,4 @@ class AuthSettings(BaseSettings):
                     self.JWT_PUBLIC_KEY = public_key
                     logger.info("Loaded JWT public key from public.pem, overriding env var if set.")
             except Exception as e:
-                logger.error(f"Failed to read public.pem: {str(e)}") 
+                logger.error(f"Failed to read public.pem: {e!s}")

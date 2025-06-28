@@ -1,24 +1,25 @@
+import time
 from datetime import datetime, timezone
-from typing import Dict, Any, Literal, Tuple
+from typing import Any, Dict, Literal, Tuple
+
 from authlib.integrations.starlette_client import OAuth
+from cryptography.fernet import Fernet
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
-from cryptography.fernet import Fernet
 from tenacity import retry, stop_after_attempt, wait_fixed
-from sqlalchemy import select
-import time
 
-from src.domain.entities.user import User, Role
-from src.domain.entities.oauth_profile import OAuthProfile, Provider
 from src.core.config.settings import settings
 from src.core.exceptions import AuthenticationError
+from src.domain.entities.oauth_profile import OAuthProfile, Provider
+from src.domain.entities.user import Role, User
 from src.utils.i18n import get_translated_message
 
 logger = get_logger(__name__)
 
+
 class OAuthService:
-    """
-    Service for handling OAuth 2.0 authentication with external providers.
+    """Service for handling OAuth 2.0 authentication with external providers.
 
     Supports Google, Microsoft, and Facebook OAuth flows, integrating with PostgreSQL
     via SQLModel for user and OAuth profile persistence, and encrypting tokens with pgcrypto.
@@ -29,6 +30,7 @@ class OAuthService:
         db_session (AsyncSession): SQLAlchemy async session for database operations.
         oauth (OAuth): Authlib OAuth client for provider interactions.
         fernet (Fernet): Cryptography Fernet for token encryption.
+
     """
 
     def __init__(self, db_session: AsyncSession):
@@ -41,19 +43,21 @@ class OAuthService:
             pgcrypto_key = settings.PGCRYPTO_KEY.get_secret_value().encode()
             self.fernet = Fernet(pgcrypto_key)
         except Exception:  # pragma: no cover – logging & safe-fallback
-            logger.warning("Invalid PGCRYPTO_KEY provided – falling back to generated key for Fernet. This should only happen in non-prod environments.")
+            logger.warning(
+                "Invalid PGCRYPTO_KEY provided – falling back to generated key for Fernet. This should only happen in non-prod environments."
+            )
             self.fernet = Fernet(Fernet.generate_key())
         self._configure_oauth()
 
     def _configure_oauth(self) -> None:
-        """
-        Configure OAuth clients for Google, Microsoft, and Facebook.
+        """Configure OAuth clients for Google, Microsoft, and Facebook.
 
         Note:
             Configures clients with specific scopes for user data access. For public clients,
             consider implementing PKCE (Proof Key for Code Exchange) to secure authorization
             code flows. Additionally, ensure the use of state parameters to prevent CSRF attacks
             during the OAuth flow.
+
         """
         self.oauth.register(
             name="google",
@@ -82,8 +86,7 @@ class OAuthService:
     async def authenticate_with_oauth(
         self, provider: Literal["google", "microsoft", "facebook"], token: Dict[str, Any]
     ) -> Tuple[User, OAuthProfile]:
-        """
-        Authenticate a user via OAuth 2.0 and link or create a user profile.
+        """Authenticate a user via OAuth 2.0 and link or create a user profile.
 
         Args:
             provider (Literal): OAuth provider name.
@@ -99,13 +102,14 @@ class OAuthService:
             Validates token expiration to prevent replay attacks and encrypts access tokens
             for secure storage. Ensure that the OAuth flow at the client level implements
             PKCE for enhanced security.
+
         """
         # Validate token expiration
-        if token.get('expires_at', 0) < time.time():
+        if token.get("expires_at", 0) < time.time():
             raise AuthenticationError(get_translated_message("token_expired", "en"))
 
         # Validate id_token if present before calling provider APIs
-        if 'id_token' in token:
+        if "id_token" in token:
             try:
                 client = self.oauth.create_client(provider)
                 # Parse and validate id_token (this does not make a network call)
@@ -113,8 +117,10 @@ class OAuthService:
                 if not id_token:
                     raise AuthenticationError(get_translated_message("invalid_id_token", "en"))
                 # Check issuer and audience if applicable
-                if provider == "google" and id_token.get('iss') != 'https://accounts.google.com':
-                    raise AuthenticationError(get_translated_message("invalid_id_token_issuer", "en"))
+                if provider == "google" and id_token.get("iss") != "https://accounts.google.com":
+                    raise AuthenticationError(
+                        get_translated_message("invalid_id_token_issuer", "en")
+                    )
             except AuthenticationError:
                 # Propagate authentication errors without masking message
                 raise
@@ -123,7 +129,7 @@ class OAuthService:
                 raise AuthenticationError(get_translated_message("invalid_id_token", "en"))
 
         user_info = await self._fetch_user_info(provider, token)
-        if not user_info or 'email' not in user_info:
+        if not user_info or "email" not in user_info:
             raise AuthenticationError(get_translated_message("invalid_oauth_user_info", "en"))
 
         email = user_info.get("email")
@@ -174,8 +180,7 @@ class OAuthService:
         return user, oauth_profile
 
     async def validate_oauth_state(self, state: str, stored_state: str) -> bool:
-        """
-        Validate the OAuth state parameter to prevent CSRF attacks.
+        """Validate the OAuth state parameter to prevent CSRF attacks.
 
         Args:
             state (str): State parameter returned from the OAuth provider.
@@ -188,14 +193,14 @@ class OAuthService:
             This is a placeholder for state validation logic. Implement this method to
             compare the state parameter returned by the OAuth provider with the one stored
             in the user's session to ensure the request originated from the legitimate client.
+
         """
         # Placeholder: Implement actual state validation logic
         return state == stored_state
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     async def _fetch_user_info(self, provider: str, token: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Fetch user info from OAuth provider with retry.
+        """Fetch user info from OAuth provider with retry.
 
         Args:
             provider (str): OAuth provider name.
@@ -210,6 +215,7 @@ class OAuthService:
         Note:
             Implements retry logic to handle transient network issues when fetching user
             information from OAuth providers. Logs specific errors for debugging purposes.
+
         """
         client = self.oauth.create_client(provider)
         if provider == "facebook":

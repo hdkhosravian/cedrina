@@ -29,6 +29,7 @@ This document describes each service, its responsibilities, methods, security me
 - `__init__(db_session: AsyncSession)`: Initializes with an async SQLAlchemy session.
 - `authenticate_by_credentials(username: str, password: str) -> User`: Authenticates a user, verifying password and activity.
 - `register_user(username: str, email: EmailStr, password: str) -> User`: Registers a new user with bcrypt-hashed password, enforcing password complexity requirements.
+- `change_password(user_id: int, old_password: str, new_password: str) -> None`: Securely changes a user's password with comprehensive validation.
 
 **Security**:
 - Bcrypt hashing via `passlib`.
@@ -37,6 +38,17 @@ This document describes each service, its responsibilities, methods, security me
 - Password policy enforcement (minimum 8 characters, must include uppercase, lowercase, and digit).
 - Raises `AuthenticationError` for invalid credentials, inactive users, or password policy violations.
 - Raises `RateLimitError` for excessive attempts.
+- **Change Password Security**:
+  - Validates old password before allowing change (prevents unauthorized changes)
+  - Enforces password policy on new password
+  - Prevents password reuse by checking if new password differs from old
+  - Logs password change events for security audit
+  - Uses parameterized queries to prevent SQL injection
+  - Raises specific exceptions for different error scenarios:
+    - `AuthenticationError`: User not found or inactive (401 status)
+    - `InvalidOldPasswordError`: Incorrect old password (400 status)
+    - `PasswordReuseError`: New password same as old (400 status)
+    - `PasswordPolicyError`: New password doesn't meet requirements (422 status)
 
 ### OAuthService
 **File**: `src/domain/services/auth/oauth.py`

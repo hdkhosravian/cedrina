@@ -7,14 +7,13 @@ system. It provides an endpoint for creating a new user account with a unique
 username and email, and issues JWT tokens on successful registration.
 """
 
-from fastapi import APIRouter, Depends, status, Request
+from fastapi import APIRouter, Depends, Request, status
 
-from src.adapters.api.v1.auth.schemas import RegisterRequest, AuthResponse, UserOut
-from src.adapters.api.v1.auth.dependencies import get_user_auth_service, get_token_service
+from src.adapters.api.v1.auth.dependencies import get_token_service, get_user_auth_service
+from src.adapters.api.v1.auth.schemas import AuthResponse, RegisterRequest, UserOut
 from src.adapters.api.v1.auth.utils import create_token_pair
-from src.domain.services.auth.user_authentication import UserAuthenticationService
 from src.domain.services.auth.token import TokenService
-from src.core.exceptions import DuplicateUserError, PasswordPolicyError
+from src.domain.services.auth.user_authentication import UserAuthenticationService
 
 router = APIRouter()
 
@@ -33,8 +32,7 @@ async def register_user(
     user_service: UserAuthenticationService = Depends(get_user_auth_service),
     token_service: TokenService = Depends(get_token_service),
 ):
-    """
-    Register a new user with the provided credentials.
+    """Register a new user with the provided credentials.
 
     This endpoint creates a user account after validating data (username
     uniqueness, email format, password strength). On success, it issues JWT
@@ -62,6 +60,7 @@ async def register_user(
         - Enforced via slowapi middleware (see app config).
         - Passwords hashed securely in user service (not route logic).
         - JWT tokens use RS256 signing for security (asymmetric keys).
+
     """
     # Rate limiting by client IP to prevent bulk registration abuse. Enforcement
     # by slowapi middleware. If disabled, endpoint is vulnerable to abuse.
@@ -73,12 +72,10 @@ async def register_user(
     # Register user. Raises exceptions if validation fails (e.g., duplicate user,
     # weak password).
     user = await user_service.register_user(
-        username=payload.username,
-        email=payload.email,
-        password=payload.password
+        username=payload.username, email=payload.email, password=payload.password
     )
 
     # Create token pair using shared utility for consistency across endpoints.
     tokens = await create_token_pair(token_service, user)
 
-    return AuthResponse(tokens=tokens, user=UserOut.from_entity(user)) 
+    return AuthResponse(tokens=tokens, user=UserOut.from_entity(user))
