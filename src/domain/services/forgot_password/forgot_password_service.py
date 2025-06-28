@@ -137,7 +137,7 @@ class ForgotPasswordService:
 
             except EmailServiceError as e:
                 # Clear token if email fails
-                self.token_service.clear_token(user)
+                self.token_service.invalidate_token(user, reason="email_delivery_failed")
                 await self.user_repository.save(user)
                 logger.error(f"Failed to send password reset email to user {user.id}: {str(e)}")
                 raise EmailServiceError(
@@ -215,7 +215,7 @@ class ForgotPasswordService:
             if not self.token_service.is_token_valid(user, token):
                 logger.warning(f"Invalid or expired password reset token for user: {user.id}")
                 # Clear invalid token
-                self.token_service.clear_token(user)
+                self.token_service.invalidate_token(user, reason="invalid_token_attempt")
                 await self.user_repository.save(user)
                 raise PasswordResetError(
                     get_translated_message("password_reset_token_invalid", language)
@@ -225,15 +225,20 @@ class ForgotPasswordService:
                 # Step 4: Validate new password strength
                 if not validate_password_strength(new_password):
                     logger.warning(f"Weak password provided for user: {user.id}")
+                    # Invalidate token even for weak password attempts (security)
+                    self.token_service.invalidate_token(user, reason="weak_password_attempt")
+                    await self.user_repository.save(user)
                     raise PasswordResetError(
                         get_translated_message("password_too_weak", language)
                     )
 
                 # Step 5: Hash new password and update user
                 user.hashed_password = hash_password(new_password)
-                self.token_service.clear_token(user)
+                
+                # Step 6: Invalidate token immediately (one-time use enforcement)
+                self.token_service.invalidate_token(user, reason="password_reset_successful")
 
-                # Step 6: Save changes
+                # Step 7: Save changes
                 await self.user_repository.save(user)
 
                 logger.info(f"Password reset completed successfully for user: {user.id}")
@@ -243,9 +248,13 @@ class ForgotPasswordService:
                     "status": "success",
                 }
 
+            except PasswordResetError:
+                # Don't double-invalidate token for password-related errors
+                # Token was already invalidated above for weak passwords
+                raise
             except Exception as e:
-                # Ensure token is cleared even if password update fails
-                self.token_service.clear_token(user)
+                # Ensure token is invalidated for other unexpected failures (security)
+                self.token_service.invalidate_token(user, reason="reset_failed")
                 await self.user_repository.save(user)
                 raise e
 
@@ -280,7 +289,7 @@ class ForgotPasswordService:
 
             for user in users_with_tokens:
                 if self.token_service.is_token_expired(user):
-                    self.token_service.clear_token(user)
+                    self.token_service.invalidate_token(user, reason="expired_cleanup")
                     await self.user_repository.save(user)
                     cleaned_count += 1
                     logger.debug(f"Cleaned expired token for user: {user.id}")

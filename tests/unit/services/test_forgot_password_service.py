@@ -166,8 +166,8 @@ class TestForgotPasswordService:
         with pytest.raises(EmailServiceError):
             await service.request_password_reset(email, language)
 
-        # Verify token was cleared due to email failure
-        mock_token_service.clear_token.assert_called_once_with(test_user)
+        # Verify token was invalidated due to email failure
+        mock_token_service.invalidate_token.assert_called_once_with(test_user, reason="email_delivery_failed")
         mock_user_repository.save.assert_called_with(test_user)
 
     @pytest.mark.asyncio
@@ -195,7 +195,7 @@ class TestForgotPasswordService:
             assert "message" in result
             mock_user_repository.get_by_reset_token.assert_called_once_with(token)
             mock_token_service.is_token_valid.assert_called_once_with(test_user, token)
-            mock_token_service.clear_token.assert_called_once_with(test_user)
+            mock_token_service.invalidate_token.assert_called_once_with(test_user, reason="password_reset_successful")
             mock_hash.assert_called_once_with(new_password)
             assert test_user.hashed_password == "new_hashed_password"
             mock_user_repository.save.assert_called_once_with(test_user)
@@ -252,7 +252,7 @@ class TestForgotPasswordService:
         with pytest.raises(PasswordResetError):
             await service.reset_password(token, new_password, language)
 
-        mock_token_service.clear_token.assert_called_once_with(test_user)
+        mock_token_service.invalidate_token.assert_called_once_with(test_user, reason="invalid_token_attempt")
         mock_user_repository.save.assert_called_once_with(test_user)
 
     @pytest.mark.asyncio
@@ -274,7 +274,7 @@ class TestForgotPasswordService:
             with pytest.raises(PasswordResetError):
                 await service.reset_password(token, weak_password, language)
 
-            mock_token_service.clear_token.assert_called_once_with(test_user)
+            mock_token_service.invalidate_token.assert_called_once_with(test_user, reason="weak_password_attempt")
             mock_user_repository.save.assert_called_once_with(test_user)
 
     @pytest.mark.asyncio
@@ -319,9 +319,9 @@ class TestForgotPasswordService:
         # Assert
         assert cleaned_count == 2
         mock_user_repository.get_users_with_reset_tokens.assert_called_once()
-        assert mock_token_service.clear_token.call_count == 2
-        mock_token_service.clear_token.assert_any_call(expired_user1)
-        mock_token_service.clear_token.assert_any_call(expired_user2)
+        assert mock_token_service.invalidate_token.call_count == 2
+        mock_token_service.invalidate_token.assert_any_call(expired_user1, reason="expired_cleanup")
+        mock_token_service.invalidate_token.assert_any_call(expired_user2, reason="expired_cleanup")
         assert mock_user_repository.save.call_count == 2
 
     @pytest.mark.asyncio
@@ -372,5 +372,5 @@ class TestForgotPasswordService:
             with pytest.raises(Exception):
                 await service.reset_password(token, new_password, language)
 
-            # Verify token was cleared despite the exception
-            mock_token_service.clear_token.assert_called_with(test_user) 
+            # Verify token was invalidated despite the exception
+            mock_token_service.invalidate_token.assert_called_with(test_user, reason="reset_failed") 
