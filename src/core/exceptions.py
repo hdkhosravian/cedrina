@@ -29,6 +29,9 @@ __all__: Final = [
     "RateLimitError",
     "DuplicateUserError",
     "PermissionError",
+    "PasswordValidationError",
+    "InvalidOldPasswordError",
+    "PasswordReuseError",
 ]
 
 
@@ -87,6 +90,47 @@ class PermissionError(CedrinaError):
 
     def __init__(self, message: str, code: str = "permission_denied"):
         CedrinaError.__init__(self, message, code)
+
+
+# ---------------------------------------------------------------------------
+# Password validation errors (400 status code)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(slots=True)
+class PasswordValidationError(CedrinaError):
+    """
+    Exception raised when password validation fails during change password operations.
+    
+    This should return 400 status code, not 401, to avoid redirecting users to login.
+    """
+
+    def __init__(self, message: str, code: str = "password_validation_error"):
+        CedrinaError.__init__(self, message, code)
+
+
+@dataclass(slots=True)
+class InvalidOldPasswordError(PasswordValidationError):
+    """
+    Exception raised when the old password provided during password change is incorrect.
+    
+    This should return 400 status code, not 401, to avoid redirecting users to login.
+    """
+
+    def __init__(self, message: str, code: str = "invalid_old_password"):
+        PasswordValidationError.__init__(self, message, code)
+
+
+@dataclass(slots=True)
+class PasswordReuseError(PasswordValidationError):
+    """
+    Exception raised when the new password is the same as the old password.
+    
+    This should return 400 status code, not 401, to avoid redirecting users to login.
+    """
+
+    def __init__(self, message: str, code: str = "password_reuse_error"):
+        PasswordValidationError.__init__(self, message, code)
 
 
 # ---------------------------------------------------------------------------

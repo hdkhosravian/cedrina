@@ -117,3 +117,20 @@ msgstr "Session already revoked or invalid"
 msgid "logout_failed_internal_error"
 msgstr "Logout failed due to internal error"
 
+# Change password functionality (2025-06-28)
+
+msgid "user_not_found"
+msgstr "User not found"
+
+msgid "invalid_old_password"
+msgstr "Invalid old password"
+
+msgid "new_password_must_be_different"
+msgstr "New password must be different from the old password"
+
+msgid "password_changed_successfully"
+msgstr "Password changed successfully"
+
+msgid "password_change_failed"
+msgstr "Password change failed due to an internal error"
+

@@ -1,7 +1,7 @@
 import pytest
 from src.domain.entities.user import User, Role
 from src.domain.services.auth.user_authentication import UserAuthenticationService
-from src.core.exceptions import AuthenticationError, DuplicateUserError
+from src.core.exceptions import AuthenticationError, DuplicateUserError, PasswordPolicyError
 import pytest_asyncio
 from unittest.mock import AsyncMock, MagicMock
 from src.domain.services.auth.password_policy import PasswordPolicyValidator
@@ -142,7 +142,7 @@ async def test_register_user_invalid_password(user_auth_service, mock_db_session
     mock_db_session.execute.return_value = result
 
     # Act & Assert
-    with pytest.raises(AuthenticationError, match="Password must be at least 8 characters long"):
+    with pytest.raises(PasswordPolicyError, match="Password must be at least 8 characters long"):
         await user_auth_service.register_user(username, email, password)
 
 @pytest.mark.asyncio

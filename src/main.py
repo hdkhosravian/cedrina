@@ -33,6 +33,10 @@ from src.core.exceptions import (
     PermissionError,
     DuplicateUserError,
     PasswordPolicyError,
+    PasswordValidationError,
+    InvalidOldPasswordError,
+    PasswordReuseError,
+    DatabaseError,
 )
 from src.core.handlers import (
     authentication_error_handler,
@@ -40,6 +44,9 @@ from src.core.handlers import (
     rate_limit_exception_handler,
     duplicate_user_error_handler,
     password_policy_error_handler,
+    password_validation_error_handler,
+    invalid_old_password_error_handler,
+    password_reuse_error_handler,
 )
 from src.core.ratelimiter import get_limiter
 from slowapi.errors import RateLimitExceeded
@@ -95,12 +102,19 @@ app = FastAPI(
     default_response_description=get_translated_message("successful_response", settings.DEFAULT_LANGUAGE)
 )
 
+def database_error_handler(request, exc: DatabaseError):
+    return JSONResponse(status_code=500, content={"detail": exc.message})
+
 # Register custom exception handlers
 app.add_exception_handler(RateLimitExceeded, rate_limit_exception_handler)
 app.add_exception_handler(AuthenticationError, authentication_error_handler)
 app.add_exception_handler(PermissionError, permission_error_handler)
 app.add_exception_handler(DuplicateUserError, duplicate_user_error_handler)
 app.add_exception_handler(PasswordPolicyError, password_policy_error_handler)
+app.add_exception_handler(PasswordValidationError, password_validation_error_handler)
+app.add_exception_handler(InvalidOldPasswordError, invalid_old_password_error_handler)
+app.add_exception_handler(PasswordReuseError, password_reuse_error_handler)
+app.add_exception_handler(DatabaseError, database_error_handler)
 
 # CORS middleware configuration
 app.add_middleware(

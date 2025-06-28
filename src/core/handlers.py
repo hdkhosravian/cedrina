@@ -20,6 +20,9 @@ from src.core.exceptions import (
     PasswordPolicyError,
     PermissionError,
     DatabaseError,
+    PasswordValidationError,
+    InvalidOldPasswordError,
+    PasswordReuseError,
 )
 from src.utils.i18n import get_translated_message, get_request_language
 
@@ -30,6 +33,9 @@ __all__ = [
     "permission_error_handler",
     "rate_limit_exception_handler",
     "cedrina_error_handler",
+    "password_validation_error_handler",
+    "invalid_old_password_error_handler",
+    "password_reuse_error_handler",
 ]
 
 logger = get_logger(__name__)
@@ -57,6 +63,30 @@ async def password_policy_error_handler(request: Request, exc: PasswordPolicyErr
     """Handles PasswordPolicyError exceptions, returning a 422 Unprocessable Entity response."""
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": exc.message},
+    )
+
+
+async def password_validation_error_handler(request: Request, exc: PasswordValidationError) -> JSONResponse:
+    """Handles PasswordValidationError exceptions, returning a 400 Bad Request response."""
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": exc.message},
+    )
+
+
+async def invalid_old_password_error_handler(request: Request, exc: InvalidOldPasswordError) -> JSONResponse:
+    """Handles InvalidOldPasswordError exceptions, returning a 400 Bad Request response."""
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": exc.message},
+    )
+
+
+async def password_reuse_error_handler(request: Request, exc: PasswordReuseError) -> JSONResponse:
+    """Handles PasswordReuseError exceptions, returning a 400 Bad Request response."""
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
         content={"detail": exc.message},
     )
 

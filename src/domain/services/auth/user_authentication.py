@@ -10,6 +10,8 @@ from src.core.exceptions import (
     InvalidCredentialsError,
     PasswordPolicyError,
     DuplicateUserError,
+    InvalidOldPasswordError,
+    PasswordReuseError,
 )
 from src.domain.entities.user import User, Role
 from src.domain.services.auth.password_policy import PasswordPolicyValidator
@@ -99,7 +101,7 @@ class UserAuthenticationService:
         try:
             validator.validate(password)
         except PasswordPolicyError as e:
-            raise AuthenticationError(str(e))
+            raise e  # Preserve the original PasswordPolicyError for proper status code handling
         
         hashed_password = self.pwd_context.hash(password)
         new_user = User(
@@ -116,3 +118,85 @@ class UserAuthenticationService:
         
         logger.info("New user registered", username=username)
         return new_user
+
+    async def change_password(self, user_id: int, old_password: str, new_password: str) -> None:
+        """
+        Change a user's password with comprehensive security validation.
+
+        This method implements a secure password change process that:
+        1. Validates input parameters (non-empty, non-None)
+        2. Retrieves and validates the user exists and is active
+        3. Verifies the old password is correct
+        4. Ensures new password is different from old password
+        5. Validates new password meets security policy requirements
+        6. Securely hashes and stores the new password
+        7. Logs the password change for audit purposes
+
+        Args:
+            user_id (int): The ID of the user whose password is being changed.
+            old_password (str): The current password for verification.
+            new_password (str): The new password to set.
+
+        Raises:
+            ValueError: If passwords are None or empty.
+            AuthenticationError: If user not found or user inactive (401 status).
+            InvalidOldPasswordError: If old password is incorrect (400 status).
+            PasswordReuseError: If new password is the same as old password (400 status).
+            PasswordPolicyError: If new password doesn't meet security policy requirements (422 status).
+
+        Security Notes:
+            - Uses bcrypt with configured work factor for secure hashing
+            - Validates old password before allowing change (prevents unauthorized changes)
+            - Enforces password policy to prevent weak passwords
+            - Prevents password reuse by checking if new password differs from old
+            - Logs password change events for security audit
+            - Uses parameterized queries to prevent SQL injection
+        """
+        # Input validation
+        if old_password is None:
+            raise ValueError("Old password cannot be None")
+        if new_password is None:
+            raise ValueError("New password cannot be None")
+        if not old_password.strip():
+            raise ValueError("Old password cannot be empty")
+        if not new_password.strip():
+            raise ValueError("New password cannot be empty")
+
+        # Retrieve user from database
+        user = await self.db_session.get(User, user_id)
+        if not user:
+            logger.warning("Password change attempted for non-existent user", user_id=user_id)
+            raise AuthenticationError(get_translated_message("user_not_found", "en"))
+
+        # Check if user is active
+        if not user.is_active:
+            logger.warning("Password change attempted for inactive user", user_id=user_id, username=user.username)
+            raise AuthenticationError(get_translated_message("user_account_inactive", "en"))
+
+        # Verify old password
+        if not self.pwd_context.verify(old_password, user.hashed_password):
+            logger.warning("Invalid old password provided for password change", user_id=user_id, username=user.username)
+            raise InvalidOldPasswordError(get_translated_message("invalid_old_password", "en"))
+
+        # Check if new password is different from old password
+        if old_password == new_password:
+            logger.warning("Password change attempted with same password", user_id=user_id, username=user.username)
+            raise PasswordReuseError(get_translated_message("new_password_must_be_different", "en"))
+
+        # Validate new password against security policy
+        validator = PasswordPolicyValidator()
+        try:
+            validator.validate(new_password)
+        except PasswordPolicyError as e:
+            logger.warning("Password change attempted with weak password", user_id=user_id, username=user.username)
+            raise e
+
+        # Hash and update the new password
+        user.hashed_password = self.pwd_context.hash(new_password)
+        
+        # Commit changes to database
+        await self.db_session.commit()
+        await self.db_session.refresh(user)
+
+        # Log successful password change for audit
+        logger.info("Password successfully changed", user_id=user_id, username=user.username)

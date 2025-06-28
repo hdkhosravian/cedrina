@@ -21,24 +21,33 @@ class RegisterRequest(BaseModel):
 
     username: UsernameStr = Field(..., examples=["john_doe"])
     email: EmailStr = Field(..., examples=["john@example.com"])
-    password: constr(min_length=8) = Field(..., examples=["Str0ngP@ssw0rd"])
+    password: str = Field(..., examples=["Str0ngP@ssw0rd"])
 
 
 class LoginRequest(BaseModel):
     """Payload expected by ``POST /auth/login``."""
 
-    username: UsernameStr
-    password: constr(min_length=8)
+    username: UsernameStr = Field(..., examples=["john_doe"])
+    password: str = Field(..., examples=["Str0ngP@ssw0rd"])
 
 
 class OAuthAuthenticateRequest(BaseModel):
-    """Payload sent to ``POST /auth/oauth`` after client‐side token exchange."""
+    """Payload expected by ``POST /auth/oauth``."""
 
-    provider: Literal["google", "microsoft", "facebook"]
-    token: Dict[str, Any]
+    provider: Literal["google", "microsoft", "facebook"] = Field(
+        ..., examples=["google"]
+    )
+    token: str = Field(..., examples=["ya29.a0AfH6SMC..."])
 
 
 class LogoutRequest(BaseModel):
     """Payload expected by ``DELETE /auth/logout``."""
 
-    refresh_token: str
+    refresh_token: str = Field(..., examples=["eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."])
+
+
+class ChangePasswordRequest(BaseModel):
+    """Payload expected by ``PUT /auth/change-password``."""
+
+    old_password: str = Field(..., examples=["OldPass123!"], description="Current password for verification")
+    new_password: str = Field(..., examples=["NewPass456!"], description="New password that meets security policy requirements")
