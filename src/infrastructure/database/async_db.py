@@ -25,15 +25,15 @@ Key Components:
     - create_async_db_and_tables: Utility to create tables using the async engine.
 """
 
+import logging
+import urllib.parse as urlparse
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
-import logging
 
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
-from sqlalchemy.engine import make_url
-import urllib.parse as urlparse
 
 from src.core.config.settings import settings
 from src.core.logging import logger
@@ -41,10 +41,10 @@ from src.core.logging import logger
 # Configure logging for async database events
 logger = logging.getLogger(__name__)
 
+
 # Construct the async database URL
 def _build_async_url() -> str:
-    """
-    Build the asynchronous database URL with proper handling of SSL parameters.
+    """Build the asynchronous database URL with proper handling of SSL parameters.
 
     This function constructs the async database URL by replacing the driver with asyncpg
     and cleaning up query parameters like sslmode, which asyncpg handles differently.
@@ -54,26 +54,23 @@ def _build_async_url() -> str:
 
     Returns:
         str: The cleaned asynchronous database URL.
+
     """
-    async_url = settings.DATABASE_URL.replace('postgresql+psycopg2', 'postgresql+asyncpg')
+    async_url = settings.DATABASE_URL.replace("postgresql+psycopg2", "postgresql+asyncpg")
     # Strip sslmode from the URL if present, as asyncpg handles SSL differently
     parsed = urlparse.urlparse(async_url)
     query = dict(urlparse.parse_qsl(parsed.query))
-    query.pop('sslmode', None)
+    query.pop("sslmode", None)
     new_query = urlparse.urlencode(query)
     parsed = parsed._replace(query=new_query)
     cleaned_url = urlparse.urlunparse(parsed)
     return cleaned_url
 
+
 url = make_url(_build_async_url())
 conn_params = {}
 # asyncpg does not support sslmode in connect_args, it's handled in the URL if needed
-engine = create_async_engine(
-    url,
-    echo=False,
-    future=True,
-    connect_args=conn_params
-)
+engine = create_async_engine(url, echo=False, future=True, connect_args=conn_params)
 
 AsyncSessionFactory: sessionmaker[AsyncSession] = sessionmaker(  # type: ignore[type-arg]
     bind=engine, class_=AsyncSession, expire_on_commit=False
@@ -81,9 +78,8 @@ AsyncSessionFactory: sessionmaker[AsyncSession] = sessionmaker(  # type: ignore[
 
 
 @asynccontextmanager
-async def get_async_db() -> AsyncGenerator[AsyncSession, None]:  # noqa: D401
-    """
-    FastAPI dependency that yields an AsyncSession.
+async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
+    """FastAPI dependency that yields an AsyncSession.
 
     This helper mirrors the behavior of 'get_db' from the synchronous database module.
     It automatically rolls back the transaction if an exception occurs and ensures proper
@@ -97,12 +93,13 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:  # noqa: D401
     Example:
         To use this dependency in a FastAPI route:
         `@router.get('/data', dependencies=[Depends(get_async_db)])`
+
     """
     async with AsyncSessionFactory() as session:  # pragma: no cover – boilerplate
         logger.debug("Async database session created")
         try:
             yield session
-        except Exception:  # noqa: BLE001 – Any DB error must trigger rollback
+        except Exception:
             await session.rollback()
             logger.error("Async database session rollback due to error")
             raise
@@ -111,14 +108,13 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:  # noqa: D401
             logger.debug("Async database session closed")
 
 
-async def create_async_db_and_tables() -> None:  # noqa: D401
-    """
-    Create tables using the async engine (mainly for test suites).
+async def create_async_db_and_tables() -> None:
+    """Create tables using the async engine (mainly for test suites).
 
-    This function initializes database tables asynchronously, typically used during
-test setup or application initialization when async operations are preferred.
+        This function initializes database tables asynchronously, typically used during
+    test setup or application initialization when async operations are preferred.
     """
     logger.info("Creating async database tables")
     async with engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all) 
-    logger.info("Async database tables created") 
+        await conn.run_sync(SQLModel.metadata.create_all)
+    logger.info("Async database tables created")

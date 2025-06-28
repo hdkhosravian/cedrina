@@ -1,5 +1,4 @@
-"""
-Casbin Enforcer Module
+"""Casbin Enforcer Module
 
 This module initializes the Casbin enforcer, which is the core component responsible for evaluating and enforcing
 access control policies in the application. The enforcer uses a model configuration and a set of policies to
@@ -21,15 +20,16 @@ Functions:
     get_enforcer: Returns the initialized Casbin enforcer instance for use in permission checks.
 """
 
+import logging
+import os
+import warnings
+
 import casbin
 from casbin_sqlalchemy_adapter import Adapter as SQLAlchemyAdapter
-from sqlalchemy import create_engine
+
 from src.core.config.settings import settings
-from .config import MODEL_PATH
+
 from .redis_watcher import RedisWatcher
-import os
-import logging
-import warnings
 
 # Suppress SQLAlchemy deprecation warning from casbin_sqlalchemy_adapter
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="casbin_sqlalchemy_adapter")
@@ -39,9 +39,9 @@ logger = logging.getLogger(__name__)
 # Global enforcer instance for singleton pattern
 _enforcer = None
 
+
 def get_enforcer() -> casbin.Enforcer:
-    """
-    Initialize and return the Casbin enforcer with the configured model and adapter.
+    """Initialize and return the Casbin enforcer with the configured model and adapter.
 
     This function sets up the access control system using Casbin, a powerful and efficient open-source
     access control library. It loads the model configuration from a file and connects to the database
@@ -58,6 +58,7 @@ def get_enforcer() -> casbin.Enforcer:
     Example:
         To check if a user has permission:
         `enforcer = get_enforcer(); enforcer.enforce('user_role', '/resource', 'GET', 'dept', 'loc', 'time')`
+
     """
     global _enforcer
     if _enforcer is not None:
@@ -70,6 +71,7 @@ def get_enforcer() -> casbin.Enforcer:
 
     try:
         from src.infrastructure.database import engine
+
         adapter = SQLAlchemyAdapter(engine)
         logger.info("Casbin using database adapter for policy storage")
     except Exception as e:
@@ -81,39 +83,43 @@ def get_enforcer() -> casbin.Enforcer:
         adapter = casbin.persist.adapters.FileAdapter(policy_path)
 
     _enforcer = casbin.Enforcer(model_path, adapter, True)
-    
+
     # Initialize Redis watcher for policy synchronization across instances
     try:
         # Extract Redis connection details from settings
         redis_host = settings.REDIS_HOST
         redis_port = settings.REDIS_PORT
-        redis_password = settings.REDIS_PASSWORD.get_secret_value() if settings.REDIS_PASSWORD else None
-        
+        redis_password = (
+            settings.REDIS_PASSWORD.get_secret_value() if settings.REDIS_PASSWORD else None
+        )
+
         # Configure Redis watcher for policy synchronization
         watcher_config = {
-            'host': redis_host,
-            'port': redis_port,
-            'db': 1,  # Use database 1 for Casbin to avoid conflicts with other Redis usage
+            "host": redis_host,
+            "port": redis_port,
+            "db": 1,  # Use database 1 for Casbin to avoid conflicts with other Redis usage
         }
-        
+
         if redis_password:
-            watcher_config['password'] = redis_password
-            
+            watcher_config["password"] = redis_password
+
         watcher = RedisWatcher(**watcher_config)
         _enforcer.set_watcher(watcher)
-        
+
         # Set update callback to reload policies when they change
         def update_callback():
             logger.info("Policy update detected via Redis watcher, reloading policies")
             _enforcer.load_policy()
-            
+
         watcher.set_update_callback(update_callback)
         logger.info("Redis watcher configured successfully for policy synchronization")
-        
+
     except Exception as e:
-        logger.warning(f"Failed to initialize Redis watcher: {e}. "
-                      f"Policy synchronization across instances will not be available. "
-                      f"This is acceptable for single-instance deployments.")
-    
+        logger.warning(
+            f"Failed to initialize Redis watcher: {e}. "
+            f"Policy synchronization across instances will not be available. "
+            f"This is acceptable for single-instance deployments."
+        )
+
     logger.info("Casbin enforcer initialized successfully")
-    return _enforcer 
+    return _enforcer

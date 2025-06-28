@@ -1,5 +1,4 @@
-"""
-Admin Policy Management Endpoints
+"""Admin Policy Management Endpoints
 
 This module provides API endpoints for managing Casbin policies dynamically.
 These endpoints are restricted to admin roles to prevent unauthorized access.
@@ -11,46 +10,50 @@ are logged for audit purposes, and inputs are validated to prevent injection.
 Rate limiting mitigates DoS risks (OWASP A03:2021 - Injection mitigation).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from slowapi import Limiter
 from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from typing import List, Tuple, Dict, Any
 
-from src.domain.services.auth.policy import PolicyService
-from src.permissions.enforcer import get_enforcer
-from src.permissions.dependencies import check_permission
 from src.core.dependencies.auth import get_current_user
 from src.domain.entities.user import User
-from .schemas import PolicyRequest, PolicyResponse, PolicyListResponse
+from src.domain.services.auth.policy import PolicyService
+from src.permissions.dependencies import check_permission
+from src.permissions.enforcer import get_enforcer
+
+from .schemas import PolicyListResponse, PolicyRequest, PolicyResponse
 
 router = APIRouter(tags=["admin", "policies"])
 
 # Rate limiting setup: 10 requests per minute per IP
 limiter = Limiter(key_func=get_remote_address)
 
+
 def get_policy_service(enforcer=Depends(get_enforcer)) -> PolicyService:
-    """
-    Dependency to provide PolicyService instance.
+    """Dependency to provide PolicyService instance.
 
     Args:
         enforcer: The Casbin enforcer instance.
 
     Returns:
         PolicyService: The policy management service.
+
     """
     return PolicyService(enforcer)
 
-@router.post("/policies/add", dependencies=[Depends(check_permission("/admin/policies", "POST"))], response_model=PolicyResponse)
+
+@router.post(
+    "/policies/add",
+    dependencies=[Depends(check_permission("/admin/policies", "POST"))],
+    response_model=PolicyResponse,
+)
 @limiter.limit("50/minute")
 async def add_policy(
     policy_request: PolicyRequest,
     request: Request,
     policy_service: PolicyService = Depends(get_policy_service),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
-    """
-    Add a new policy to grant access.
+    """Add a new policy to grant access.
 
     Args:
         policy_request: The policy request containing subject, object, action, and optional ABAC attributes.
@@ -63,63 +66,68 @@ async def add_policy(
 
     Raises:
         HTTPException: If policy addition fails or input is invalid.
+
     """
-    locale = getattr(request.state, 'language', 'en')
+    locale = getattr(request.state, "language", "en")
     ip_address = get_remote_address(request)
-    user_agent = request.headers.get('User-Agent', 'unknown')
-    performed_by = str(current_user.id) if current_user.id else 'anonymous'
-    
+    user_agent = request.headers.get("User-Agent", "unknown")
+    performed_by = str(current_user.id) if current_user.id else "anonymous"
+
     # Extract ABAC attributes
     attributes = {}
     if policy_request.sub_dept:
-        attributes['sub_dept'] = policy_request.sub_dept
+        attributes["sub_dept"] = policy_request.sub_dept
     if policy_request.sub_loc:
-        attributes['sub_loc'] = policy_request.sub_loc
+        attributes["sub_loc"] = policy_request.sub_loc
     if policy_request.time_of_day:
-        attributes['time_of_day'] = policy_request.time_of_day
-    
+        attributes["time_of_day"] = policy_request.time_of_day
+
     try:
         success = policy_service.add_policy(
-            policy_request.subject, 
-            policy_request.object, 
-            policy_request.action, 
-            performed_by, 
-            ip_address, 
-            user_agent, 
-            attributes if attributes else None, 
-            locale
+            policy_request.subject,
+            policy_request.object,
+            policy_request.action,
+            performed_by,
+            ip_address,
+            user_agent,
+            attributes if attributes else None,
+            locale,
         )
         if success:
             return PolicyResponse(
-                message="Policy added successfully", 
-                subject=policy_request.subject, 
-                object=policy_request.object, 
+                message="Policy added successfully",
+                subject=policy_request.subject,
+                object=policy_request.object,
                 action=policy_request.action,
-                attributes=attributes if attributes else None
+                attributes=attributes if attributes else None,
             )
         else:
             return PolicyResponse(
-                message="Policy already exists", 
-                subject=policy_request.subject, 
-                object=policy_request.object, 
+                message="Policy already exists",
+                subject=policy_request.subject,
+                object=policy_request.object,
                 action=policy_request.action,
-                attributes=attributes if attributes else None
+                attributes=attributes if attributes else None,
             )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@router.post("/policies/remove", dependencies=[Depends(check_permission("/admin/policies", "POST"))], response_model=PolicyResponse)
+
+@router.post(
+    "/policies/remove",
+    dependencies=[Depends(check_permission("/admin/policies", "POST"))],
+    response_model=PolicyResponse,
+)
 @limiter.limit("50/minute")
 async def remove_policy(
     policy_request: PolicyRequest,
     request: Request,
     policy_service: PolicyService = Depends(get_policy_service),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
-    """
-    Remove a policy to revoke access.
+    """Remove a policy to revoke access.
 
     Args:
         policy_request: The policy request containing subject, object, and action.
@@ -132,49 +140,54 @@ async def remove_policy(
 
     Raises:
         HTTPException: If policy removal fails or input is invalid.
+
     """
-    locale = getattr(request.state, 'language', 'en')
+    locale = getattr(request.state, "language", "en")
     ip_address = get_remote_address(request)
-    user_agent = request.headers.get('User-Agent', 'unknown')
-    performed_by = str(current_user.id) if current_user.id else 'anonymous'
+    user_agent = request.headers.get("User-Agent", "unknown")
+    performed_by = str(current_user.id) if current_user.id else "anonymous"
     try:
         success = policy_service.remove_policy(
-            policy_request.subject, 
-            policy_request.object, 
-            policy_request.action, 
-            performed_by, 
-            ip_address, 
-            user_agent, 
-            locale
+            policy_request.subject,
+            policy_request.object,
+            policy_request.action,
+            performed_by,
+            ip_address,
+            user_agent,
+            locale,
         )
         if success:
             return PolicyResponse(
-                message="Policy removed successfully", 
-                subject=policy_request.subject, 
-                object=policy_request.object, 
-                action=policy_request.action
+                message="Policy removed successfully",
+                subject=policy_request.subject,
+                object=policy_request.object,
+                action=policy_request.action,
             )
         else:
             return PolicyResponse(
-                message="Policy not found", 
-                subject=policy_request.subject, 
-                object=policy_request.object, 
-                action=policy_request.action
+                message="Policy not found",
+                subject=policy_request.subject,
+                object=policy_request.object,
+                action=policy_request.action,
             )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@router.get("/policies", dependencies=[Depends(check_permission("/admin/policies", "GET"))], response_model=PolicyListResponse)
+
+@router.get(
+    "/policies",
+    dependencies=[Depends(check_permission("/admin/policies", "GET"))],
+    response_model=PolicyListResponse,
+)
 @limiter.limit("100/minute")
 async def list_policies(
     request: Request,
     policy_service: PolicyService = Depends(get_policy_service),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
-    """
-    Retrieve all current policies.
+    """Retrieve all current policies.
 
     Args:
         request: The HTTP request for locale information.
@@ -186,10 +199,11 @@ async def list_policies(
 
     Raises:
         HTTPException: If retrieval fails.
+
     """
-    locale = getattr(request.state, 'language', 'en')
+    locale = getattr(request.state, "language", "en")
     try:
         policies = policy_service.get_policies(locale)
         return PolicyListResponse(policies=policies, count=len(policies))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) 
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

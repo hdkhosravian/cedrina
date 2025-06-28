@@ -10,8 +10,8 @@ tokens for accessing protected resources.
 
 from fastapi import APIRouter, Depends, status
 
-from src.adapters.api.v1.auth.schemas import OAuthAuthenticateRequest, OAuthAuthResponse, UserOut
 from src.adapters.api.v1.auth.dependencies import get_oauth_service, get_token_service
+from src.adapters.api.v1.auth.schemas import OAuthAuthenticateRequest, OAuthAuthResponse, UserOut
 from src.adapters.api.v1.auth.utils import create_token_pair
 from src.domain.services.auth.oauth import OAuthService
 from src.domain.services.auth.token import TokenService
@@ -32,8 +32,7 @@ async def oauth_authenticate(
     oauth_service: OAuthService = Depends(get_oauth_service),
     token_service: TokenService = Depends(get_token_service),
 ):
-    """
-    Authenticate a user using an OAuth token from an external provider.
+    """Authenticate a user using an OAuth token from an external provider.
 
     This endpoint processes an OAuth token from a client-side authentication
     flow with providers like Google, Microsoft, or Facebook. It validates the
@@ -64,6 +63,7 @@ async def oauth_authenticate(
         - Internal JWT tokens use RS256 signing for security (asymmetric keys).
         - No rate limiting applied; OAuth flows rely on provider limits. Add if
           abuse patterns emerge.
+
     """
     # Authenticate user with OAuth token and retrieve or create user/profile.
     # Raises error if token is invalid, expired, or provider rejects it.
@@ -76,5 +76,5 @@ async def oauth_authenticate(
         user=UserOut.from_entity(user),
         provider=payload.provider,
         oauth_profile_id=profile.id if profile else None,
-        tokens=tokens
-    ) 
+        tokens=tokens,
+    )

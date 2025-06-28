@@ -1,6 +1,6 @@
-import pytest
 from src.core.exceptions import AuthenticationError, RateLimitError
 from src.utils.i18n import get_translated_message
+
 
 def test_authentication_error_default():
     # Arrange
@@ -15,6 +15,7 @@ def test_authentication_error_default():
     assert error.code == code
     assert str(error) == message
 
+
 def test_authentication_error_no_code():
     # Arrange
     message = get_translated_message("invalid_credentials", "en")
@@ -26,6 +27,7 @@ def test_authentication_error_no_code():
     assert error.message == message
     assert error.code == "authentication_error"
     assert str(error) == message
+
 
 def test_rate_limit_error_default():
     # Arrange
@@ -39,6 +41,7 @@ def test_rate_limit_error_default():
     assert error.message == message
     assert error.code == code
     assert str(error) == message
+
 
 def test_rate_limit_error_no_code():
     # Arrange

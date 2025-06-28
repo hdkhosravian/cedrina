@@ -1,28 +1,26 @@
 from passlib.context import CryptContext
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from pydantic import EmailStr
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
+from src.core.config.settings import BCRYPT_WORK_FACTOR
 from src.core.exceptions import (
     AuthenticationError,
-    UserAlreadyExistsError,
-    InvalidCredentialsError,
-    PasswordPolicyError,
     DuplicateUserError,
     InvalidOldPasswordError,
+    PasswordPolicyError,
     PasswordReuseError,
 )
-from src.domain.entities.user import User, Role
+from src.domain.entities.user import Role, User
 from src.domain.services.auth.password_policy import PasswordPolicyValidator
 from src.utils.i18n import get_translated_message
-from src.core.config.settings import BCRYPT_WORK_FACTOR
 
 logger = get_logger(__name__)
 
+
 class UserAuthenticationService:
-    """
-    Service for handling username/password authentication and user registration.
+    """Service for handling username/password authentication and user registration.
 
     Provides secure authentication with bcrypt hashing, integrating
     with PostgreSQL via SQLAlchemy for user data persistence. This service
@@ -32,15 +30,17 @@ class UserAuthenticationService:
     Attributes:
         db_session (AsyncSession): SQLAlchemy async session for database operations.
         pwd_context (CryptContext): Passlib context for bcrypt password hashing.
+
     """
 
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
-        self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=BCRYPT_WORK_FACTOR)
+        self.pwd_context = CryptContext(
+            schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=BCRYPT_WORK_FACTOR
+        )
 
     async def authenticate_by_credentials(self, username: str, password: str) -> User:
-        """
-        Authenticate a user using username and password.
+        """Authenticate a user using username and password.
 
         Args:
             username (str): User's username.
@@ -55,6 +55,7 @@ class UserAuthenticationService:
         Note:
             This method uses bcrypt for secure password verification. Rate limiting
             should be applied at the API layer to prevent brute force attacks.
+
         """
         statement = select(User).where(User.username == username)
         result = await self.db_session.execute(statement)
@@ -63,16 +64,15 @@ class UserAuthenticationService:
         if not user or not self.pwd_context.verify(password, user.hashed_password):
             logger.warning("Invalid credentials for user", username=username)
             raise AuthenticationError(get_translated_message("invalid_username_or_password", "en"))
-        
+
         if not user.is_active:
             logger.warning("Authentication attempt for inactive user", username=username)
             raise AuthenticationError(get_translated_message("user_account_inactive", "en"))
-        
+
         return user
 
     async def register_user(self, username: str, email: EmailStr, password: str) -> User:
-        """
-        Register a new user with the provided username, email, and password.
+        """Register a new user with the provided username, email, and password.
 
         Args:
             username (str): Unique username for the new user.
@@ -85,6 +85,7 @@ class UserAuthenticationService:
         Raises:
             AuthenticationError: If username or email already exists, or if password
                 does not meet policy requirements.
+
         """
         # Check for existing user
         statement = select(User).where((User.username == username) | (User.email == email))
@@ -92,36 +93,37 @@ class UserAuthenticationService:
         existing = result.scalars().first()
         if existing:
             if existing.username == username:
-                raise DuplicateUserError(get_translated_message("username_already_registered", "en"))
+                raise DuplicateUserError(
+                    get_translated_message("username_already_registered", "en")
+                )
             if existing.email == email:
                 raise DuplicateUserError(get_translated_message("email_already_registered", "en"))
-        
+
         # Enforce password policy using PasswordPolicyValidator
         validator = PasswordPolicyValidator()
         try:
             validator.validate(password)
         except PasswordPolicyError as e:
             raise e  # Preserve the original PasswordPolicyError for proper status code handling
-        
+
         hashed_password = self.pwd_context.hash(password)
         new_user = User(
             username=username,
             email=email,
             hashed_password=hashed_password,
             role=Role.USER,
-            is_active=True
+            is_active=True,
         )
-        
+
         self.db_session.add(new_user)
         await self.db_session.commit()
         await self.db_session.refresh(new_user)
-        
+
         logger.info("New user registered", username=username)
         return new_user
 
     async def change_password(self, user_id: int, old_password: str, new_password: str) -> None:
-        """
-        Change a user's password with comprehensive security validation.
+        """Change a user's password with comprehensive security validation.
 
         This method implements a secure password change process that:
         1. Validates input parameters (non-empty, non-None)
@@ -151,6 +153,7 @@ class UserAuthenticationService:
             - Prevents password reuse by checking if new password differs from old
             - Logs password change events for security audit
             - Uses parameterized queries to prevent SQL injection
+
         """
         # Input validation
         if old_password is None:
@@ -170,17 +173,29 @@ class UserAuthenticationService:
 
         # Check if user is active
         if not user.is_active:
-            logger.warning("Password change attempted for inactive user", user_id=user_id, username=user.username)
+            logger.warning(
+                "Password change attempted for inactive user",
+                user_id=user_id,
+                username=user.username,
+            )
             raise AuthenticationError(get_translated_message("user_account_inactive", "en"))
 
         # Verify old password
         if not self.pwd_context.verify(old_password, user.hashed_password):
-            logger.warning("Invalid old password provided for password change", user_id=user_id, username=user.username)
+            logger.warning(
+                "Invalid old password provided for password change",
+                user_id=user_id,
+                username=user.username,
+            )
             raise InvalidOldPasswordError(get_translated_message("invalid_old_password", "en"))
 
         # Check if new password is different from old password
         if old_password == new_password:
-            logger.warning("Password change attempted with same password", user_id=user_id, username=user.username)
+            logger.warning(
+                "Password change attempted with same password",
+                user_id=user_id,
+                username=user.username,
+            )
             raise PasswordReuseError(get_translated_message("new_password_must_be_different", "en"))
 
         # Validate new password against security policy
@@ -188,12 +203,16 @@ class UserAuthenticationService:
         try:
             validator.validate(new_password)
         except PasswordPolicyError as e:
-            logger.warning("Password change attempted with weak password", user_id=user_id, username=user.username)
+            logger.warning(
+                "Password change attempted with weak password",
+                user_id=user_id,
+                username=user.username,
+            )
             raise e
 
         # Hash and update the new password
         user.hashed_password = self.pwd_context.hash(new_password)
-        
+
         # Commit changes to database
         await self.db_session.commit()
         await self.db_session.refresh(user)

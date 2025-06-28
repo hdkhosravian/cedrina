@@ -1,5 +1,4 @@
-"""
-Real-world scenario tests for rate limiting system.
+"""Real-world scenario tests for rate limiting system.
 
 This package contains comprehensive end-to-end tests that simulate complete
 user journeys and enterprise usage patterns with rate limiting scenarios.
@@ -15,4 +14,4 @@ Test Scenarios:
 These tests validate the complete system behavior from user registration
 through production usage, ensuring rate limiting works correctly in
 real-world contexts.
-""" 
+"""

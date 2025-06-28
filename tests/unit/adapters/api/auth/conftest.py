@@ -1,15 +1,19 @@
-import pytest_asyncio
 import httpx
+import pytest_asyncio
+
 from src.main import app
+
 
 # Define database setup functions directly since the import path is incorrect
 async def create_all_tables():
     """Create all database tables for testing."""
     pass  # Implementation would go here if needed
 
+
 async def truncate_all_tables():
     """Truncate all database tables after testing."""
     pass  # Implementation would go here if needed
+
 
 @pytest_asyncio.fixture(scope="function", autouse=True)
 async def setup_database():
@@ -18,6 +22,7 @@ async def setup_database():
     yield
     await truncate_all_tables()
 
+
 @pytest_asyncio.fixture
 async def async_client():
     """Provides an async test client."""
@@ -25,7 +30,9 @@ async def async_client():
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
 
+
 from unittest.mock import AsyncMock, MagicMock
+
 
 @pytest_asyncio.fixture
 async def db_session():
@@ -38,4 +45,4 @@ async def db_session():
     mock_session.add = MagicMock()
     mock_session.commit = AsyncMock()
     mock_session.refresh = AsyncMock()
-    return mock_session 
+    return mock_session

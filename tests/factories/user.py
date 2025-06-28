@@ -3,12 +3,12 @@ from __future__ import annotations
 """Factory for generating fake user data for testing."""
 
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import List, Optional
 
 from faker import Faker
 from pydantic import EmailStr
 
-from src.domain.entities.user import User, Role
+from src.domain.entities.user import Role, User
 
 fake = Faker()
 
@@ -22,7 +22,7 @@ def create_fake_user(
     is_active: bool = True,
     created_at: Optional[datetime] = None,
     updated_at: Optional[datetime] = None,
-    roles: Optional[List[Role]] = None
+    roles: Optional[List[Role]] = None,
 ) -> User:
     """Create a fake User entity for testing.
 
@@ -39,15 +39,22 @@ def create_fake_user(
 
     Returns:
         User: A fake User entity.
+
     """
     return User(
         id=id if id is not None else fake.random_int(min=1, max=10000),
         username=username if username is not None else fake.user_name(),
         email=email if email is not None else fake.email(),
-        hashed_password=hashed_password if hashed_password is not None else fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True),
+        hashed_password=(
+            hashed_password
+            if hashed_password is not None
+            else fake.password(
+                length=12, special_chars=True, digits=True, upper_case=True, lower_case=True
+            )
+        ),
         role=role,
         is_active=is_active,
         created_at=created_at if created_at is not None else datetime.now(timezone.utc),
         updated_at=updated_at,
-        roles=roles if roles is not None else [role]
-    ) 
+        roles=roles if roles is not None else [role],
+    )

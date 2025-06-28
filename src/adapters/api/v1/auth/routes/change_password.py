@@ -7,14 +7,14 @@ authentication system. It provides a secure endpoint for users to change their
 passwords with proper validation and security measures.
 """
 
-from fastapi import APIRouter, Depends, status, Request
+from fastapi import APIRouter, Depends, Request, status
 
-from src.adapters.api.v1.auth.schemas import ChangePasswordRequest, MessageResponse
 from src.adapters.api.v1.auth.dependencies import get_user_auth_service
+from src.adapters.api.v1.auth.schemas import ChangePasswordRequest, MessageResponse
 from src.core.dependencies.auth import get_current_user
+from src.core.exceptions import AuthenticationError, PasswordPolicyError, PasswordValidationError
 from src.domain.entities.user import User
 from src.domain.services.auth.user_authentication import UserAuthenticationService
-from src.core.exceptions import AuthenticationError, PasswordPolicyError, PasswordValidationError
 from src.utils.i18n import get_translated_message
 
 router = APIRouter()
@@ -40,8 +40,7 @@ async def change_password(
     current_user: User = Depends(get_current_user),
     user_service: UserAuthenticationService = Depends(get_user_auth_service),
 ) -> MessageResponse:
-    """
-    Change the password for the currently authenticated user.
+    """Change the password for the currently authenticated user.
 
     This endpoint implements a secure password change process that:
     1. Validates the user is authenticated and active
@@ -76,28 +75,30 @@ async def change_password(
         - This endpoint should be rate-limited to prevent brute force attacks
         - Recommended: 5 attempts per hour per user
         - Rate limiting is enforced by slowapi middleware
+
     """
     try:
         # Get the language from request state, fallback to 'en' if not set
-        language = getattr(request.state, 'language', 'en')
-        
+        language = getattr(request.state, "language", "en")
+
         # Change the password using the user service
         await user_service.change_password(
             user_id=current_user.id,
             old_password=payload.old_password,
-            new_password=payload.new_password
+            new_password=payload.new_password,
         )
-        
+
         # Return success message
         success_message = get_translated_message("password_changed_successfully", language)
         return MessageResponse(message=success_message)
-        
-    except (AuthenticationError, PasswordPolicyError, PasswordValidationError) as e:
+
+    except (AuthenticationError, PasswordPolicyError, PasswordValidationError):
         # Re-raise authentication, policy, and password validation errors to be handled by FastAPI exception handlers
         raise
     except Exception as e:
         # Log unexpected errors for debugging while maintaining security
-        language = getattr(request.state, 'language', 'en')
+        language = getattr(request.state, "language", "en")
         error_message = get_translated_message("password_change_failed", language)
         from src.core.exceptions import DatabaseError
-        raise DatabaseError(error_message) from e 
+
+        raise DatabaseError(error_message) from e

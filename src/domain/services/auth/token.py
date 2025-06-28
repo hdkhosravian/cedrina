@@ -1,24 +1,25 @@
-from datetime import datetime, timedelta, timezone
 import asyncio
-from typing import Any, Mapping, Optional
-from jose import JWTError, jwt
-from sqlalchemy.ext.asyncio import AsyncSession
-from redis.asyncio import Redis
-from structlog import get_logger
-import secrets
 import hashlib
+import secrets
+from datetime import datetime, timedelta, timezone
+from typing import Any, Mapping, Optional
 
-from src.domain.entities.user import User
+from jose import JWTError, jwt
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
+from structlog import get_logger
+
 from src.core.config.settings import settings
 from src.core.exceptions import AuthenticationError
+from src.domain.entities.user import User
 from src.domain.services.auth.session import SessionService
 from src.utils.i18n import get_translated_message
 
 logger = get_logger(__name__)
 
+
 class TokenService:
-    """
-    Service for managing JWT access and refresh tokens.
+    """Service for managing JWT access and refresh tokens.
 
     Handles token creation, validation, and refresh with RS256 signing, integrating
     with PostgreSQL and Redis for session tracking and security. This service ensures
@@ -29,16 +30,21 @@ class TokenService:
         db_session (AsyncSession): SQLAlchemy async session for database operations.
         redis_client (Redis): Async Redis client for token storage.
         session_service (SessionService): Service for managing user sessions.
+
     """
 
-    def __init__(self, db_session: AsyncSession, redis_client: Redis, session_service: Optional[SessionService] = None):
+    def __init__(
+        self,
+        db_session: AsyncSession,
+        redis_client: Redis,
+        session_service: Optional[SessionService] = None,
+    ):
         self.db_session = db_session
         self.redis_client = redis_client
         self.session_service = session_service or SessionService(db_session, redis_client)
 
     async def create_access_token(self, user: User) -> str:
-        """
-        Create a JWT access token with advanced claims.
+        """Create a JWT access token with advanced claims.
 
         Args:
             user (User): User for whom to create the token.
@@ -51,6 +57,7 @@ class TokenService:
             algorithms like HS256 as it uses a private-public key pair. The token includes
             claims like subject (sub), issuer (iss), audience (aud), and a unique JWT ID (jti)
             to prevent replay attacks.
+
         """
         payload = {
             "sub": str(user.id),
@@ -59,17 +66,17 @@ class TokenService:
             "role": user.role.value,
             "iss": settings.JWT_ISSUER,
             "aud": settings.JWT_AUDIENCE,
-            "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+            "exp": datetime.now(timezone.utc)
+            + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
             "iat": datetime.now(timezone.utc),
-            "jti": secrets.token_urlsafe(24)
+            "jti": secrets.token_urlsafe(24),
         }
         token = jwt.encode(payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="RS256")
         logger.debug("Access token created", user_id=user.id, jti=payload["jti"])
         return token
 
     async def create_refresh_token(self, user: User, jti: Optional[str] = None) -> str:
-        """
-        Create a JWT refresh token and store in Redis/PostgreSQL.
+        """Create a JWT refresh token and store in Redis/PostgreSQL.
 
         Args:
             user (User): User for whom to create the token.
@@ -82,6 +89,7 @@ class TokenService:
             Refresh tokens are stored as hashes in Redis and PostgreSQL to prevent theft.
             The token expiration is set to a longer duration than access tokens, and token
             rotation is implemented during refresh to enhance security.
+
         """
         # Auto-generate a new JTI if the caller did not supply one
         if jti is None:
@@ -93,9 +101,11 @@ class TokenService:
             "aud": settings.JWT_AUDIENCE,
             "exp": datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
             "iat": datetime.now(timezone.utc),
-            "jti": jti
+            "jti": jti,
         }
-        refresh_token = jwt.encode(payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="RS256")
+        refresh_token = jwt.encode(
+            payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="RS256"
+        )
         refresh_token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
 
         # Store in Redis and DB concurrently
@@ -110,8 +120,7 @@ class TokenService:
         return refresh_token
 
     async def refresh_tokens(self, refresh_token: str, language: str = "en") -> Mapping[str, str]:
-        """
-        Refresh JWT tokens using a refresh token with rotation.
+        """Refresh JWT tokens using a refresh token with rotation.
 
         Args:
             refresh_token (str): Current refresh token.
@@ -127,6 +136,7 @@ class TokenService:
             Implements token rotation by revoking the old refresh token and issuing a new one,
             reducing the risk of token theft. Validates token signature, issuer, audience, and
             checks for revocation in both Redis and PostgreSQL.
+
         """
         try:
             payload = jwt.decode(
@@ -134,14 +144,17 @@ class TokenService:
                 settings.JWT_PUBLIC_KEY,
                 algorithms=["RS256"],
                 issuer=settings.JWT_ISSUER,
-                audience=settings.JWT_AUDIENCE
+                audience=settings.JWT_AUDIENCE,
             )
             jti = payload["jti"]
             user_id = int(payload["sub"])
 
             # Verify in Redis
             stored_hash = await self.redis_client.get(self._redis_key(jti))
-            if not stored_hash or stored_hash.decode() != hashlib.sha256(refresh_token.encode()).hexdigest():
+            if (
+                not stored_hash
+                or stored_hash.decode() != hashlib.sha256(refresh_token.encode()).hexdigest()
+            ):
                 logger.warning("Invalid refresh token", jti=jti)
                 raise AuthenticationError(get_translated_message("invalid_refresh_token", language))
 
@@ -149,7 +162,9 @@ class TokenService:
             session = await self.session_service.get_session(jti, user_id)
             if not session or session.revoked_at:
                 logger.warning("Revoked or invalid session", jti=jti)
-                raise AuthenticationError(get_translated_message("session_revoked_or_invalid", language))
+                raise AuthenticationError(
+                    get_translated_message("session_revoked_or_invalid", language)
+                )
 
             # Get user
             user = await self.db_session.get(User, user_id)
@@ -169,15 +184,14 @@ class TokenService:
                 "access_token": access_token,
                 "refresh_token": refresh_token,
                 "token_type": "bearer",
-                "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+                "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             }
         except JWTError as e:
             logger.error("JWT decode failed", error=str(e))
             raise AuthenticationError(get_translated_message("invalid_refresh_token", language))
 
     async def validate_token(self, token: str, language: str = "en") -> Mapping[str, Any]:
-        """
-        Validate a JWT access token with advanced checks.
+        """Validate a JWT access token with advanced checks.
 
         Args:
             token (str): JWT access token.
@@ -192,6 +206,7 @@ class TokenService:
         Note:
             Validates token signature, issuer, audience, and expiration. Additionally,
             checks if the associated user is active to prevent access by deactivated accounts.
+
         """
         try:
             payload = jwt.decode(
@@ -199,7 +214,7 @@ class TokenService:
                 settings.JWT_PUBLIC_KEY,
                 algorithms=["RS256"],
                 issuer=settings.JWT_ISSUER,
-                audience=settings.JWT_AUDIENCE
+                audience=settings.JWT_AUDIENCE,
             )
             user_id = int(payload["sub"])
 
@@ -211,11 +226,15 @@ class TokenService:
 
             if blacklisted:
                 logger.warning("Blacklisted token used", jti=payload["jti"], user_id=user_id)
-                raise AuthenticationError(get_translated_message("token_revoked_or_blacklisted", language))
+                raise AuthenticationError(
+                    get_translated_message("token_revoked_or_blacklisted", language)
+                )
 
             if not user or not user.is_active:
                 logger.warning("Invalid user in JWT", user_id=user_id)
-                raise AuthenticationError(get_translated_message("user_is_invalid_or_inactive", language))
+                raise AuthenticationError(
+                    get_translated_message("user_is_invalid_or_inactive", language)
+                )
 
             logger.debug("JWT validated", user_id=user_id, jti=payload["jti"])
             return payload
@@ -224,8 +243,7 @@ class TokenService:
             raise AuthenticationError(get_translated_message("invalid_token", language)) from e
 
     async def _is_token_blacklisted(self, jti: str) -> bool:
-        """
-        Check if a token's JTI is blacklisted.
+        """Check if a token's JTI is blacklisted.
 
         Args:
             jti (str): JWT ID to check.
@@ -238,14 +256,14 @@ class TokenService:
             use Redis or a database table to store revoked or compromised token JTIs. For
             high-security applications, consider implementing this to handle token revocation
             beyond session management.
+
         """
         key = self._blacklist_key(jti)
         value = await self.redis_client.get(key)
         return value == "revoked"
 
     async def revoke_refresh_token(self, encoded_token: str, language: str = "en") -> None:
-        """
-        Revoke a refresh token.
+        """Revoke a refresh token.
 
         Args:
             encoded_token (str): Encoded refresh token.
@@ -257,6 +275,7 @@ class TokenService:
         Note:
             Ensures the token is validated before revocation and removes it from both
             Redis and PostgreSQL storage to prevent further use.
+
         """
         await self.session_service.revoke_token(encoded_token, language)
 
@@ -270,8 +289,8 @@ class TokenService:
             jti: The JWT ID of the access token to revoke.
             expires_in: Optional number of seconds to keep the blacklist entry.
                        If *None*, we use the configured access-token lifetime.
-        """
 
+        """
         if expires_in is None:
             expires_in = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
 
@@ -279,11 +298,11 @@ class TokenService:
         logger.info("Access token revoked", jti=jti, ttl=expires_in)
 
     @staticmethod
-    def _redis_key(jti: str) -> str:  # noqa: D401
+    def _redis_key(jti: str) -> str:
         """Generate the Redis key under which the refresh-token hash is stored."""
         return f"refresh_token:{jti}"
 
     @staticmethod
-    def _blacklist_key(jti: str) -> str:  # noqa: D401
+    def _blacklist_key(jti: str) -> str:
         """Return the Redis key under which a blacklisted JTI is stored."""
         return f"blacklist:{jti}"

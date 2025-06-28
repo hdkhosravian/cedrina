@@ -1,8 +1,10 @@
-from src.core.logging import logger
-from src.utils.i18n import get_translated_message
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from src.core.logging import logger
+from src.utils.i18n import get_translated_message
+
 ws_router = APIRouter()
+
 
 @ws_router.websocket("/health")
 async def websocket_health(websocket: WebSocket):

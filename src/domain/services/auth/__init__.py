@@ -1,7 +1,7 @@
-from .user_authentication import UserAuthenticationService
 from .oauth import OAuthService
-from .token import TokenService
 from .session import SessionService
+from .token import TokenService
+from .user_authentication import UserAuthenticationService
 
 __all__ = [
     "UserAuthenticationService",

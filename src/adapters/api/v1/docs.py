@@ -1,5 +1,4 @@
-"""
-API Documentation Endpoints
+"""API Documentation Endpoints
 
 This module provides custom endpoints for API documentation with access control. These endpoints serve the
 Swagger UI and ReDoc interfaces for exploring the API's OpenAPI schema, as well as the raw OpenAPI JSON schema
@@ -16,17 +15,17 @@ Endpoints:
     - /openapi.json: Provides the raw OpenAPI JSON schema for the API.
 """
 
-from fastapi import APIRouter, Depends, Response
-from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
-from fastapi.openapi.utils import get_openapi
+from fastapi import APIRouter, Depends
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
+
 from src.core.dependencies.auth import get_current_admin_user
 
 router = APIRouter()
 
+
 @router.get("/docs", dependencies=[Depends(get_current_admin_user)])
 async def get_documentation():
-    """
-    Custom endpoint for Swagger UI documentation.
+    """Custom endpoint for Swagger UI documentation.
 
     This endpoint serves the Swagger UI, an interactive interface for exploring and testing the API based on its
     OpenAPI schema. Access is restricted to admin users to protect sensitive API details from unauthorized access.
@@ -37,13 +36,14 @@ async def get_documentation():
     Raises:
         HTTPException: If the user does not have the required permissions (HTTP 403 Forbidden), as determined
                        by the Casbin enforcer.
+
     """
     return get_swagger_ui_html(openapi_url="/openapi.json", title="API Documentation")
 
+
 @router.get("/redoc", dependencies=[Depends(get_current_admin_user)])
 async def get_redoc_documentation():
-    """
-    Custom endpoint for ReDoc documentation.
+    """Custom endpoint for ReDoc documentation.
 
     This endpoint serves the ReDoc interface, a clean and readable alternative to Swagger UI for viewing API
     documentation based on the OpenAPI schema. Access is restricted to admin users to ensure that detailed API
@@ -55,13 +55,14 @@ async def get_redoc_documentation():
     Raises:
         HTTPException: If the user does not have the required permissions (HTTP 403 Forbidden), as determined
                        by the Casbin enforcer.
+
     """
     return get_redoc_html(openapi_url="/openapi.json", title="API Documentation")
 
+
 @router.get("/openapi.json", dependencies=[Depends(get_current_admin_user)])
 async def get_openapi_json():
-    """
-    Custom endpoint for OpenAPI JSON schema.
+    """Custom endpoint for OpenAPI JSON schema.
 
     This endpoint provides the raw OpenAPI JSON schema for the API, which is used by documentation tools like
     Swagger UI and ReDoc to generate interactive documentation. Access is restricted to admin users to prevent
@@ -74,6 +75,8 @@ async def get_openapi_json():
     Raises:
         HTTPException: If the user does not have the required permissions (HTTP 403 Forbidden), as determined
                        by the Casbin enforcer.
+
     """
     from src.main import app  # Import app to access OpenAPI schema
-    return app.openapi() 
+
+    return app.openapi()

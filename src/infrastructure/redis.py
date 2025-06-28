@@ -1,5 +1,4 @@
-"""
-Redis Connection Module
+"""Redis Connection Module
 
 This module provides an asynchronous Redis client for use in the application, typically for caching,
 session storage, or rate limiting. Redis is a high-performance, in-memory data store that supports
@@ -18,17 +17,18 @@ Functions:
     get_redis: A FastAPI dependency that yields an asynchronous Redis client instance.
 """
 
-from redis.asyncio import Redis
 import logging
+
+from redis.asyncio import Redis
 
 from src.core.config.settings import settings
 
 # Configure logging for Redis connection events
 logger = logging.getLogger(__name__)
 
+
 async def get_redis() -> Redis:
-    """
-    Provides an asynchronous Redis client.
+    """Provides an asynchronous Redis client.
 
     This function creates and yields a Redis client based on the application's
     settings. It is intended to be used as a FastAPI dependency, ensuring that
@@ -44,11 +44,12 @@ async def get_redis() -> Redis:
     Example:
         To use this dependency in a FastAPI route:
         `@router.get('/cache', dependencies=[Depends(get_redis)])`
+
     """
     redis = Redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
     logger.debug("Redis connection created")
     try:
         yield redis
     finally:
-        await redis.aclose() 
-        logger.debug("Redis connection closed") 
+        await redis.aclose()
+        logger.debug("Redis connection closed")

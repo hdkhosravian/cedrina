@@ -1,5 +1,4 @@
-"""
-Integration tests for the change password API endpoint.
+"""Integration tests for the change password API endpoint.
 
 This test suite covers comprehensive real-world scenarios including:
 - Successful password changes
@@ -11,21 +10,21 @@ This test suite covers comprehensive real-world scenarios including:
 - Real-world JWT token validation
 """
 
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 import pytest_asyncio
-from unittest.mock import AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 from jose import jwt
-from datetime import datetime, timezone, timedelta
 from passlib.context import CryptContext
-import asyncio
 
-from src.main import app
-from src.domain.entities.user import User, Role
-from src.core.config.settings import settings, BCRYPT_WORK_FACTOR
+from src.core.config.settings import BCRYPT_WORK_FACTOR, settings
+from src.core.dependencies.auth import get_current_user
+from src.domain.entities.user import Role, User
 from src.infrastructure.database.async_db import get_async_db
 from src.infrastructure.redis import get_redis
-from src.core.dependencies.auth import get_current_user
+from src.main import app
 
 
 @pytest_asyncio.fixture
@@ -55,7 +54,9 @@ async def mock_redis_client():
 @pytest.fixture
 def test_user():
     """Create a test user with valid credentials."""
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=BCRYPT_WORK_FACTOR)
+    pwd_context = CryptContext(
+        schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=BCRYPT_WORK_FACTOR
+    )
     hashed_password = pwd_context.hash("OldPass123!")
     return User(
         id=1,
@@ -63,7 +64,7 @@ def test_user():
         email="test@example.com",
         hashed_password=hashed_password,
         role=Role.USER,
-        is_active=True
+        is_active=True,
     )
 
 
@@ -78,7 +79,7 @@ def create_test_jwt_token(user: User) -> str:
         "aud": settings.JWT_AUDIENCE,
         "exp": datetime.now(timezone.utc) + timedelta(minutes=30),
         "iat": datetime.now(timezone.utc),
-        "jti": "test_jti_123"
+        "jti": "test_jti_123",
     }
     return jwt.encode(payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="RS256")
 
@@ -86,6 +87,7 @@ def create_test_jwt_token(user: User) -> str:
 def override_get_current_user(user):
     async def _override():
         return user
+
     return _override
 
 
@@ -104,7 +106,7 @@ class TestChangePasswordAPI:
             response = client.put(
                 "/api/v1/auth/change-password",
                 json={"old_password": "OldPass123!", "new_password": "NewPass456!"},
-                headers={"Authorization": f"Bearer {token}"}
+                headers={"Authorization": f"Bearer {token}"},
             )
             assert response.status_code == 200
             assert response.json()["message"] == "Password changed successfully"
@@ -120,7 +122,7 @@ class TestChangePasswordAPI:
             response = client.put(
                 "/api/v1/auth/change-password",
                 json={"old_password": "OldPass123!", "new_password": "NewPass456!"},
-                headers={"Authorization": "Bearer invalid_token"}
+                headers={"Authorization": "Bearer invalid_token"},
             )
             assert response.status_code == 401
         finally:
@@ -134,13 +136,15 @@ class TestChangePasswordAPI:
         try:
             response = client.put(
                 "/api/v1/auth/change-password",
-                json={"old_password": "OldPass123!", "new_password": "NewPass456!"}
+                json={"old_password": "OldPass123!", "new_password": "NewPass456!"},
             )
             assert response.status_code == 401
         finally:
             app.dependency_overrides.clear()
 
-    def test_change_password_invalid_old_password(self, test_user, mock_db_session, mock_redis_client):
+    def test_change_password_invalid_old_password(
+        self, test_user, mock_db_session, mock_redis_client
+    ):
         """Test change password fails with incorrect old password (400 status)."""
         mock_db_session.get.return_value = test_user
         app.dependency_overrides[get_async_db] = lambda: mock_db_session
@@ -152,7 +156,7 @@ class TestChangePasswordAPI:
             response = client.put(
                 "/api/v1/auth/change-password",
                 json={"old_password": "WrongOldPass123!", "new_password": "NewPass456!"},
-                headers={"Authorization": f"Bearer {token}"}
+                headers={"Authorization": f"Bearer {token}"},
             )
             assert response.status_code == 400
             assert response.json()["detail"] == "Invalid old password"
@@ -171,7 +175,7 @@ class TestChangePasswordAPI:
             response = client.put(
                 "/api/v1/auth/change-password",
                 json={"old_password": "OldPass123!", "new_password": "weak"},
-                headers={"Authorization": f"Bearer {token}"}
+                headers={"Authorization": f"Bearer {token}"},
             )
             assert response.status_code == 422
         finally:
@@ -189,10 +193,12 @@ class TestChangePasswordAPI:
             response = client.put(
                 "/api/v1/auth/change-password",
                 json={"old_password": "OldPass123!", "new_password": "OldPass123!"},
-                headers={"Authorization": f"Bearer {token}"}
+                headers={"Authorization": f"Bearer {token}"},
             )
             assert response.status_code == 400
-            assert response.json()["detail"] == "New password must be different from the old password"
+            assert (
+                response.json()["detail"] == "New password must be different from the old password"
+            )
         finally:
             app.dependency_overrides.clear()
 
@@ -208,7 +214,7 @@ class TestChangePasswordAPI:
             response = client.put(
                 "/api/v1/auth/change-password",
                 json={"old_password": "OldPass123!", "new_password": "NewPass456!"},
-                headers={"Authorization": f"Bearer {token}", "Accept-Language": "en"}
+                headers={"Authorization": f"Bearer {token}", "Accept-Language": "en"},
             )
             assert response.status_code == 200
             assert response.json()["message"] == "Password changed successfully"
@@ -227,7 +233,7 @@ class TestChangePasswordAPI:
             response = client.put(
                 "/api/v1/auth/change-password",
                 json={"old_password": "OldPass123!", "new_password": "NewPass456!"},
-                headers={"Authorization": f"Bearer {token}", "Accept-Language": "es"}
+                headers={"Authorization": f"Bearer {token}", "Accept-Language": "es"},
             )
             assert response.status_code == 200
             assert response.json()["message"] == "Contraseña cambiada exitosamente"
@@ -246,13 +252,13 @@ class TestChangePasswordAPI:
             response = client.put(
                 "/api/v1/auth/change-password",
                 json={"new_password": "NewPass456!"},
-                headers={"Authorization": f"Bearer {token}"}
+                headers={"Authorization": f"Bearer {token}"},
             )
             assert response.status_code == 422
             response = client.put(
                 "/api/v1/auth/change-password",
                 json={"old_password": "OldPass123!"},
-                headers={"Authorization": f"Bearer {token}"}
+                headers={"Authorization": f"Bearer {token}"},
             )
             assert response.status_code == 422
         finally:
@@ -271,13 +277,15 @@ class TestChangePasswordAPI:
             response = client.put(
                 "/api/v1/auth/change-password",
                 json={"old_password": "OldPass123!", "new_password": "NewPass456!"},
-                headers={"Authorization": f"Bearer {token}"}
+                headers={"Authorization": f"Bearer {token}"},
             )
             assert response.status_code == 500
         finally:
             app.dependency_overrides.clear()
 
-    def test_change_password_password_policy_violations(self, test_user, mock_db_session, mock_redis_client):
+    def test_change_password_password_policy_violations(
+        self, test_user, mock_db_session, mock_redis_client
+    ):
         """Test change password fails with various password policy violations."""
         mock_db_session.get.return_value = test_user
         app.dependency_overrides[get_async_db] = lambda: mock_db_session
@@ -297,7 +305,7 @@ class TestChangePasswordAPI:
                 response = client.put(
                     "/api/v1/auth/change-password",
                     json={"old_password": "OldPass123!", "new_password": weak_password},
-                    headers={"Authorization": f"Bearer {token}"}
+                    headers={"Authorization": f"Bearer {token}"},
                 )
                 assert response.status_code == 422
                 assert expected_error in response.json()["detail"]
@@ -316,7 +324,7 @@ class TestChangePasswordAPI:
             response = client.put(
                 "/api/v1/auth/change-password",
                 json={"old_password": "OldPass123!", "new_password": "NewPass456!"},
-                headers={"Authorization": f"Bearer {token}", "Accept-Language": "en"}
+                headers={"Authorization": f"Bearer {token}", "Accept-Language": "en"},
             )
             assert response.status_code == 200
             assert "Content-Language" in response.headers
@@ -332,17 +340,22 @@ class TestChangePasswordAPI:
         app.dependency_overrides[get_current_user] = override_get_current_user(test_user)
         token = create_test_jwt_token(test_user)
         client = TestClient(app)
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=BCRYPT_WORK_FACTOR)
+        pwd_context = CryptContext(
+            schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=BCRYPT_WORK_FACTOR
+        )
         try:
             unicode_passwords = [
-                "P@ssw0rd中文", "P@ssw0rdالعربية", "P@ssw0rdहिन्दी", "P@ssw0rdрусский",
+                "P@ssw0rd中文",
+                "P@ssw0rdالعربية",
+                "P@ssw0rdहिन्दी",
+                "P@ssw0rdрусский",
             ]
             old_password = "OldPass123!"
             for unicode_password in unicode_passwords:
                 response = client.put(
                     "/api/v1/auth/change-password",
                     json={"old_password": old_password, "new_password": unicode_password},
-                    headers={"Authorization": f"Bearer {token}"}
+                    headers={"Authorization": f"Bearer {token}"},
                 )
                 assert response.status_code == 200
                 assert response.json()["message"] == "Password changed successfully"
@@ -352,7 +365,9 @@ class TestChangePasswordAPI:
         finally:
             app.dependency_overrides.clear()
 
-    def test_change_password_sql_injection_attempt(self, test_user, mock_db_session, mock_redis_client):
+    def test_change_password_sql_injection_attempt(
+        self, test_user, mock_db_session, mock_redis_client
+    ):
         """Test that SQL injection attempts are properly handled."""
         mock_db_session.get.return_value = test_user
         app.dependency_overrides[get_async_db] = lambda: mock_db_session
@@ -362,13 +377,15 @@ class TestChangePasswordAPI:
         client = TestClient(app)
         try:
             sql_injection_passwords = [
-                "'; DROP TABLE users; --", "' OR '1'='1", "'; INSERT INTO users VALUES ('hacker', 'hacker@evil.com'); --",
+                "'; DROP TABLE users; --",
+                "' OR '1'='1",
+                "'; INSERT INTO users VALUES ('hacker', 'hacker@evil.com'); --",
             ]
             for malicious_password in sql_injection_passwords:
                 response = client.put(
                     "/api/v1/auth/change-password",
                     json={"old_password": "OldPass123!", "new_password": malicious_password},
-                    headers={"Authorization": f"Bearer {token}"}
+                    headers={"Authorization": f"Bearer {token}"},
                 )
                 assert response.status_code == 422
         finally:
@@ -384,14 +401,16 @@ class TestChangePasswordAPI:
         client = TestClient(app)
         try:
             xss_passwords = [
-                "<script>alert('xss')</script>", "javascript:alert('xss')", "<img src=x onerror=alert('xss')>",
+                "<script>alert('xss')</script>",
+                "javascript:alert('xss')",
+                "<img src=x onerror=alert('xss')>",
             ]
             for malicious_password in xss_passwords:
                 response = client.put(
                     "/api/v1/auth/change-password",
                     json={"old_password": "OldPass123!", "new_password": malicious_password},
-                    headers={"Authorization": f"Bearer {token}"}
+                    headers={"Authorization": f"Bearer {token}"},
                 )
                 assert response.status_code == 422
         finally:
-            app.dependency_overrides.clear() 
+            app.dependency_overrides.clear()

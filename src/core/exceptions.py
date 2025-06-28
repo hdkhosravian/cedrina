@@ -17,6 +17,7 @@ Rationale
 
 from dataclasses import dataclass
 from typing import Final
+
 from src.utils.i18n import get_translated_message
 
 __all__: Final = [
@@ -37,12 +38,12 @@ __all__: Final = [
 
 @dataclass(slots=True)
 class CedrinaError(Exception):
-    """
-    Base exception class for all custom errors in the Cedrina application.
+    """Base exception class for all custom errors in the Cedrina application.
 
     Attributes:
         message (str): A human-readable error message.
         code (str): A unique error code for identifying the type of error.
+
     """
 
     message: str
@@ -65,8 +66,7 @@ class CedrinaError(Exception):
 
 @dataclass(slots=True)
 class AuthenticationError(CedrinaError):
-    """
-    Exception raised when authentication fails.
+    """Exception raised when authentication fails.
 
     This can occur due to invalid credentials, inactive accounts, or expired tokens.
     """
@@ -84,9 +84,7 @@ class InvalidCredentialsError(AuthenticationError):
 
 @dataclass(slots=True)
 class PermissionError(CedrinaError):
-    """
-    Exception raised when a user is not authorized to perform an action.
-    """
+    """Exception raised when a user is not authorized to perform an action."""
 
     def __init__(self, message: str, code: str = "permission_denied"):
         CedrinaError.__init__(self, message, code)
@@ -99,9 +97,8 @@ class PermissionError(CedrinaError):
 
 @dataclass(slots=True)
 class PasswordValidationError(CedrinaError):
-    """
-    Exception raised when password validation fails during change password operations.
-    
+    """Exception raised when password validation fails during change password operations.
+
     This should return 400 status code, not 401, to avoid redirecting users to login.
     """
 
@@ -111,9 +108,8 @@ class PasswordValidationError(CedrinaError):
 
 @dataclass(slots=True)
 class InvalidOldPasswordError(PasswordValidationError):
-    """
-    Exception raised when the old password provided during password change is incorrect.
-    
+    """Exception raised when the old password provided during password change is incorrect.
+
     This should return 400 status code, not 401, to avoid redirecting users to login.
     """
 
@@ -123,9 +119,8 @@ class InvalidOldPasswordError(PasswordValidationError):
 
 @dataclass(slots=True)
 class PasswordReuseError(PasswordValidationError):
-    """
-    Exception raised when the new password is the same as the old password.
-    
+    """Exception raised when the new password is the same as the old password.
+
     This should return 400 status code, not 401, to avoid redirecting users to login.
     """
 
@@ -154,9 +149,7 @@ class UserAlreadyExistsError(CedrinaError):
 
 @dataclass(slots=True)
 class PasswordPolicyError(CedrinaError):
-    """
-    Exception raised when a password does not meet the required security policy.
-    """
+    """Exception raised when a password does not meet the required security policy."""
 
     def __init__(self, message: str, code: str = "password_policy_error"):
         CedrinaError.__init__(self, message, code)
@@ -179,9 +172,7 @@ class RateLimitError(CedrinaError):
 
 @dataclass(slots=True)
 class DuplicateUserError(CedrinaError):
-    """
-    Exception raised when attempting to register a user with a username or email that already exists.
-    """
+    """Exception raised when attempting to register a user with a username or email that already exists."""
 
     def __init__(self, message: str, code: str = "duplicate_user_error"):
         CedrinaError.__init__(self, message, code)

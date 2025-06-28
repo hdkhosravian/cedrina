@@ -2,9 +2,9 @@ from __future__ import annotations
 
 """Request‐payload Pydantic models for authentication endpoints."""
 
-from typing import Dict, Any, Literal
+from typing import Any, Dict, Literal
 
-from pydantic import BaseModel, EmailStr, constr, Field
+from pydantic import BaseModel, EmailStr, Field, constr
 
 # ---------------------------------------------------------------------------
 # Shared / primitive types ---------------------------------------------------
@@ -15,6 +15,7 @@ UsernameStr = constr(min_length=3, max_length=50, pattern=r"^[A-Za-z0-9_-]+$")
 # ---------------------------------------------------------------------------
 # Concrete request models ----------------------------------------------------
 # ---------------------------------------------------------------------------
+
 
 class RegisterRequest(BaseModel):
     """Payload expected by ``POST /auth/register``."""
@@ -34,10 +35,10 @@ class LoginRequest(BaseModel):
 class OAuthAuthenticateRequest(BaseModel):
     """Payload expected by ``POST /auth/oauth``."""
 
-    provider: Literal["google", "microsoft", "facebook"] = Field(
-        ..., examples=["google"]
+    provider: Literal["google", "microsoft", "facebook"] = Field(..., examples=["google"])
+    token: Dict[str, Any] = Field(
+        ..., examples=[{"access_token": "ya29.a0AfH6SMC...", "expires_at": 1640995200}]
     )
-    token: str = Field(..., examples=["ya29.a0AfH6SMC..."])
 
 
 class LogoutRequest(BaseModel):
@@ -49,5 +50,11 @@ class LogoutRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
     """Payload expected by ``PUT /auth/change-password``."""
 
-    old_password: str = Field(..., examples=["OldPass123!"], description="Current password for verification")
-    new_password: str = Field(..., examples=["NewPass456!"], description="New password that meets security policy requirements")
+    old_password: str = Field(
+        ..., examples=["OldPass123!"], description="Current password for verification"
+    )
+    new_password: str = Field(
+        ...,
+        examples=["NewPass456!"],
+        description="New password that meets security policy requirements",
+    )

@@ -3,10 +3,11 @@ from __future__ import annotations
 """Composite response Pydantic models for authentication endpoints."""
 
 from typing import Optional
+
 from pydantic import BaseModel
 
-from src.adapters.api.v1.auth.schemas.responses.user import UserOut
 from src.adapters.api.v1.auth.schemas.responses.token import TokenPair
+from src.adapters.api.v1.auth.schemas.responses.user import UserOut
 
 
 class AuthResponse(BaseModel):
@@ -22,4 +23,4 @@ class OAuthAuthResponse(BaseModel):
     user: UserOut
     provider: str
     oauth_profile_id: Optional[int] = None
-    tokens: TokenPair 
+    tokens: TokenPair
