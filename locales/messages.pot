@@ -73,3 +73,19 @@ msgstr ""
 msgid "policy_retrieve_failed"
 msgstr ""
 
+# Email functionality (2025-06-28)
+msgid "password_reset_email_subject"
+msgstr ""
+
+msgid "password_reset_email_sent"
+msgstr ""
+
+msgid "password_reset_email_failed"
+msgstr ""
+
+msgid "password_reset_token_invalid"
+msgstr ""
+
+msgid "password_reset_success"
+msgstr ""
+

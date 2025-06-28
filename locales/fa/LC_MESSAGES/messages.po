@@ -126,3 +126,20 @@ msgstr "رمز عبور با موفقیت تغییر کرد"
 msgid "password_change_failed"
 msgstr "تغییر رمز عبور به دلیل خطای داخلی ناموفق بود"
 
+# Email functionality (2025-06-28)
+
+msgid "password_reset_email_subject"
+msgstr "درخواست بازیابی رمز عبور - سدرینا"
+
+msgid "password_reset_email_sent"
+msgstr "اگر آدرس ایمیل ثبت شده باشد، لینک بازیابی رمز عبور به زودی دریافت خواهید کرد"
+
+msgid "password_reset_email_failed"
+msgstr "ارسال ایمیل بازیابی رمز عبور با شکست مواجه شد"
+
+msgid "password_reset_token_invalid"
+msgstr "توکن بازیابی رمز عبور نامعتبر یا منقضی شده است"
+
+msgid "password_reset_success"
+msgstr "رمز عبور با موفقیت بازیابی شد"
+

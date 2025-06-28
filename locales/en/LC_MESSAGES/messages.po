@@ -134,3 +134,29 @@ msgstr "Password changed successfully"
 msgid "password_change_failed"
 msgstr "Password change failed due to an internal error"
 
+# Email functionality (2025-06-28)
+
+msgid "password_reset_email_subject"
+msgstr "Password Reset Request - Cedrina"
+
+msgid "password_reset_email_sent"
+msgstr "If the email address is registered, you will receive a password reset link shortly"
+
+msgid "password_reset_email_failed"
+msgstr "Failed to send password reset email"
+
+msgid "password_reset_token_invalid"
+msgstr "Password reset token is invalid or expired"
+
+msgid "password_reset_success"
+msgstr "Password has been reset successfully"
+
+msgid "password_reset_request_failed"
+msgstr "Password reset request failed"
+
+msgid "password_reset_failed"
+msgstr "Password reset failed"
+
+msgid "password_too_weak"
+msgstr "Password does not meet security requirements"
+
