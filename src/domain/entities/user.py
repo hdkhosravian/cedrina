@@ -39,6 +39,8 @@ class User(SQLModel, table=True):
         is_active (bool): Account status, defaults to True (active).
         created_at (datetime): Timestamp of account creation, set by database.
         updated_at (Optional[datetime]): Timestamp of last update, updated by database.
+        password_reset_token (Optional[str]): Secure token for password reset verification.
+        password_reset_token_expires_at (Optional[datetime]): Expiration timestamp for password reset token.
 
     Table Arguments:
         Indexes on lower(username) and lower(email) for case-insensitive searches.
@@ -95,6 +97,19 @@ class User(SQLModel, table=True):
             nullable=True,
         ),
         description="Last update timestamp",
+    )
+    password_reset_token: Optional[str] = Field(
+        default=None,
+        max_length=64,  # 32 bytes hex encoded = 64 characters
+        description="Secure token for password reset verification",
+    )
+    password_reset_token_expires_at: Optional[datetime] = Field(
+        sa_column=Column(
+            DateTime,  # Explicit DateTime type for Alembic
+            nullable=True,
+        ),
+        default=None,
+        description="Expiration timestamp for password reset token",
     )
 
     __table_args__ = (

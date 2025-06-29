@@ -126,3 +126,20 @@ msgstr "تم تغيير كلمة المرور بنجاح"
 msgid "password_change_failed"
 msgstr "فشل تغيير كلمة المرور بسبب خطأ داخلي"
 
+# Email functionality (2025-06-28)
+
+msgid "password_reset_email_subject"
+msgstr "طلب إعادة تعيين كلمة المرور - سيدرينا"
+
+msgid "password_reset_email_sent"
+msgstr "إذا كان عنوان البريد الإلكتروني مسجلاً، فستتلقى رابط إعادة تعيين كلمة المرور قريباً"
+
+msgid "password_reset_email_failed"
+msgstr "فشل في إرسال بريد إعادة تعيين كلمة المرور"
+
+msgid "password_reset_token_invalid"
+msgstr "رمز إعادة تعيين كلمة المرور غير صالح أو منتهي الصلاحية"
+
+msgid "password_reset_success"
+msgstr "تم إعادة تعيين كلمة المرور بنجاح"
+

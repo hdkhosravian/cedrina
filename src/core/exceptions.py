@@ -28,11 +28,18 @@ __all__: Final = [
     "InvalidCredentialsError",
     "PasswordPolicyError",
     "RateLimitError",
+    "RateLimitExceededError",
     "DuplicateUserError",
     "PermissionError",
     "PasswordValidationError",
     "InvalidOldPasswordError",
     "PasswordReuseError",
+    "EmailServiceError",
+    "TemplateRenderError",
+    "PasswordResetError",
+    "ForgotPasswordError",
+    "UserNotFoundError",
+    "ValidationError",
 ]
 
 
@@ -171,8 +178,71 @@ class RateLimitError(CedrinaError):
 
 
 @dataclass(slots=True)
+class RateLimitExceededError(RateLimitError):
+    """Exception raised when a consumer exceeds the configured rate limits."""
+
+    def __init__(self, message: str | None = None, code: str = "rate_limit_exceeded"):
+        if message is None:
+            message = get_translated_message("rate_limit_exceeded", "en")
+        CedrinaError.__init__(self, message, code)
+
+
+@dataclass(slots=True)
 class DuplicateUserError(CedrinaError):
     """Exception raised when attempting to register a user with a username or email that already exists."""
 
     def __init__(self, message: str, code: str = "duplicate_user_error"):
+        CedrinaError.__init__(self, message, code)
+
+
+# ---------------------------------------------------------------------------
+# Email service errors
+# ---------------------------------------------------------------------------
+
+
+@dataclass(slots=True)
+class EmailServiceError(CedrinaError):
+    """Exception raised when email service operations fail."""
+
+    def __init__(self, message: str, code: str = "email_service_error"):
+        CedrinaError.__init__(self, message, code)
+
+
+@dataclass(slots=True)
+class TemplateRenderError(EmailServiceError):
+    """Exception raised when email template rendering fails."""
+
+    def __init__(self, message: str, code: str = "template_render_error"):
+        EmailServiceError.__init__(self, message, code)
+
+
+@dataclass(slots=True)
+class PasswordResetError(CedrinaError):
+    """Exception raised when password reset operations fail."""
+
+    def __init__(self, message: str, code: str = "password_reset_error"):
+        CedrinaError.__init__(self, message, code)
+
+
+@dataclass(slots=True)
+class ForgotPasswordError(CedrinaError):
+    """Exception raised when a forgot password operation fails."""
+
+    def __init__(self, message: str, code: str = "forgot_password_error"):
+        CedrinaError.__init__(self, message, code)
+
+
+@dataclass(slots=True)
+class UserNotFoundError(CedrinaError):
+    """Exception raised when a requested user is not found."""
+
+    def __init__(self, message: str, code: str = "user_not_found"):
+        CedrinaError.__init__(self, message, code)
+
+
+@dataclass(slots=True)
+class ValidationError(CedrinaError):
+    """Exception raised when input validation fails."""
+
+    def __init__(self, message: str, code: str = "validation_error"):
         CedrinaError.__init__(self, message, code)

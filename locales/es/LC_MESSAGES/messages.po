@@ -177,3 +177,20 @@ msgstr "Contraseña cambiada exitosamente"
 msgid "password_change_failed"
 msgstr "El cambio de contraseña falló debido a un error interno"
 
+# Email functionality (2025-06-28)
+
+msgid "password_reset_email_subject"
+msgstr "Solicitud de Restablecimiento de Contraseña - Cedrina"
+
+msgid "password_reset_email_sent"
+msgstr "Si la dirección de correo está registrada, recibirás un enlace de restablecimiento de contraseña en breve"
+
+msgid "password_reset_email_failed"
+msgstr "Error al enviar el correo de restablecimiento de contraseña"
+
+msgid "password_reset_token_invalid"
+msgstr "El token de restablecimiento de contraseña es inválido o ha expirado"
+
+msgid "password_reset_success"
+msgstr "La contraseña ha sido restablecida exitosamente"
+

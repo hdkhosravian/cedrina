@@ -14,6 +14,7 @@ from pydantic_settings import SettingsConfigDict
 from .app import AppSettings
 from .auth import AuthSettings
 from .database import DatabaseSettings
+from .email import EmailSettings
 from .redis import RedisSettings
 
 # Set up logging
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 logging.getLogger("passlib").setLevel(logging.ERROR)
 
 
-class Settings(AppSettings, DatabaseSettings, RedisSettings, AuthSettings):
+class Settings(AppSettings, DatabaseSettings, RedisSettings, AuthSettings, EmailSettings):
     """The main settings class that aggregates all application configurations.
 
     It inherits from all the specialized settings classes, providing a unified
@@ -74,6 +75,17 @@ class Settings(AppSettings, DatabaseSettings, RedisSettings, AuthSettings):
                 raise ValueError(error_msg)
         else:
             logger.info("All required environment variables are set.")
+            
+        # Validate email configuration
+        try:
+            self.validate_smtp_config()
+            logger.info("Email configuration validated successfully.")
+        except ValueError as e:
+            if hasattr(self, "TEST_MODE") and self.TEST_MODE:
+                logger.warning(f"Test mode: Email config warning - {e}")
+            else:
+                logger.error(f"Email configuration error: {e}")
+                # Don't raise error for email config to allow graceful degradation
 
 
 # Create a singleton instance of the settings to be used across the application.
