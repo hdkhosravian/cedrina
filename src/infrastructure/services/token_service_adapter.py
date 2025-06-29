@@ -183,7 +183,64 @@ class TokenServiceAdapter(ITokenService):
                 error=str(e),
             )
             raise
-    
+
+    async def revoke_access_token(self, jti: str, expires_in: int | None = None) -> None:
+        """Revoke access token by blacklisting it.
+        
+        Args:
+            jti: JWT ID to blacklist
+            expires_in: Optional expiration time for blacklist entry
+        """
+        try:
+            # Delegate to legacy service
+            await self._legacy_service.revoke_access_token(jti, expires_in)
+            
+            logger.debug(
+                "Access token revoked via adapter",
+                jti=jti[:8] + "***" if jti else "None",
+            )
+            
+        except Exception as e:
+            logger.error(
+                "Failed to revoke access token via adapter",
+                jti=jti[:8] + "***" if jti else "None",
+                error=str(e),
+            )
+            raise
+
+    async def validate_token(self, token: str, language: str = "en") -> dict:
+        """Validate JWT token.
+        
+        Args:
+            token: JWT token to validate
+            language: Language code for error messages
+            
+        Returns:
+            dict: Token payload if valid
+            
+        Raises:
+            AuthenticationError: If token is invalid
+        """
+        try:
+            # Delegate to legacy service
+            claims = await self._legacy_service.validate_token(token, language)
+            
+            logger.debug(
+                "Token validated via adapter",
+                user_id=claims.get("sub"),
+                token_prefix=token[:10] + "***" if token else "None",
+            )
+            
+            return claims
+            
+        except Exception as e:
+            logger.error(
+                "Failed to validate token via adapter",
+                token_prefix=token[:10] + "***" if token else "None",
+                error=str(e),
+            )
+            raise
+
     # Additional adapter methods for backwards compatibility
     
     async def create_token_pair(self, user: User) -> Dict[str, str]:

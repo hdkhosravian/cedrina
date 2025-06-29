@@ -107,7 +107,10 @@ msgid "session_already_revoked_or_invalid"
 msgstr "نشست قبلاً لغو شده یا نامعتبر است"
 
 msgid "logout_failed_internal_error"
-msgstr "خروج ناموفق به دلیل خطای داخلی"
+msgstr "خروج به دلیل خطای داخلی ناموفق بود"
+
+msgid "logout_successful"
+msgstr "خروج با موفقیت انجام شد"
 
 # Change password functionality (2025-06-28)
 
@@ -125,6 +128,9 @@ msgstr "رمز عبور با موفقیت تغییر کرد"
 
 msgid "password_change_failed"
 msgstr "تغییر رمز عبور به دلیل خطای داخلی ناموفق بود"
+
+msgid "password_change_service_unavailable"
+msgstr "سرویس تغییر رمز عبور موقتاً در دسترس نیست"
 
 # Email functionality (2025-06-28)
 

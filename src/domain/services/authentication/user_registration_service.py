@@ -61,9 +61,10 @@ class UserRegistrationService(IUserRegistrationService):
     
     async def register_user(
         self,
-        username: str,
-        email: str,
-        password: str,
+        username: Username,
+        email: Email,
+        password: Password,
+        language: str = "en",
         correlation_id: Optional[str] = None,
         user_agent: Optional[str] = None,
         ip_address: Optional[str] = None,
@@ -72,9 +73,10 @@ class UserRegistrationService(IUserRegistrationService):
         """Register a new user with comprehensive validation.
         
         Args:
-            username: Desired username
-            email: Email address
-            password: Plain text password
+            username: Username value object
+            email: Email value object
+            password: Password value object
+            language: Language code for I18N
             correlation_id: Optional correlation ID for tracking
             user_agent: Browser/client user agent
             ip_address: Client IP address
@@ -89,48 +91,43 @@ class UserRegistrationService(IUserRegistrationService):
             ValueError: If input validation fails
         """
         try:
-            # Validate inputs using value objects
-            username_vo = Username.create_safe(username)
-            email_vo = Email.create_normalized(email)
-            password_vo = Password(password)
-            
             logger.info(
                 "User registration started",
-                username=username_vo.mask_for_logging(),
-                email=email_vo.mask_for_logging(),
+                username=username.mask_for_logging(),
+                email=email.mask_for_logging(),
                 correlation_id=correlation_id,
                 ip_address=ip_address,
             )
             
             # Check for existing username
-            if not await self.check_username_availability(str(username_vo)):
+            if not await self.check_username_availability(str(username)):
                 logger.warning(
                     "Registration failed - username already exists",
-                    username=username_vo.mask_for_logging(),
+                    username=username.mask_for_logging(),
                     correlation_id=correlation_id,
                 )
                 raise DuplicateUserError(
-                    get_translated_message("username_already_registered", "en")
+                    get_translated_message("username_already_registered", language)
                 )
             
             # Check for existing email
-            if not await self.check_email_availability(str(email_vo)):
+            if not await self.check_email_availability(str(email)):
                 logger.warning(
                     "Registration failed - email already exists",
-                    email=email_vo.mask_for_logging(),
+                    email=email.mask_for_logging(),
                     correlation_id=correlation_id,
                 )
                 raise DuplicateUserError(
-                    get_translated_message("email_already_registered", "en")
+                    get_translated_message("email_already_registered", language)
                 )
             
             # Create hashed password
-            hashed_password = password_vo.to_hashed()
+            hashed_password = password.to_hashed()
             
             # Create user entity
             user = User(
-                username=str(username_vo),
-                email=str(email_vo),
+                username=str(username),
+                email=str(email),
                 hashed_password=str(hashed_password),
                 role=role,
                 is_active=True,
@@ -150,8 +147,8 @@ class UserRegistrationService(IUserRegistrationService):
             logger.info(
                 "User registration successful",
                 user_id=saved_user.id,
-                username=username_vo.mask_for_logging(),
-                email=email_vo.mask_for_logging(),
+                username=username.mask_for_logging(),
+                email=email.mask_for_logging(),
                 correlation_id=correlation_id,
             )
             
@@ -164,8 +161,8 @@ class UserRegistrationService(IUserRegistrationService):
             # Input validation failed
             logger.warning(
                 "Registration failed - validation error",
-                username=username[:3] + "***" if username else "None",
-                email=email[:3] + "***" if email else "None",
+                username=str(username)[:3] + "***" if username else "None",
+                email=str(email)[:3] + "***" if email else "None",
                 error=str(e),
                 correlation_id=correlation_id,
             )
@@ -173,8 +170,8 @@ class UserRegistrationService(IUserRegistrationService):
         except Exception as e:
             logger.error(
                 "Unexpected registration error",
-                username=username[:3] + "***" if username else "None",
-                email=email[:3] + "***" if email else "None",
+                username=str(username)[:3] + "***" if username else "None",
+                email=str(email)[:3] + "***" if email else "None",
                 error=str(e),
                 correlation_id=correlation_id,
             )

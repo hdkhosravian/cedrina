@@ -39,11 +39,11 @@ async def test_login_endpoint_is_rate_limited(client, mocker):
     )
 
     # Override the dependency in the app
-    from src.adapters.api.v1.auth.clean_dependencies import CleanAuthService
+    from src.infrastructure.dependency_injection.auth_dependencies import CleanAuthService
     from src.main import app
 
     # Override the actual dependency that creates the service
-    from src.adapters.api.v1.auth.clean_dependencies import get_user_authentication_service
+    from src.infrastructure.dependency_injection.auth_dependencies import get_user_authentication_service
     app.dependency_overrides[get_user_authentication_service] = lambda user_repository=None, event_publisher=None: mock_auth_service
 
     # Act
@@ -58,15 +58,15 @@ async def test_login_endpoint_is_rate_limited(client, mocker):
     # First request - should get validation error (422)
     response = client.post(url, json=invalid_creds)
     assert response.status_code == 422  # Validation failure
-    
+
     # Second request - should get validation error (422)
     response = client.post(url, json=invalid_creds)
     assert response.status_code == 422  # Validation failure
-    
+
     # Third request with different invalid credentials
     response = client.post(url, json={"username": "y", "password": "bad"})
     assert response.status_code == 422  # Validation failure
-    
+
     # Fourth request - should be rate-limited
     response = client.post(url, json=invalid_creds)
     assert response.status_code == 429

@@ -7,15 +7,20 @@ authentication system. It provides a secure endpoint for users to change their
 passwords with proper validation and security measures.
 """
 
+import uuid
+
+import structlog
 from fastapi import APIRouter, Depends, Request, status
 
-from src.adapters.api.v1.auth.dependencies import get_user_auth_service
 from src.adapters.api.v1.auth.schemas import ChangePasswordRequest, MessageResponse
 from src.core.dependencies.auth import get_current_user
 from src.core.exceptions import AuthenticationError, PasswordPolicyError, PasswordValidationError
 from src.domain.entities.user import User
-from src.domain.services.auth.user_authentication import UserAuthenticationService
-from src.utils.i18n import get_translated_message
+from src.domain.interfaces.services import IPasswordChangeService
+from src.infrastructure.dependency_injection.auth_dependencies import (
+    get_password_change_service,
+)
+from src.utils.i18n import get_request_language, get_translated_message
 
 router = APIRouter()
 
@@ -38,67 +43,117 @@ async def change_password(
     request: Request,
     payload: ChangePasswordRequest,
     current_user: User = Depends(get_current_user),
-    user_service: UserAuthenticationService = Depends(get_user_auth_service),
+    password_change_service: IPasswordChangeService = Depends(get_password_change_service),
 ) -> MessageResponse:
-    """Change the password for the currently authenticated user.
+    """Change password using clean architecture and Domain-Driven Design principles.
 
-    This endpoint implements a secure password change process that:
-    1. Validates the user is authenticated and active
-    2. Verifies the old password is correct
-    3. Ensures the new password meets security policy requirements
-    4. Securely hashes and stores the new password
-    5. Logs the password change for audit purposes
+    This endpoint implements a thin API layer that follows clean architecture:
+    
+    1. **No Business Logic**: All password change logic is delegated to domain service
+    2. **Security Context**: Captures client IP, user agent, and correlation ID
+    3. **Domain Service Delegation**: Uses clean password change service
+    4. **Clean Error Handling**: Proper handling of domain exceptions
+    5. **Secure Logging**: Implements data masking and correlation tracking
+    6. **I18N Support**: All messages are internationalized
 
     Args:
-        request (Request): FastAPI request object for language context.
-        payload (ChangePasswordRequest): Request payload with old and new passwords.
-        current_user (User): The authenticated user from token validation.
-        user_service (UserAuthenticationService): Service for password operations.
+        request (Request): FastAPI request object for security context extraction
+        payload (ChangePasswordRequest): Password change request data
+        current_user (User): The authenticated user from token validation
+        password_change_service (IPasswordChangeService): Clean domain service
 
     Returns:
-        MessageResponse: Success message confirming password change.
+        MessageResponse: Success message confirming password change
 
     Raises:
-        HTTPException: If authentication fails (401), validation fails (422),
-            or password policy requirements are not met (400).
+        HTTPException: Password change failures with appropriate status codes
 
-    Security:
-        - Requires valid JWT token for authentication
-        - Validates old password before allowing change
-        - Enforces password policy to prevent weak passwords
-        - Prevents password reuse by checking if new password differs from old
-        - Uses bcrypt with configured work factor for secure hashing
-        - Logs password change events for security audit
-        - Rate limiting should be applied at the API layer to prevent abuse
-
-    Rate Limiting:
-        - This endpoint should be rate-limited to prevent brute force attacks
-        - Recommended: 5 attempts per hour per user
-        - Rate limiting is enforced by slowapi middleware
-
+    Security Features:
+        - Domain value object validation for passwords
+        - Comprehensive audit trails via domain events
+        - Attack pattern detection and logging
+        - Secure logging with data masking
+        - Correlation ID tracking for request tracing
+        - Security context capture (IP, User-Agent) for audit trails
     """
+    # Generate correlation ID for request tracking and debugging
+    correlation_id = str(uuid.uuid4())
+    
+    # Extract security context from request for audit trails
+    client_ip = request.client.host or "unknown"
+    user_agent = request.headers.get("user-agent", "unknown")
+    
+    # Extract language from request for I18N
+    language = get_request_language(request)
+    
+    # Create structured logger with correlation context and security information
+    logger = structlog.get_logger(__name__)
+    request_logger = logger.bind(
+        correlation_id=correlation_id,
+        user_id=current_user.id,
+        client_ip=client_ip[:15] + "***" if len(client_ip) > 15 else client_ip,
+        user_agent=user_agent[:50] + "***" if len(user_agent) > 50 else user_agent,
+        endpoint="change_password",
+        operation="password_change"
+    )
+    
+    # Log password change attempt initiation
+    request_logger.info(
+        "Password change attempt initiated",
+        username=current_user.username[:3] + "***" if current_user.username else "unknown",
+        has_old_password=bool(payload.old_password),
+        has_new_password=bool(payload.new_password),
+        security_context_captured=True
+    )
+    
     try:
-        # Get the language from request state, fallback to 'en' if not set
-        language = getattr(request.state, "language", "en")
-
-        # Change the password using the user service
-        await user_service.change_password(
+        # Delegate all business logic to domain service
+        # The domain service handles:
+        # - Password validation using value objects
+        # - Old password verification
+        # - Password policy enforcement
+        # - Password reuse prevention
+        # - Domain event publishing
+        # - Comprehensive audit logging
+        await password_change_service.change_password(
             user_id=current_user.id,
             old_password=payload.old_password,
             new_password=payload.new_password,
+            language=language,
+            client_ip=client_ip,
+            user_agent=user_agent,
+            correlation_id=correlation_id,
+        )
+        
+        request_logger.info(
+            "Password change completed successfully by domain service",
+            username=current_user.username[:3] + "***" if current_user.username else "unknown"
         )
 
         # Return success message
         success_message = get_translated_message("password_changed_successfully", language)
         return MessageResponse(message=success_message)
 
-    except (AuthenticationError, PasswordPolicyError, PasswordValidationError):
-        # Re-raise authentication, policy, and password validation errors to be handled by FastAPI exception handlers
+    except (AuthenticationError, PasswordPolicyError, PasswordValidationError) as e:
+        # Handle domain errors - these are already properly logged by the domain service
+        request_logger.warning(
+            "Password change failed - domain error",
+            error_type=type(e).__name__,
+            error_message=str(e),
+            username=current_user.username[:3] + "***" if current_user.username else "unknown"
+        )
+        # Re-raise to maintain proper HTTP status codes and error context
         raise
+        
     except Exception as e:
-        # Log unexpected errors for debugging while maintaining security
-        language = getattr(request.state, "language", "en")
-        error_message = get_translated_message("password_change_failed", language)
-        from src.core.exceptions import DatabaseError
-
-        raise DatabaseError(error_message) from e
+        # Handle unexpected errors
+        # These should not occur in normal operation and indicate system issues
+        request_logger.error(
+            "Password change failed - unexpected error",
+            error_type=type(e).__name__,
+            error_message=str(e),
+            username=current_user.username[:3] + "***" if current_user.username else "unknown"
+        )
+        # Return generic error to prevent information leakage
+        error_message = get_translated_message("password_change_service_unavailable", language)
+        raise AuthenticationError(error_message) from e

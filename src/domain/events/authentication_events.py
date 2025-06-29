@@ -6,9 +6,12 @@ that other parts of the system may need to react to (logging, monitoring, notifi
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from .password_reset_events import BaseDomainEvent
+from src.domain.value_objects.oauth_provider import OAuthProvider
+from src.domain.value_objects.oauth_token import OAuthToken
+from src.domain.value_objects.oauth_user_info import OAuthUserInfo
 
 
 @dataclass(frozen=True)
@@ -379,4 +382,166 @@ class PasswordChangedEvent(BaseDomainEvent):
             user_agent=user_agent,
             ip_address=ip_address,
             forced_change=forced_change,
-        ) 
+        )
+
+
+class OAuthAuthenticationSuccessEvent(BaseDomainEvent):
+    """Domain event for successful OAuth authentication.
+    
+    This event is published when a user successfully authenticates
+    via OAuth, providing audit trails and security monitoring.
+    """
+    
+    def __init__(
+        self,
+        user_id: int,
+        provider: OAuthProvider,
+        user_info: OAuthUserInfo,
+        correlation_id: str,
+        user_agent: str,
+        ip_address: str,
+        language: str = "en",
+    ):
+        """Initialize OAuth authentication success event.
+        
+        Args:
+            user_id: ID of the authenticated user
+            provider: OAuth provider used for authentication
+            user_info: User information from OAuth provider
+            correlation_id: Request correlation ID for tracing
+            user_agent: Client user agent string
+            ip_address: Client IP address
+            language: Language code for I18N
+        """
+        super().__init__(
+            event_type="oauth_authentication_success",
+            correlation_id=correlation_id,
+            user_agent=user_agent,
+            ip_address=ip_address,
+            language=language,
+        )
+        self.user_id = user_id
+        self.provider = provider
+        self.user_info = user_info
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert event to dictionary for serialization.
+        
+        Returns:
+            Dict[str, Any]: Event data dictionary
+        """
+        base_data = super().to_dict()
+        base_data.update({
+            "user_id": self.user_id,
+            "provider": str(self.provider),
+            "user_info": self.user_info.mask_for_logging(),
+        })
+        return base_data
+
+
+class OAuthAuthenticationFailedEvent(BaseDomainEvent):
+    """Domain event for failed OAuth authentication.
+    
+    This event is published when OAuth authentication fails,
+    providing audit trails and security monitoring.
+    """
+    
+    def __init__(
+        self,
+        provider: OAuthProvider,
+        failure_reason: str,
+        correlation_id: str,
+        user_agent: str,
+        ip_address: str,
+        language: str = "en",
+        user_info: Optional[OAuthUserInfo] = None,
+    ):
+        """Initialize OAuth authentication failure event.
+        
+        Args:
+            provider: OAuth provider used for authentication
+            failure_reason: Reason for authentication failure
+            correlation_id: Request correlation ID for tracing
+            user_agent: Client user agent string
+            ip_address: Client IP address
+            language: Language code for I18N
+            user_info: User information if available
+        """
+        super().__init__(
+            event_type="oauth_authentication_failed",
+            correlation_id=correlation_id,
+            user_agent=user_agent,
+            ip_address=ip_address,
+            language=language,
+        )
+        self.provider = provider
+        self.failure_reason = failure_reason
+        self.user_info = user_info
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert event to dictionary for serialization.
+        
+        Returns:
+            Dict[str, Any]: Event data dictionary
+        """
+        base_data = super().to_dict()
+        base_data.update({
+            "provider": str(self.provider),
+            "failure_reason": self.failure_reason,
+            "user_info": self.user_info.mask_for_logging() if self.user_info else None,
+        })
+        return base_data
+
+
+class OAuthProfileLinkedEvent(BaseDomainEvent):
+    """Domain event for OAuth profile linking.
+    
+    This event is published when an OAuth profile is linked
+    to an existing user account.
+    """
+    
+    def __init__(
+        self,
+        user_id: int,
+        provider: OAuthProvider,
+        user_info: OAuthUserInfo,
+        correlation_id: str,
+        user_agent: str,
+        ip_address: str,
+        language: str = "en",
+    ):
+        """Initialize OAuth profile linked event.
+        
+        Args:
+            user_id: ID of the user whose profile was linked
+            provider: OAuth provider used for linking
+            user_info: User information from OAuth provider
+            correlation_id: Request correlation ID for tracing
+            user_agent: Client user agent string
+            ip_address: Client IP address
+            language: Language code for I18N
+        """
+        super().__init__(
+            event_type="oauth_profile_linked",
+            correlation_id=correlation_id,
+            user_agent=user_agent,
+            ip_address=ip_address,
+            language=language,
+        )
+        self.user_id = user_id
+        self.provider = provider
+        self.user_info = user_info
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert event to dictionary for serialization.
+        
+        Returns:
+            Dict[str, Any]: Event data dictionary
+        """
+        base_data = super().to_dict()
+        base_data.update({
+            "user_id": self.user_id,
+            "provider": str(self.provider),
+            "user_info": self.user_info.mask_for_logging(),
+        })
+        return base_data 

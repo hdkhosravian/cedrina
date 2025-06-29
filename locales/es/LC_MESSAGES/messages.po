@@ -118,7 +118,10 @@ msgid "session_already_revoked_or_invalid"
 msgstr "La sesión ya fue revocada o es inválida"
 
 msgid "logout_failed_internal_error"
-msgstr "El cierre de sesión falló debido a un error interno"
+msgstr "Error interno durante el cierre de sesión"
+
+msgid "logout_successful"
+msgstr "Sesión cerrada exitosamente"
 
 #: src/domain/services/auth/policy.py:59
 msgid "policy_params_empty"
@@ -176,6 +179,9 @@ msgstr "Contraseña cambiada exitosamente"
 
 msgid "password_change_failed"
 msgstr "El cambio de contraseña falló debido a un error interno"
+
+msgid "password_change_service_unavailable"
+msgstr "El servicio de cambio de contraseña no está disponible temporalmente"
 
 # Email functionality (2025-06-28)
 

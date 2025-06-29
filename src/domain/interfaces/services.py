@@ -6,13 +6,19 @@ enabling dependency inversion and better testability.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from pydantic import EmailStr
 
 from src.domain.entities.user import User
 from src.domain.events.password_reset_events import BaseDomainEvent
 from src.domain.value_objects.reset_token import ResetToken
+from src.domain.value_objects.username import Username
+from src.domain.value_objects.password import Password
+from src.domain.value_objects.oauth_provider import OAuthProvider
+from src.domain.value_objects.oauth_token import OAuthToken
+from src.domain.value_objects.oauth_user_info import OAuthUserInfo
+from src.domain.value_objects.jwt_token import AccessToken, RefreshToken
 
 
 class IRateLimitingService(ABC):
@@ -149,31 +155,54 @@ class IEventPublisher(ABC):
 
 
 class IUserAuthenticationService(ABC):
-    """Interface for user authentication service."""
+    """Interface for user authentication service following DDD principles.
+    
+    This service handles user authentication using domain value objects
+    and publishes domain events for audit trails and security monitoring.
+    """
     
     @abstractmethod
-    async def authenticate_user(self, username: str, password: str) -> User:
-        """Authenticate user with credentials.
+    async def authenticate_user(
+        self,
+        username: Username,
+        password: Password,
+        language: str = "en",
+        client_ip: str = "",
+        user_agent: str = "",
+        correlation_id: str = "",
+    ) -> User:
+        """Authenticate user with domain value objects and security context.
+        
+        This method follows DDD principles by:
+        - Using domain value objects for input validation
+        - Accepting security context for audit trails
+        - Publishing domain events for security monitoring
+        - Following single responsibility principle
+        - Supporting I18N for error messages
         
         Args:
-            username: Username for authentication
-            password: Password for authentication
+            username: Username value object (validated and normalized)
+            password: Password value object (validated)
+            language: Language code for I18N error messages
+            client_ip: Client IP address for security context
+            user_agent: User agent string for security context
+            correlation_id: Request correlation ID for tracing
             
         Returns:
             User: Authenticated user entity
             
         Raises:
-            AuthenticationError: If credentials are invalid
+            AuthenticationError: If credentials are invalid or user inactive
         """
         pass
     
     @abstractmethod
-    async def verify_password(self, user: User, password: str) -> bool:
-        """Verify password for user.
+    async def verify_password(self, user: User, password: Password) -> bool:
+        """Verify password for user using domain value objects.
         
         Args:
-            user: User entity
-            password: Password to verify
+            user: User entity with hashed password
+            password: Password value object to verify
             
         Returns:
             bool: True if password is correct
@@ -185,26 +214,38 @@ class IUserRegistrationService(ABC):
     """Interface for user registration service."""
     
     @abstractmethod
-    async def register_user(self, username: str, email: str, password: str) -> User:
+    async def register_user(
+        self,
+        username: 'Username',
+        email: 'Email',
+        password: 'Password',
+        language: str = "en",
+        correlation_id: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        role: 'Role' = None,
+    ) -> 'User':
         """Register a new user.
         
         Args:
-            username: Desired username
-            email: Email address
-            password: Password
-            
+            username: Username value object
+            email: Email value object
+            password: Password value object
+            language: Language code for I18N
+            correlation_id: Optional correlation ID for tracking
+            user_agent: Browser/client user agent
+            ip_address: Client IP address
+            role: User role (defaults to USER)
         Returns:
             User: Newly created user entity
-            
         Raises:
             DuplicateUserError: If username or email already exists
-            PasswordPolicyError: If password doesn't meet requirements
         """
         pass
     
     @abstractmethod
     async def check_username_availability(self, username: str) -> bool:
-        """Check if username is available.
+        """Check if username is available for registration.
         
         Args:
             username: Username to check
@@ -216,7 +257,7 @@ class IUserRegistrationService(ABC):
     
     @abstractmethod
     async def check_email_availability(self, email: str) -> bool:
-        """Check if email is available.
+        """Check if email is available for registration.
         
         Args:
             email: Email to check
@@ -228,94 +269,130 @@ class IUserRegistrationService(ABC):
 
 
 class IPasswordChangeService(ABC):
-    """Interface for password change service."""
+    """Interface for password change service following DDD principles."""
     
     @abstractmethod
     async def change_password(
-        self, 
-        user_id: int, 
-        old_password: str, 
-        new_password: str
+        self,
+        user_id: int,
+        old_password: str,
+        new_password: str,
+        language: str = "en",
+        client_ip: str = "",
+        user_agent: str = "",
+        correlation_id: str = "",
     ) -> None:
-        """Change user password.
+        """Change user password with comprehensive security validation.
         
         Args:
-            user_id: ID of user changing password
+            user_id: ID of the user changing password
             old_password: Current password for verification
             new_password: New password to set
+            language: Language code for error messages
+            client_ip: Client IP address for audit
+            user_agent: User agent string for audit
+            correlation_id: Correlation ID for request tracking
             
         Raises:
+            ValueError: If input parameters are invalid
             AuthenticationError: If user not found or inactive
             InvalidOldPasswordError: If old password is incorrect
-            PasswordReuseError: If new password same as old
-            PasswordPolicyError: If new password doesn't meet requirements
+            PasswordReuseError: If new password same as old password
+            PasswordPolicyError: If new password doesn't meet policy
         """
         pass
 
 
 class ITokenService(ABC):
-    """Interface for JWT token management service."""
+    """Interface for JWT token service."""
     
     @abstractmethod
     async def create_access_token(self, user: User) -> str:
-        """Create JWT access token for user.
+        """Create access token for user.
         
         Args:
-            user: User to create token for
+            user: User entity
             
         Returns:
-            str: Encoded access token
+            str: JWT access token
         """
         pass
     
     @abstractmethod
     async def create_refresh_token(self, user: User) -> str:
-        """Create JWT refresh token for user.
+        """Create refresh token for user.
         
         Args:
-            user: User to create token for
+            user: User entity
             
         Returns:
-            str: Encoded refresh token
+            str: JWT refresh token
         """
         pass
     
     @abstractmethod
     async def refresh_tokens(self, refresh_token: str) -> dict:
-        """Refresh access and refresh tokens.
+        """Refresh access token using refresh token.
         
         Args:
-            refresh_token: Current refresh token
+            refresh_token: Valid refresh token
             
         Returns:
-            dict: New access and refresh tokens
+            dict: New token pair
             
         Raises:
-            AuthenticationError: If refresh token is invalid or expired
+            AuthenticationError: If refresh token is invalid
         """
         pass
     
     @abstractmethod
     async def validate_access_token(self, token: str) -> dict:
-        """Validate access token and return claims.
+        """Validate access token.
         
         Args:
-            token: Access token to validate
+            token: JWT access token
             
         Returns:
-            dict: Token claims if valid
+            dict: Token payload if valid
             
         Raises:
-            AuthenticationError: If token is invalid or expired
+            AuthenticationError: If token is invalid
         """
         pass
     
     @abstractmethod
-    async def revoke_refresh_token(self, token: str) -> None:
+    async def revoke_refresh_token(self, token: str, language: str = "en") -> None:
         """Revoke refresh token.
         
         Args:
             token: Refresh token to revoke
+            language: Language code for error messages
+        """
+        pass
+
+    @abstractmethod
+    async def revoke_access_token(self, jti: str, expires_in: int | None = None) -> None:
+        """Revoke access token by blacklisting it.
+        
+        Args:
+            jti: JWT ID to blacklist
+            expires_in: Optional expiration time for blacklist entry
+        """
+        pass
+
+    @abstractmethod
+    async def validate_token(self, token: str, language: str = "en") -> dict:
+        """Validate JWT token.
+        
+        Args:
+            token: JWT token to validate
+            language: Language code for error messages
+            
+        Returns:
+            dict: Token payload if valid
+            
+        Raises:
+            AuthenticationError: If token is invalid
         """
         pass
 
@@ -325,14 +402,14 @@ class ISessionService(ABC):
     
     @abstractmethod
     async def create_session(self, user_id: int, token_id: str) -> str:
-        """Create user session.
+        """Create new session for user.
         
         Args:
-            user_id: User ID for session
-            token_id: Token ID for session
+            user_id: User ID
+            token_id: Token identifier
             
         Returns:
-            str: Session identifier
+            str: Session ID
         """
         pass
     
@@ -341,7 +418,7 @@ class ISessionService(ABC):
         """Get session by ID.
         
         Args:
-            session_id: Session identifier
+            session_id: Session ID
             
         Returns:
             Optional[dict]: Session data if found
@@ -350,10 +427,10 @@ class ISessionService(ABC):
     
     @abstractmethod
     async def revoke_session(self, session_id: str) -> None:
-        """Revoke user session.
+        """Revoke session.
         
         Args:
-            session_id: Session identifier to revoke
+            session_id: Session ID to revoke
         """
         pass
     
@@ -362,7 +439,7 @@ class ISessionService(ABC):
         """Check if session is valid.
         
         Args:
-            session_id: Session identifier to check
+            session_id: Session ID to check
             
         Returns:
             bool: True if session is valid
@@ -371,7 +448,7 @@ class ISessionService(ABC):
 
 
 class ICacheService(ABC):
-    """Interface for cache service (Redis abstraction)."""
+    """Interface for cache service."""
     
     @abstractmethod
     async def get(self, key: str) -> Optional[str]:
@@ -398,7 +475,7 @@ class ICacheService(ABC):
     
     @abstractmethod
     async def delete(self, key: str) -> None:
-        """Delete key from cache.
+        """Delete value from cache.
         
         Args:
             key: Cache key to delete
@@ -414,5 +491,109 @@ class ICacheService(ABC):
             
         Returns:
             bool: True if key exists
+        """
+        pass
+
+
+class IOAuthService(ABC):
+    """Interface for OAuth authentication service following DDD principles.
+    
+    This service handles OAuth 2.0 authentication with external providers
+    using domain value objects and publishes domain events for audit trails.
+    """
+    
+    @abstractmethod
+    async def authenticate_with_oauth(
+        self,
+        provider: OAuthProvider,
+        token: OAuthToken,
+        language: str = "en",
+        client_ip: str = "",
+        user_agent: str = "",
+        correlation_id: str = "",
+    ) -> Tuple['User', 'OAuthProfile']:
+        """Authenticate user via OAuth 2.0 and link or create a user profile.
+        
+        This method follows DDD principles by:
+        - Using domain value objects for input validation
+        - Accepting security context for audit trails
+        - Publishing domain events for security monitoring
+        - Following single responsibility principle
+        - Supporting I18N for error messages
+        
+        Args:
+            provider: OAuth provider value object
+            token: OAuth token value object
+            language: Language code for I18N error messages
+            client_ip: Client IP address for security context
+            user_agent: User agent string for security context
+            correlation_id: Request correlation ID for tracing
+            
+        Returns:
+            Tuple[User, OAuthProfile]: Authenticated user and OAuth profile
+            
+        Raises:
+            AuthenticationError: If OAuth token or user info is invalid
+        """
+        pass
+    
+    @abstractmethod
+    async def validate_oauth_state(
+        self,
+        state: str,
+        stored_state: str,
+        language: str = "en"
+    ) -> bool:
+        """Validate the OAuth state parameter to prevent CSRF attacks.
+        
+        Args:
+            state: State parameter returned from the OAuth provider
+            stored_state: State parameter stored in the session before redirection
+            language: Language code for I18N error messages
+            
+        Returns:
+            bool: True if state matches, False otherwise
+        """
+        pass 
+
+
+class IUserLogoutService(ABC):
+    """Interface for user logout service following DDD principles.
+    
+    This service handles user logout operations using domain value objects
+    and publishes domain events for audit trails and security monitoring.
+    """
+    
+    @abstractmethod
+    async def logout_user(
+        self,
+        access_token: AccessToken,
+        refresh_token: RefreshToken,
+        user: User,
+        language: str = "en",
+        client_ip: str = "",
+        user_agent: str = "",
+        correlation_id: str = "",
+    ) -> None:
+        """Logout user by revoking tokens and terminating session.
+        
+        This method follows DDD principles by:
+        - Using domain value objects for token validation
+        - Accepting security context for audit trails
+        - Publishing domain events for security monitoring
+        - Following single responsibility principle
+        - Supporting I18N for error messages
+        
+        Args:
+            access_token: Access token value object (validated)
+            refresh_token: Refresh token value object (validated)
+            user: Authenticated user entity
+            language: Language code for I18N error messages
+            client_ip: Client IP address for security context
+            user_agent: User agent string for security context
+            correlation_id: Request correlation ID for tracing
+            
+        Raises:
+            AuthenticationError: If token validation or revocation fails
         """
         pass 

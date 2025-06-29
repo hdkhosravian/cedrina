@@ -109,6 +109,9 @@ msgstr "الجلسة ملغاة بالفعل أو غير صالحة"
 msgid "logout_failed_internal_error"
 msgstr "فشل تسجيل الخروج بسبب خطأ داخلي"
 
+msgid "logout_successful"
+msgstr "تم تسجيل الخروج بنجاح"
+
 # Change password functionality (2025-06-28)
 
 msgid "user_not_found"
@@ -125,6 +128,9 @@ msgstr "تم تغيير كلمة المرور بنجاح"
 
 msgid "password_change_failed"
 msgstr "فشل تغيير كلمة المرور بسبب خطأ داخلي"
+
+msgid "password_change_service_unavailable"
+msgstr "خدمة تغيير كلمة المرور غير متاحة مؤقتاً"
 
 # Email functionality (2025-06-28)
 

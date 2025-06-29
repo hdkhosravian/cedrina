@@ -117,6 +117,9 @@ msgstr "Session already revoked or invalid"
 msgid "logout_failed_internal_error"
 msgstr "Logout failed due to internal error"
 
+msgid "logout_successful"
+msgstr "Logged out successfully"
+
 # Change password functionality (2025-06-28)
 
 msgid "user_not_found"
@@ -133,6 +136,9 @@ msgstr "Password changed successfully"
 
 msgid "password_change_failed"
 msgstr "Password change failed due to an internal error"
+
+msgid "password_change_service_unavailable"
+msgstr "Password change service is temporarily unavailable"
 
 # Email functionality (2025-06-28)
 

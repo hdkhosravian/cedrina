@@ -10,6 +10,7 @@ from typing import List, Optional
 from pydantic import EmailStr
 
 from src.domain.entities.user import User
+from src.domain.entities.oauth_profile import OAuthProfile, Provider
 
 
 class IUserRepository(ABC):
@@ -36,7 +37,7 @@ class IUserRepository(ABC):
         """Get user by username (case-insensitive).
         
         Args:
-            username: Username to search for
+            username: Username to search for (string or Username value object)
             
         Returns:
             User entity if found, None otherwise
@@ -44,11 +45,11 @@ class IUserRepository(ABC):
         pass
     
     @abstractmethod
-    async def get_by_email(self, email: EmailStr) -> Optional[User]:
+    async def get_by_email(self, email: str) -> Optional[User]:
         """Get user by email address (case-insensitive).
         
         Args:
-            email: Email address to search for
+            email: Email address to search for (string or Email value object)
             
         Returns:
             User entity if found, None otherwise
@@ -94,5 +95,107 @@ class IUserRepository(ABC):
         
         Args:
             user: User entity to delete
+        """
+        pass
+    
+    @abstractmethod
+    async def check_username_availability(self, username: str) -> bool:
+        """Check if username is available for registration.
+        
+        Args:
+            username: Username to check (string or Username value object)
+            
+        Returns:
+            True if username is available, False otherwise
+        """
+        pass
+    
+    @abstractmethod
+    async def check_email_availability(self, email: str) -> bool:
+        """Check if email is available for registration.
+        
+        Args:
+            email: Email to check (string or Email value object)
+            
+        Returns:
+            True if email is available, False otherwise
+        """
+        pass
+
+class IOAuthProfileRepository(ABC):
+    """Interface for OAuth profile repository following DDD principles.
+    
+    This repository handles OAuth profile data access operations
+    using domain entities and following repository pattern.
+    """
+    
+    @abstractmethod
+    async def get_by_provider_and_user_id(
+        self, 
+        provider: Provider, 
+        provider_user_id: str
+    ) -> Optional[OAuthProfile]:
+        """Get OAuth profile by provider and provider user ID.
+        
+        Args:
+            provider: OAuth provider
+            provider_user_id: Provider's user ID
+            
+        Returns:
+            Optional[OAuthProfile]: OAuth profile if found, None otherwise
+        """
+        pass
+    
+    @abstractmethod
+    async def get_by_user_id(self, user_id: int) -> List[OAuthProfile]:
+        """Get all OAuth profiles for a user.
+        
+        Args:
+            user_id: User ID
+            
+        Returns:
+            List[OAuthProfile]: List of OAuth profiles for the user
+        """
+        pass
+    
+    @abstractmethod
+    async def create(self, oauth_profile: OAuthProfile) -> OAuthProfile:
+        """Create a new OAuth profile.
+        
+        Args:
+            oauth_profile: OAuth profile to create
+            
+        Returns:
+            OAuthProfile: Created OAuth profile with ID
+            
+        Raises:
+            DuplicateUserError: If OAuth profile already exists
+        """
+        pass
+    
+    @abstractmethod
+    async def update(self, oauth_profile: OAuthProfile) -> OAuthProfile:
+        """Update an existing OAuth profile.
+        
+        Args:
+            oauth_profile: OAuth profile to update
+            
+        Returns:
+            OAuthProfile: Updated OAuth profile
+            
+        Raises:
+            UserNotFoundError: If OAuth profile not found
+        """
+        pass
+    
+    @abstractmethod
+    async def delete(self, oauth_profile_id: int) -> None:
+        """Delete an OAuth profile.
+        
+        Args:
+            oauth_profile_id: OAuth profile ID to delete
+            
+        Raises:
+            UserNotFoundError: If OAuth profile not found
         """
         pass 

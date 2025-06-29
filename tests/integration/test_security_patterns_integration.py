@@ -32,7 +32,7 @@ class TestLogoutEndpointSecurityIntegration:
         self.user_alice = SecurityTestHelpers.create_test_user(1, "alice", "alice@example.com")
         self.user_bob = SecurityTestHelpers.create_test_user(2, "bob", "bob@example.com")
 
-    @patch("src.adapters.api.v1.auth.dependencies.get_token_service")
+    @patch("src.infrastructure.dependency_injection.auth_dependencies.get_token_service")
     @patch("src.core.dependencies.auth.get_current_user")
     def test_logout_rejects_cross_user_tokens(
         self, mock_get_current_user, mock_get_token_service, test_client
