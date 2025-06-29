@@ -16,10 +16,12 @@ and tests.
 from .misc import MessageResponse
 from .requests import (
     ChangePasswordRequest,
+    ForgotPasswordRequest,
     LoginRequest,
     LogoutRequest,
     OAuthAuthenticateRequest,
     RegisterRequest,
+    ResetPasswordRequest,
     UsernameStr,
 )
 from .responses.auth import AuthResponse, OAuthAuthResponse
@@ -32,6 +34,8 @@ __all__ = [
     "OAuthAuthenticateRequest",
     "LogoutRequest",
     "ChangePasswordRequest",
+    "ForgotPasswordRequest",
+    "ResetPasswordRequest",
     "UsernameStr",
     "UserOut",
     "TokenPair",

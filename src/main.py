@@ -32,21 +32,31 @@ from src.core.exceptions import (
     AuthenticationError,
     DatabaseError,
     DuplicateUserError,
+    EmailServiceError,
+    ForgotPasswordError,
     InvalidOldPasswordError,
     PasswordPolicyError,
+    PasswordResetError,
     PasswordReuseError,
     PasswordValidationError,
     PermissionError,
+    RateLimitExceededError,
+    UserNotFoundError,
 )
 from src.core.handlers import (
     authentication_error_handler,
     duplicate_user_error_handler,
+    email_service_error_handler,
+    forgot_password_error_handler,
     invalid_old_password_error_handler,
     password_policy_error_handler,
+    password_reset_error_handler,
     password_reuse_error_handler,
     password_validation_error_handler,
     permission_error_handler,
+    rate_limit_exceeded_error_handler,
     rate_limit_exception_handler,
+    user_not_found_error_handler,
 )
 from src.core.logging import configure_logging, logger
 from src.core.ratelimiter import get_limiter
@@ -119,13 +129,18 @@ async def database_error_handler(request: Request, exc: DatabaseError) -> JSONRe
 
 # Register custom exception handlers
 app.add_exception_handler(RateLimitExceeded, rate_limit_exception_handler)
+app.add_exception_handler(RateLimitExceededError, rate_limit_exceeded_error_handler)
 app.add_exception_handler(AuthenticationError, authentication_error_handler)
 app.add_exception_handler(PermissionError, permission_error_handler)
 app.add_exception_handler(DuplicateUserError, duplicate_user_error_handler)
+app.add_exception_handler(ForgotPasswordError, forgot_password_error_handler)
+app.add_exception_handler(PasswordResetError, password_reset_error_handler)
 app.add_exception_handler(PasswordPolicyError, password_policy_error_handler)
 app.add_exception_handler(PasswordValidationError, password_validation_error_handler)
 app.add_exception_handler(InvalidOldPasswordError, invalid_old_password_error_handler)
 app.add_exception_handler(PasswordReuseError, password_reuse_error_handler)
+app.add_exception_handler(EmailServiceError, email_service_error_handler)
+app.add_exception_handler(UserNotFoundError, user_not_found_error_handler)
 app.add_exception_handler(DatabaseError, database_error_handler)
 
 # CORS middleware configuration
