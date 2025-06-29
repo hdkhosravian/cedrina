@@ -4,71 +4,31 @@ This module provides a repository pattern implementation for User entity operati
 abstracting database access and providing a clean interface for domain services.
 """
 
-from abc import ABC, abstractmethod
-from typing import Optional
+from typing import List, Optional
 
+from pydantic import EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
 from src.domain.entities.user import User
+from src.domain.interfaces.repositories import IUserRepository
 
 logger = get_logger(__name__)
 
 
-class UserRepositoryInterface(ABC):
-    """Abstract interface for User repository operations.
-    
-    Defines the contract for user data access operations following
-    the Repository pattern from Domain-Driven Design.
-    """
-    
-    @abstractmethod
-    async def get_by_id(self, user_id: int) -> Optional[User]:
-        """Get user by ID."""
-        pass
-    
-    @abstractmethod
-    async def get_by_username(self, username: str) -> Optional[User]:
-        """Get user by username."""
-        pass
-    
-    @abstractmethod
-    async def get_by_email(self, email: str) -> Optional[User]:
-        """Get user by email address."""
-        pass
-    
-    @abstractmethod
-    async def get_by_password_reset_token(self, token: str) -> Optional[User]:
-        """Get user by password reset token."""
-        pass
-    
-    @abstractmethod
-    async def save(self, user: User) -> User:
-        """Save or update user."""
-        pass
-    
-    @abstractmethod
-    async def get_by_reset_token(self, token: str) -> Optional[User]:
-        """Get user by password reset token."""
-        pass
-    
-    @abstractmethod
-    async def get_users_with_reset_tokens(self) -> list[User]:
-        """Get all users with active password reset tokens."""
-        pass
-    
-    @abstractmethod
-    async def delete(self, user: User) -> None:
-        """Delete user."""
-        pass
-
-
-class UserRepository(UserRepositoryInterface):
+class UserRepository(IUserRepository):
     """SQLAlchemy implementation of UserRepository.
     
     Provides concrete implementation of user data access operations
     using SQLAlchemy async sessions following existing patterns.
+    
+    This implementation focuses on clean data access patterns:
+    - Single responsibility for data persistence
+    - Proper error handling and logging
+    - Type safety with proper annotations
+    - Consistent transaction management
+    - Fail-fast error reporting
     """
     
     def __init__(self, db_session: AsyncSession):
@@ -88,7 +48,13 @@ class UserRepository(UserRepositoryInterface):
             
         Returns:
             User entity if found, None otherwise
+            
+        Raises:
+            ValueError: If user_id is invalid
         """
+        if user_id <= 0:
+            raise ValueError("User ID must be positive")
+        
         try:
             statement = select(User).where(User.id == user_id)
             result = await self.db_session.execute(statement)
@@ -109,7 +75,13 @@ class UserRepository(UserRepositoryInterface):
             
         Returns:
             User entity if found, None otherwise
+            
+        Raises:
+            ValueError: If username is invalid
         """
+        if not username or not username.strip():
+            raise ValueError("Username cannot be empty")
+        
         try:
             statement = select(User).where(User.username == username.lower())
             result = await self.db_session.execute(statement)
@@ -122,7 +94,7 @@ class UserRepository(UserRepositoryInterface):
             logger.error("Error getting user by username", username=username, error=str(e))
             raise
     
-    async def get_by_email(self, email: str) -> Optional[User]:
+    async def get_by_email(self, email: EmailStr) -> Optional[User]:
         """Get user by email address (case-insensitive).
         
         Args:
@@ -143,35 +115,6 @@ class UserRepository(UserRepositoryInterface):
             logger.error("Error getting user by email", email=email, error=str(e))
             raise
     
-    async def get_by_password_reset_token(self, token: str) -> Optional[User]:
-        """Get user by password reset token.
-        
-        Args:
-            token: Password reset token to search for
-            
-        Returns:
-            User entity if found, None otherwise
-        """
-        try:
-            statement = select(User).where(User.password_reset_token == token)
-            result = await self.db_session.execute(statement)
-            user = result.scalars().first()
-            
-            logger.debug(
-                "User lookup by reset token", 
-                token_prefix=token[:8] if token else None, 
-                found=user is not None
-            )
-            return user
-            
-        except Exception as e:
-            logger.error(
-                "Error getting user by reset token", 
-                token_prefix=token[:8] if token else None, 
-                error=str(e)
-            )
-            raise
-    
     async def save(self, user: User) -> User:
         """Save or update user.
         
@@ -180,7 +123,13 @@ class UserRepository(UserRepositoryInterface):
             
         Returns:
             Saved user entity
+            
+        Raises:
+            ValueError: If user is invalid
         """
+        if not user:
+            raise ValueError("User cannot be None")
+        
         try:
             if user.id is None:
                 # New user - add to session
@@ -214,7 +163,13 @@ class UserRepository(UserRepositoryInterface):
             
         Returns:
             User entity if found, None otherwise
+            
+        Raises:
+            ValueError: If token is invalid
         """
+        if not token or not token.strip():
+            raise ValueError("Token cannot be empty")
+        
         try:
             statement = select(User).where(User.password_reset_token == token)
             result = await self.db_session.execute(statement)
@@ -235,12 +190,16 @@ class UserRepository(UserRepositoryInterface):
             )
             raise
     
-    async def get_users_with_reset_tokens(self) -> list[User]:
-        """Get all users with active password reset tokens."""
+    async def get_users_with_reset_tokens(self) -> List[User]:
+        """Get all users with active password reset tokens.
+        
+        Returns:
+            List of users with reset tokens
+        """
         try:
-            statement = select(User).where(User.password_reset_token != None)
+            statement = select(User).where(User.password_reset_token.isnot(None))
             result = await self.db_session.execute(statement)
-            users = result.scalars().all()
+            users = list(result.scalars().all())
             
             logger.debug("Users lookup with reset tokens", count=len(users))
             return users
@@ -254,7 +213,13 @@ class UserRepository(UserRepositoryInterface):
         
         Args:
             user: User entity to delete
+            
+        Raises:
+            ValueError: If user is invalid
         """
+        if not user:
+            raise ValueError("User cannot be None")
+        
         try:
             await self.db_session.delete(user)
             await self.db_session.commit()

@@ -1,10 +1,10 @@
-from __future__ import annotations
+"""Clean Architecture Login Endpoint.
 
-"""/auth/login route module.
-
-This module handles user authentication via username and password in the Cedrina
-authentication system using clean architecture principles.
+This module provides a clean implementation of user authentication following
+Domain-Driven Design principles and clean architecture patterns.
 """
+
+from __future__ import annotations
 
 import uuid
 
@@ -18,35 +18,35 @@ from src.adapters.api.v1.auth.clean_dependencies import (
 from src.adapters.api.v1.auth.schemas import AuthResponse, LoginRequest, UserOut
 from src.core.exceptions import AuthenticationError
 from src.domain.interfaces.services import ITokenService, IUserAuthenticationService
-from src.domain.value_objects.password import Password
 from src.domain.value_objects.username import Username
+from src.domain.value_objects.password import Password
 
 logger = structlog.get_logger(__name__)
 router = APIRouter()
 
 
 @router.post(
-    "",
+    "/clean",
     response_model=AuthResponse,
     status_code=status.HTTP_200_OK,
     tags=["auth"],
-    summary="Authenticate a user",
-    description="Authenticates a user with username and password using clean architecture principles.",
+    summary="Authenticate user (Clean Architecture)",
+    description="Clean architecture implementation of user authentication with enhanced security and domain events.",
 )
-async def login_user(
+async def clean_login_user(
     request: Request,
     payload: LoginRequest,
     auth_service: IUserAuthenticationService = Depends(CleanAuthService),
     token_service: ITokenService = Depends(CleanTokenService),
 ):
-    """Authenticate a user with username and password using clean architecture.
+    """Authenticate user using clean architecture principles.
 
-    This endpoint validates user credentials using clean architecture principles:
-    - Domain value objects for input validation
-    - Domain services for business logic
-    - Domain events for audit trails
+    This endpoint demonstrates clean architecture implementation with:
+    - Domain-driven design with value objects
     - Proper separation of concerns
+    - Domain events for audit trails
     - Enhanced security patterns
+    - Comprehensive logging with correlation IDs
 
     Args:
         request (Request): FastAPI request object for security context
@@ -66,7 +66,6 @@ async def login_user(
         - Comprehensive audit trails via domain events
         - Attack pattern detection
         - Secure logging with data masking
-        - Rate limiting via middleware (slowapi)
     """
     # Generate correlation ID for request tracking
     correlation_id = str(uuid.uuid4())
@@ -80,11 +79,11 @@ async def login_user(
         correlation_id=correlation_id,
         client_ip=client_ip[:15] + "***" if len(client_ip) > 15 else client_ip,
         user_agent=user_agent[:50] + "***" if len(user_agent) > 50 else user_agent,
-        endpoint="login",
+        endpoint="clean_login",
     )
     
     request_logger.info(
-        "Login attempt initiated",
+        "Clean login attempt initiated",
         username_length=len(payload.username),
         has_password=bool(payload.password),
     )
@@ -162,3 +161,39 @@ async def login_user(
             message="Authentication service temporarily unavailable",
             language="en"
         )
+
+
+# Alternative endpoint with explicit dependency injection for testing
+@router.post(
+    "/clean-explicit",
+    response_model=AuthResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["auth", "testing"],
+    summary="Authenticate user (Clean Architecture - Explicit DI)",
+    description="Clean architecture login with explicit dependency injection for testing and demonstration.",
+    include_in_schema=False,  # Hide from public API docs
+)
+async def clean_login_explicit_di(
+    request: Request,
+    payload: LoginRequest,
+    auth_service: IUserAuthenticationService,
+    token_service: ITokenService,
+):
+    """Clean login with explicit dependency injection.
+    
+    This endpoint variant accepts services directly without FastAPI dependency
+    injection, making it easier to test and demonstrate clean architecture
+    principles in isolation.
+    
+    This pattern is useful for:
+    - Unit testing with mock services
+    - Integration testing with specific implementations
+    - Demonstrating dependency inversion principle
+    - Manual service composition
+    """
+    return await clean_login_user(
+        request=request,
+        payload=payload,
+        auth_service=auth_service,    
+        token_service=token_service,
+    ) 
