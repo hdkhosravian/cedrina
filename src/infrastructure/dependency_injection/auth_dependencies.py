@@ -29,6 +29,9 @@ from src.domain.interfaces.services import (
     IEventPublisher,
     IOAuthService,
     IPasswordChangeService,
+    IPasswordResetEmailService,
+    IPasswordResetTokenService,
+    IRateLimitingService,
     ITokenService,
     IUserAuthenticationService,
     IUserLogoutService,
@@ -48,10 +51,25 @@ from src.domain.services.authentication.user_logout_service import (
 from src.domain.services.authentication.user_registration_service import (
     UserRegistrationService,
 )
+from src.domain.services.password_reset.password_reset_request_service import (
+    PasswordResetRequestService,
+)
+from src.domain.services.password_reset.password_reset_service import (
+    PasswordResetService,
+)
+from src.domain.services.password_reset.rate_limiting_service import (
+    RateLimitingService,
+)
 from src.infrastructure.database.async_db import get_async_db
 from src.infrastructure.redis import get_redis
 from src.infrastructure.repositories.user_repository import UserRepository
 from src.infrastructure.services.event_publisher import InMemoryEventPublisher
+from src.infrastructure.services.password_reset_email_service import (
+    PasswordResetEmailService,
+)
+from src.infrastructure.services.password_reset_token_service import (
+    PasswordResetTokenService,
+)
 from src.infrastructure.services.token_service_adapter import TokenServiceAdapter
 
 # ---------------------------------------------------------------------------
@@ -302,6 +320,118 @@ def get_password_change_service(
     )
 
 
+def get_password_reset_token_service() -> IPasswordResetTokenService:
+    """Factory that returns password reset token service.
+    
+    This factory creates the token service for generating and validating
+    password reset tokens with proper security.
+    
+    Returns:
+        IPasswordResetTokenService: Token service for password resets
+        
+    Note:
+        The token service uses cryptographically secure random generation
+        and constant-time validation to prevent timing attacks.
+    """
+    return PasswordResetTokenService()
+
+
+def get_password_reset_email_service() -> IPasswordResetEmailService:
+    """Factory that returns password reset email service.
+    
+    This factory creates the email service for sending password reset
+    emails with internationalization support.
+    
+    Returns:
+        IPasswordResetEmailService: Email service for password resets
+        
+    Note:
+        The email service supports multiple languages and secure
+        email delivery with proper template rendering.
+    """
+    return PasswordResetEmailService()
+
+
+def get_password_reset_rate_limiting_service() -> IRateLimitingService:
+    """Factory that returns rate limiting service for password resets.
+    
+    This factory creates the rate limiting service to prevent abuse
+    of password reset functionality.
+    
+    Returns:
+        IRateLimitingService: Rate limiting service for password resets
+        
+    Note:
+        The rate limiting service prevents brute force attacks on
+        password reset functionality with configurable limits.
+    """
+    return RateLimitingService()
+
+
+def get_password_reset_request_service(
+    user_repository: IUserRepository = Depends(get_user_repository),
+    rate_limiting_service: IRateLimitingService = Depends(get_password_reset_rate_limiting_service),
+    token_service: IPasswordResetTokenService = Depends(get_password_reset_token_service),
+    email_service: IPasswordResetEmailService = Depends(get_password_reset_email_service),
+    event_publisher: IEventPublisher = Depends(get_event_publisher),
+) -> PasswordResetRequestService:
+    """Factory that returns password reset request service.
+    
+    This factory creates the domain service for handling password reset
+    requests with all required dependencies.
+    
+    Args:
+        user_repository: User repository dependency for data access
+        rate_limiting_service: Rate limiting service for abuse prevention
+        token_service: Token service for secure token generation
+        email_service: Email service for sending reset emails
+        event_publisher: Event publisher dependency for domain events
+        
+    Returns:
+        PasswordResetRequestService: Service for password reset requests
+        
+    Note:
+        This service coordinates all password reset request operations
+        including validation, rate limiting, token generation, and email delivery.
+    """
+    return PasswordResetRequestService(
+        user_repository=user_repository,
+        rate_limiting_service=rate_limiting_service,
+        token_service=token_service,
+        email_service=email_service,
+        event_publisher=event_publisher,
+    )
+
+
+def get_password_reset_service(
+    user_repository: IUserRepository = Depends(get_user_repository),
+    token_service: IPasswordResetTokenService = Depends(get_password_reset_token_service),
+    event_publisher: IEventPublisher = Depends(get_event_publisher),
+) -> PasswordResetService:
+    """Factory that returns password reset execution service.
+    
+    This factory creates the domain service for executing password resets
+    using valid tokens.
+    
+    Args:
+        user_repository: User repository dependency for data access
+        token_service: Token service for validation and invalidation
+        event_publisher: Event publisher dependency for domain events
+        
+    Returns:
+        PasswordResetService: Service for password reset execution
+        
+    Note:
+        This service handles the execution phase of password reset
+        including token validation, password updates, and audit logging.
+    """
+    return PasswordResetService(
+        user_repository=user_repository,
+        token_service=token_service,
+        event_publisher=event_publisher,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Convenience Aliases for Clean Architecture
 # ---------------------------------------------------------------------------
@@ -315,4 +445,6 @@ CleanTokenService = Annotated[ITokenService, Depends(get_token_service)]
 CleanAuthService = Annotated[IUserAuthenticationService, Depends(get_user_authentication_service)]
 CleanRegistrationService = Annotated[IUserRegistrationService, Depends(get_user_registration_service)]
 CleanOAuthService = Annotated[IOAuthService, Depends(get_oauth_service)]
-CleanPasswordChangeService = Annotated[IPasswordChangeService, Depends(get_password_change_service)] 
+CleanPasswordChangeService = Annotated[IPasswordChangeService, Depends(get_password_change_service)]
+CleanPasswordResetRequestService = Annotated[PasswordResetRequestService, Depends(get_password_reset_request_service)]
+CleanPasswordResetService = Annotated[PasswordResetService, Depends(get_password_reset_service)] 

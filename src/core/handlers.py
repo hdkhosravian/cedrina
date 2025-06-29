@@ -17,11 +17,16 @@ from src.core.exceptions import (
     AuthenticationError,
     CedrinaError,
     DuplicateUserError,
+    EmailServiceError,
+    ForgotPasswordError,
     InvalidOldPasswordError,
     PasswordPolicyError,
+    PasswordResetError,
     PasswordReuseError,
     PasswordValidationError,
     PermissionError,
+    RateLimitExceededError,
+    UserNotFoundError,
 )
 from src.utils.i18n import get_request_language, get_translated_message
 
@@ -31,6 +36,11 @@ __all__ = [
     "password_policy_error_handler",
     "permission_error_handler",
     "rate_limit_exception_handler",
+    "rate_limit_exceeded_error_handler",
+    "forgot_password_error_handler",
+    "password_reset_error_handler",
+    "email_service_error_handler",
+    "user_not_found_error_handler",
     "cedrina_error_handler",
     "password_validation_error_handler",
     "invalid_old_password_error_handler",
@@ -130,6 +140,59 @@ async def rate_limit_exception_handler(request: Request, exc: RateLimitExceeded)
     return JSONResponse(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         content={"detail": get_translated_message("too_many_requests", locale)},
+    )
+
+
+async def rate_limit_exceeded_error_handler(request: Request, exc: RateLimitExceededError) -> JSONResponse:
+    """Handles RateLimitExceededError exceptions from domain services, returning a 429 Too Many Requests response."""
+    locale = get_request_language(request)
+    logger.warning(
+        "domain_rate_limit_exceeded",
+        client_ip=request.client.host,
+        path=request.url.path,
+        error_message=str(exc),
+    )
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content={"detail": exc.message},
+    )
+
+
+async def forgot_password_error_handler(request: Request, exc: ForgotPasswordError) -> JSONResponse:
+    """Handles ForgotPasswordError exceptions, returning a 400 Bad Request response."""
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": exc.message},
+    )
+
+
+async def password_reset_error_handler(request: Request, exc: PasswordResetError) -> JSONResponse:
+    """Handles PasswordResetError exceptions, returning a 400 Bad Request response."""
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": exc.message},
+    )
+
+
+async def email_service_error_handler(request: Request, exc: EmailServiceError) -> JSONResponse:
+    """Handles EmailServiceError exceptions, returning a 500 Internal Server Error response."""
+    logger.error(
+        "email_service_error",
+        error_message=str(exc),
+        client_ip=request.client.host,
+        path=request.url.path,
+    )
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": exc.message},
+    )
+
+
+async def user_not_found_error_handler(request: Request, exc: UserNotFoundError) -> JSONResponse:
+    """Handles UserNotFoundError exceptions, returning a 404 Not Found response."""
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"detail": exc.message},
     )
 
 
