@@ -62,14 +62,17 @@ class IPasswordResetTokenService(ABC):
     """Interface for password reset token service."""
     
     @abstractmethod
-    def generate_token(self, user: User) -> ResetToken:
-        """Generate a secure password reset token.
+    async def generate_token(self, user: User) -> ResetToken:
+        """Generate a secure password reset token with rate limiting.
         
         Args:
             user: User to generate token for
             
         Returns:
             ResetToken: Generated token with expiration
+            
+        Raises:
+            RateLimitExceededError: If rate limit is exceeded for this user
         """
         pass
     

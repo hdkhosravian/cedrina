@@ -40,7 +40,9 @@ def mock_rate_limiting_service():
 @pytest.fixture
 def mock_token_service():
     """Mock token service."""
-    return Mock()
+    mock = Mock()
+    mock.generate_token = AsyncMock()
+    return mock
 
 
 @pytest.fixture

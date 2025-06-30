@@ -138,3 +138,28 @@ msgstr ""
 msgid "rate_limit_exceeded"
 msgstr ""
 
+# Enhanced Token Security (2025-06-30)
+msgid "token_cannot_be_empty"
+msgstr ""
+
+msgid "token_must_contain_uppercase"
+msgstr ""
+
+msgid "token_must_contain_lowercase"
+msgstr ""
+
+msgid "token_must_contain_digits"
+msgstr ""
+
+msgid "token_must_contain_special_chars"
+msgstr ""
+
+msgid "token_length_invalid"
+msgstr ""
+
+msgid "token_expiry_cannot_be_empty"
+msgstr ""
+
+msgid "token_expiry_must_be_timezone_aware"
+msgstr ""
+

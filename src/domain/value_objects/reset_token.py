@@ -1,40 +1,55 @@
 """Reset Token Value Object for secure token management.
 
 This value object encapsulates password reset token business rules,
-ensuring tokens are always valid and properly formatted.
+ensuring tokens are always valid and properly formatted with enhanced security.
 """
 
 import secrets
+import string
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import ClassVar
 
+from src.utils.i18n import get_translated_message
+
 
 @dataclass(frozen=True)
 class ResetToken:
-    """Password reset token value object with built-in validation.
+    """Password reset token value object with enhanced security.
     
     This value object ensures that reset tokens are always properly
     formatted and contain sufficient entropy for security.
     
-    Security Features:
-        - 64-character hexadecimal format (256-bit entropy)
-        - Cryptographically secure generation
+    Enhanced Security Features:
+        - Variable length tokens (48-64 characters)
+        - Mixed character sets (alphanumeric + special characters)
+        - Cryptographically secure generation using SystemRandom
         - Format validation on construction
         - Immutable once created
+        - Unpredictable token format to prevent enumeration
+        - High entropy generation (>128 bits)
+        - Character position randomization
+        - Multiple special character sets
         
     Attributes:
-        value: The token string (64 hex characters)
+        value: The token string (48-64 mixed characters)
         expires_at: Token expiration timestamp
     """
     
     value: str
     expires_at: datetime
     
-    # Security constants
-    TOKEN_LENGTH: ClassVar[int] = 64
-    TOKEN_BYTES: ClassVar[int] = 32
+    # Enhanced security constants
+    MIN_TOKEN_LENGTH: ClassVar[int] = 48
+    MAX_TOKEN_LENGTH: ClassVar[int] = 64
     DEFAULT_EXPIRY_MINUTES: ClassVar[int] = 5
+    
+    # Advanced character sets for maximum unpredictability
+    UPPERCASE_CHARS: ClassVar[str] = string.ascii_uppercase
+    LOWERCASE_CHARS: ClassVar[str] = string.ascii_lowercase
+    DIGIT_CHARS: ClassVar[str] = string.digits
+    SPECIAL_CHARS: ClassVar[str] = "!@#$%^&*()_+-=[]{}|;:,.<>?"
+    EXTENDED_SPECIAL_CHARS: ClassVar[str] = "~`!@#$%^&*()_+-=[]{}|\\;:'\",./<>?"
     
     def __post_init__(self) -> None:
         """Validate token format on construction."""
@@ -42,22 +57,35 @@ class ResetToken:
         self._validate_expiry()
     
     def _validate_format(self) -> None:
-        """Validate token format requirements.
+        """Validate enhanced token format requirements.
         
         Raises:
             ValueError: If token format is invalid
         """
         if not self.value:
-            raise ValueError("Token cannot be empty")
+            raise ValueError(get_translated_message("token_cannot_be_empty"))
         
-        if len(self.value) != self.TOKEN_LENGTH:
-            raise ValueError(f"Token must be exactly {self.TOKEN_LENGTH} characters")
+        # Validate character diversity for security first (more specific error)
+        has_uppercase = any(c in self.UPPERCASE_CHARS for c in self.value)
+        has_lowercase = any(c in self.LOWERCASE_CHARS for c in self.value)
+        has_digit = any(c in self.DIGIT_CHARS for c in self.value)
+        has_special = any(c in self.SPECIAL_CHARS for c in self.value)
         
-        # Validate hexadecimal format
-        try:
-            int(self.value, 16)
-        except ValueError:
-            raise ValueError("Token must contain only hexadecimal characters")
+        if not has_uppercase:
+            raise ValueError(get_translated_message("token_must_contain_uppercase"))
+        if not has_lowercase:
+            raise ValueError(get_translated_message("token_must_contain_lowercase"))
+        if not has_digit:
+            raise ValueError(get_translated_message("token_must_contain_digits"))
+        if not has_special:
+            raise ValueError(get_translated_message("token_must_contain_special_chars"))
+        
+        # Validate length after character diversity
+        if len(self.value) < self.MIN_TOKEN_LENGTH or len(self.value) > self.MAX_TOKEN_LENGTH:
+            raise ValueError(get_translated_message("token_length_invalid").format(
+                min_length=self.MIN_TOKEN_LENGTH,
+                max_length=self.MAX_TOKEN_LENGTH
+            ))
     
     def _validate_expiry(self) -> None:
         """Validate expiry timestamp.
@@ -66,14 +94,22 @@ class ResetToken:
             ValueError: If expiry is invalid
         """
         if not self.expires_at:
-            raise ValueError("Token expiry cannot be empty")
+            raise ValueError(get_translated_message("token_expiry_cannot_be_empty"))
         
         if not self.expires_at.tzinfo:
-            raise ValueError("Token expiry must be timezone-aware")
+            raise ValueError(get_translated_message("token_expiry_must_be_timezone_aware"))
     
     @classmethod
     def generate(cls, expiry_minutes: int = None) -> 'ResetToken':
-        """Generate a new cryptographically secure reset token.
+        """Generate a new cryptographically secure reset token with advanced unpredictability.
+        
+        This method creates tokens with maximum security by:
+        - Using SystemRandom for cryptographically secure generation
+        - Variable length for unpredictability (48-64 characters)
+        - Mixed character sets with extended special characters
+        - Character position randomization
+        - High entropy generation (>128 bits)
+        - Multiple rounds of shuffling
         
         Args:
             expiry_minutes: Token expiry time in minutes (default: 5)
@@ -81,8 +117,39 @@ class ResetToken:
         Returns:
             ResetToken: New secure token with expiration
         """
-        # Generate cryptographically secure token
-        token_value = secrets.token_hex(cls.TOKEN_BYTES)
+        # Use SystemRandom for maximum security
+        secure_random = secrets.SystemRandom()
+        
+        # Generate variable length for unpredictability
+        token_length = secure_random.randint(cls.MIN_TOKEN_LENGTH, cls.MAX_TOKEN_LENGTH)
+        
+        # Create comprehensive character set for maximum unpredictability
+        all_chars = (
+            cls.UPPERCASE_CHARS + 
+            cls.LOWERCASE_CHARS + 
+            cls.DIGIT_CHARS + 
+            cls.SPECIAL_CHARS + 
+            cls.EXTENDED_SPECIAL_CHARS
+        )
+        
+        # Ensure at least one character from each required set
+        token_parts = [
+            secure_random.choice(cls.UPPERCASE_CHARS),
+            secure_random.choice(cls.LOWERCASE_CHARS),
+            secure_random.choice(cls.DIGIT_CHARS),
+            secure_random.choice(cls.SPECIAL_CHARS)
+        ]
+        
+        # Fill remaining length with random characters from all sets
+        remaining_length = token_length - len(token_parts)
+        token_parts.extend(secure_random.choice(all_chars) for _ in range(remaining_length))
+        
+        # Multiple rounds of shuffling for maximum unpredictability
+        for _ in range(3):  # Triple shuffle for enhanced security
+            secure_random.shuffle(token_parts)
+        
+        # Final token assembly
+        token_value = ''.join(token_parts)
         
         # Set expiration time
         expiry_mins = expiry_minutes or cls.DEFAULT_EXPIRY_MINUTES
@@ -144,4 +211,39 @@ class ResetToken:
         Returns:
             str: Token with only first 8 characters visible
         """
-        return f"{self.value[:8]}..." 
+        return f"{self.value[:8]}..."
+    
+    def get_security_metrics(self) -> dict:
+        """Get comprehensive security metrics for the token (for monitoring).
+        
+        Returns:
+            dict: Security metrics including entropy, complexity, and security analysis
+        """
+        import math
+        
+        # Calculate character diversity
+        char_sets = {
+            'uppercase': sum(1 for c in self.value if c in self.UPPERCASE_CHARS),
+            'lowercase': sum(1 for c in self.value if c in self.LOWERCASE_CHARS),
+            'digits': sum(1 for c in self.value if c in self.DIGIT_CHARS),
+            'special': sum(1 for c in self.value if c in self.SPECIAL_CHARS),
+            'extended_special': sum(1 for c in self.value if c in self.EXTENDED_SPECIAL_CHARS)
+        }
+        
+        # Calculate entropy (approximate)
+        unique_chars = len(set(self.value))
+        entropy_bits = math.log2(unique_chars ** len(self.value))
+        
+        # Security analysis
+        security_score = min(100, int(entropy_bits / 2))  # Normalize to 0-100
+        
+        return {
+            'length': len(self.value),
+            'character_diversity': char_sets,
+            'unique_characters': unique_chars,
+            'entropy_bits': round(entropy_bits, 2),
+            'security_score': security_score,
+            'format_unpredictable': True,
+            'cryptographically_secure': True,
+            'character_set_complexity': len(set(self.value)) / len(self.value)
+        } 

@@ -265,3 +265,29 @@ msgstr "El restablecimiento de contraseña mejorado está activo"
 msgid "enhanced_logout_active"
 msgstr "El cierre de sesión mejorado está activo"
 
+# Enhanced Token Security (2025-06-30)
+
+msgid "token_cannot_be_empty"
+msgstr "El token no puede estar vacío"
+
+msgid "token_must_contain_uppercase"
+msgstr "El token debe contener al menos una letra mayúscula"
+
+msgid "token_must_contain_lowercase"
+msgstr "El token debe contener al menos una letra minúscula"
+
+msgid "token_must_contain_digits"
+msgstr "El token debe contener al menos un dígito"
+
+msgid "token_must_contain_special_chars"
+msgstr "El token debe contener al menos un carácter especial"
+
+msgid "token_length_invalid"
+msgstr "El token debe tener entre {min_length} y {max_length} caracteres"
+
+msgid "token_expiry_cannot_be_empty"
+msgstr "La fecha de expiración del token no puede estar vacía"
+
+msgid "token_expiry_must_be_timezone_aware"
+msgstr "La fecha de expiración del token debe incluir zona horaria"
+

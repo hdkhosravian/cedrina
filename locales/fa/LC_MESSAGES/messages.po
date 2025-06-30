@@ -214,3 +214,29 @@ msgstr "بازیابی رمز عبور پیشرفته فعال است"
 msgid "enhanced_logout_active"
 msgstr "خروج پیشرفته فعال است"
 
+# Enhanced Token Security (2025-06-30)
+
+msgid "token_cannot_be_empty"
+msgstr "توکن نمی‌تواند خالی باشد"
+
+msgid "token_must_contain_uppercase"
+msgstr "توکن باید حداقل یک حرف بزرگ داشته باشد"
+
+msgid "token_must_contain_lowercase"
+msgstr "توکن باید حداقل یک حرف کوچک داشته باشد"
+
+msgid "token_must_contain_digits"
+msgstr "توکن باید حداقل یک رقم داشته باشد"
+
+msgid "token_must_contain_special_chars"
+msgstr "توکن باید حداقل یک کاراکتر ویژه داشته باشد"
+
+msgid "token_length_invalid"
+msgstr "توکن باید بین {min_length} تا {max_length} کاراکتر باشد"
+
+msgid "token_expiry_cannot_be_empty"
+msgstr "زمان انقضای توکن نمی‌تواند خالی باشد"
+
+msgid "token_expiry_must_be_timezone_aware"
+msgstr "زمان انقضای توکن باید از منطقه زمانی آگاه باشد"
+

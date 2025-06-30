@@ -214,3 +214,29 @@ msgstr "إعادة تعيين كلمة المرور المحسنة نشطة"
 msgid "enhanced_logout_active"
 msgstr "تسجيل الخروج المحسن نشط"
 
+# Enhanced Token Security (2025-06-30)
+
+msgid "token_cannot_be_empty"
+msgstr "لا يمكن أن يكون الرمز المميز فارغًا"
+
+msgid "token_must_contain_uppercase"
+msgstr "يجب أن يحتوي الرمز المميز على حرف كبير واحد على الأقل"
+
+msgid "token_must_contain_lowercase"
+msgstr "يجب أن يحتوي الرمز المميز على حرف صغير واحد على الأقل"
+
+msgid "token_must_contain_digits"
+msgstr "يجب أن يحتوي الرمز المميز على رقم واحد على الأقل"
+
+msgid "token_must_contain_special_chars"
+msgstr "يجب أن يحتوي الرمز المميز على حرف خاص واحد على الأقل"
+
+msgid "token_length_invalid"
+msgstr "يجب أن يكون الرمز المميز بين {min_length} و {max_length} حرفًا"
+
+msgid "token_expiry_cannot_be_empty"
+msgstr "لا يمكن أن تكون فترة انتهاء صلاحية الرمز المميز فارغة"
+
+msgid "token_expiry_must_be_timezone_aware"
+msgstr "يجب أن تكون فترة انتهاء صلاحية الرمز المميز مدركة للمنطقة الزمنية"
+

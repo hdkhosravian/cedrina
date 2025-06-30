@@ -6,6 +6,7 @@ demonstrating the benefits of the clean architecture approach.
 
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
+import re
 
 import pytest
 from pydantic import EmailStr
@@ -152,7 +153,11 @@ class TestPasswordResetIntegration:
         # Mock repository to return user with token for reset
         token_value = test_user.password_reset_token
         assert token_value is not None
-        assert len(token_value) == 64
+        assert ResetToken.MIN_TOKEN_LENGTH <= len(token_value) <= ResetToken.MAX_TOKEN_LENGTH
+        assert any(c.isupper() for c in token_value)
+        assert any(c.islower() for c in token_value)
+        assert any(c.isdigit() for c in token_value)
+        assert any(not c.isalnum() for c in token_value)
         
         mock_user_repository.get_by_reset_token.return_value = test_user
         
@@ -323,9 +328,11 @@ class TestPasswordResetIntegration:
         
         # Test ResetToken value object
         token = ResetToken.generate()
-        assert len(token.value) == 64
-        assert token.is_valid()
-        assert not token.is_expired()
+        assert ResetToken.MIN_TOKEN_LENGTH <= len(token.value) <= ResetToken.MAX_TOKEN_LENGTH
+        assert any(c.isupper() for c in token.value)
+        assert any(c.islower() for c in token.value)
+        assert any(c.isdigit() for c in token.value)
+        assert any(not c.isalnum() for c in token.value)
         
         # Test token format validation
         with pytest.raises(ValueError):

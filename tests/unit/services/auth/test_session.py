@@ -73,7 +73,7 @@ async def test_create_session_with_consistency_timeout(session_service, db_sessi
     session_service._cleanup_failed_session_creation = AsyncMock()
 
     # Act & Assert
-    with pytest.raises(AuthenticationError, match="Session creation failed"):
+    with pytest.raises(AuthenticationError, match="Session creation failed due to an internal error"):
         await session_service.create_session(user_id, jti, refresh_token_hash, expires_at)
     
     session_service._cleanup_failed_session_creation.assert_called_once_with(jti, user_id)

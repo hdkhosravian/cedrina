@@ -325,20 +325,47 @@ def get_password_change_service(
     )
 
 
-def get_password_reset_token_service() -> IPasswordResetTokenService:
-    """Factory that returns password reset token service.
+def get_password_reset_rate_limiting_service() -> IRateLimitingService:
+    """Factory that returns rate limiting service for password resets.
     
-    This factory creates the token service for generating and validating
-    password reset tokens with proper security.
+    This factory creates the rate limiting service to prevent abuse
+    of password reset functionality.
     
     Returns:
-        IPasswordResetTokenService: Token service for password resets
+        IRateLimitingService: Rate limiting service for password resets
         
     Note:
-        The token service uses cryptographically secure random generation
-        and constant-time validation to prevent timing attacks.
+        The rate limiting service prevents brute force attacks on
+        password reset functionality with configurable limits.
     """
-    return PasswordResetTokenService()
+    return RateLimitingService()
+
+
+def get_password_reset_token_service(
+    rate_limiting_service: IRateLimitingService = Depends(get_password_reset_rate_limiting_service),
+) -> IPasswordResetTokenService:
+    """Factory that returns enhanced password reset token service with rate limiting.
+    
+    This factory creates the enhanced token service for generating and validating
+    password reset tokens with comprehensive security features including rate limiting.
+    
+    Args:
+        rate_limiting_service: Rate limiting service for abuse prevention
+        
+    Returns:
+        IPasswordResetTokenService: Enhanced token service for password resets
+        
+    Note:
+        The enhanced token service includes:
+        - Rate limiting per email address to prevent abuse
+        - Unpredictable token format with mixed character sets
+        - Cryptographically secure random generation
+        - Constant-time validation to prevent timing attacks
+        - Security metrics and monitoring capabilities
+    """
+    return PasswordResetTokenService(
+        rate_limiting_service=rate_limiting_service
+    )
 
 
 def get_password_reset_email_service() -> IPasswordResetEmailService:
@@ -355,22 +382,6 @@ def get_password_reset_email_service() -> IPasswordResetEmailService:
         email delivery with proper template rendering.
     """
     return PasswordResetEmailService()
-
-
-def get_password_reset_rate_limiting_service() -> IRateLimitingService:
-    """Factory that returns rate limiting service for password resets.
-    
-    This factory creates the rate limiting service to prevent abuse
-    of password reset functionality.
-    
-    Returns:
-        IRateLimitingService: Rate limiting service for password resets
-        
-    Note:
-        The rate limiting service prevents brute force attacks on
-        password reset functionality with configurable limits.
-    """
-    return RateLimitingService()
 
 
 def get_password_reset_request_service(

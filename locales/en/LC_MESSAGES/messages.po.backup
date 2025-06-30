@@ -195,6 +195,45 @@ msgstr "Session creation failed due to an internal error"
 msgid "session_limit_exceeded"
 msgstr "Maximum number of concurrent sessions exceeded"
 
+msgid "session_inactivity_timeout"
+msgstr "Session expired due to inactivity"
+
+msgid "session_consistency_error"
+msgstr "Session data consistency error detected"
+
+msgid "access_token_blacklisted"
+msgstr "Access token has been revoked"
+
+msgid "token_revoked_or_blacklisted"
+msgstr "Token has been revoked or blacklisted"
+
+msgid "user_is_invalid_or_inactive"
+msgstr "User account is invalid or inactive"
+
+msgid "invalid_token"
+msgstr "Invalid or expired token"
+
+msgid "session_revoked_or_invalid"
+msgstr "Session has been revoked or is invalid"
+
+msgid "invalid_refresh_token"
+msgstr "Invalid or expired refresh token"
+
+msgid "user_account_inactive"
+msgstr "User account is inactive"
+
+msgid "user_not_found"
+msgstr "User not found"
+
+msgid "invalid_old_password"
+msgstr "Invalid old password"
+
+msgid "new_password_must_be_different"
+msgstr "New password must be different from the old password"
+
+msgid "rate_limit_exceeded"
+msgstr "Rate limit exceeded"
+
 # Generic error messages for preventing information disclosure (2025-01-27)
 
 msgid "invalid_credentials_generic"

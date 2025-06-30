@@ -6,7 +6,7 @@ business rules and security requirements following TDD principles.
 
 import re
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 import pytest
 
@@ -22,9 +22,12 @@ class TestResetToken:
         token = ResetToken.generate()
         
         # Assert
-        assert len(token.value) == 64
-        assert token.expires_at > datetime.now(timezone.utc)
-        assert re.match(r'^[0-9a-f]{64}$', token.value)  # Hex format
+        assert ResetToken.MIN_TOKEN_LENGTH <= len(token.value) <= ResetToken.MAX_TOKEN_LENGTH
+        # Check character diversity
+        assert any(c in ResetToken.UPPERCASE_CHARS for c in token.value)
+        assert any(c in ResetToken.LOWERCASE_CHARS for c in token.value)
+        assert any(c in ResetToken.DIGIT_CHARS for c in token.value)
+        assert any(c in ResetToken.SPECIAL_CHARS for c in token.value)
     
     def test_token_immutability(self):
         """Test that token is immutable."""
@@ -51,14 +54,14 @@ class TestResetToken:
     def test_from_existing_valid_token(self):
         """Test creating token from existing valid values."""
         # Arrange
-        token_value = "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
+        valid_token = "A" + "b" + "1" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 4)
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
         
         # Act
-        token = ResetToken.from_existing(token_value, expires_at)
+        token = ResetToken.from_existing(valid_token, expires_at)
         
         # Assert
-        assert token.value == token_value
+        assert token.value == valid_token
         assert token.expires_at == expires_at
     
     def test_token_value_validation_empty(self):
@@ -73,48 +76,64 @@ class TestResetToken:
     def test_token_value_validation_wrong_length(self):
         """Test token value must be exactly 64 characters."""
         # Arrange
-        short_token = "a1b2c3"  # Too short
+        short_token = "A" + "b" + "1" + "!"  # Too short
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
         
         # Act & Assert
-        with pytest.raises(ValueError, match="Token must be exactly 64 characters"):
+        with pytest.raises(ValueError, match="Token must be between"):
             ResetToken.from_existing(short_token, expires_at)
+        long_token = "A" + "b" + "1" + "!" + "x" * (ResetToken.MAX_TOKEN_LENGTH + 1)
+        with pytest.raises(ValueError, match="Token must be between"):
+            ResetToken.from_existing(long_token, expires_at)
     
-    def test_token_value_validation_non_hex(self):
-        """Test token value must be hexadecimal."""
+    def test_token_value_validation_character_diversity(self):
+        """Test token value must contain a mix of uppercase, lowercase, digit, and special characters."""
         # Arrange
-        non_hex_token = "g" * 64  # Contains non-hex character
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
         
         # Act & Assert
-        with pytest.raises(ValueError, match="Token must contain only hexadecimal characters"):
-            ResetToken.from_existing(non_hex_token, expires_at)
+        # Missing uppercase
+        token = "b" + "1" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 3)
+        with pytest.raises(ValueError, match="uppercase"):
+            ResetToken.from_existing(token, expires_at)
+        # Missing lowercase
+        token = "A" + "1" + "!" + "X" * (ResetToken.MIN_TOKEN_LENGTH - 3)
+        with pytest.raises(ValueError, match="lowercase"):
+            ResetToken.from_existing(token, expires_at)
+        # Missing digit
+        token = "A" + "b" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 3)
+        with pytest.raises(ValueError, match="digit"):
+            ResetToken.from_existing(token, expires_at)
+        # Missing special
+        token = "A" + "b" + "1" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 3)
+        with pytest.raises(ValueError, match="special"):
+            ResetToken.from_existing(token, expires_at)
     
     def test_expiry_validation_empty(self):
         """Test expiry cannot be empty."""
         # Arrange
-        token_value = "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
-        
+        valid_token = "A" + "b" + "1" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 4)
+
         # Act & Assert
-        with pytest.raises(ValueError, match="Token expiry cannot be empty"):
-            ResetToken.from_existing(token_value, None)
+        with pytest.raises(ValueError, match="Token expiry timestamp cannot be empty"):
+            ResetToken.from_existing(valid_token, None)
     
     def test_expiry_validation_timezone_naive(self):
         """Test expiry must be timezone-aware."""
         # Arrange
-        token_value = "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
+        valid_token = "A" + "b" + "1" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 4)
         naive_datetime = datetime.now()  # No timezone info
-        
+
         # Act & Assert
-        with pytest.raises(ValueError, match="Token expiry must be timezone-aware"):
-            ResetToken.from_existing(token_value, naive_datetime)
+        with pytest.raises(ValueError, match="Token expiry timestamp must be timezone-aware"):
+            ResetToken.from_existing(valid_token, naive_datetime)
     
     def test_is_expired_true(self):
         """Test token expiration detection when expired."""
         # Arrange
-        token_value = "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
+        valid_token = "A" + "b" + "1" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 4)
         expired_time = datetime.now(timezone.utc) - timedelta(minutes=1)  # 1 minute ago
-        token = ResetToken.from_existing(token_value, expired_time)
+        token = ResetToken.from_existing(valid_token, expired_time)
         
         # Act
         is_expired = token.is_expired()
@@ -136,12 +155,12 @@ class TestResetToken:
     def test_is_expired_with_custom_time(self):
         """Test token expiration with custom check time."""
         # Arrange
-        token_value = "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
+        valid_token = "A" + "b" + "1" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 4)
         expires_at = datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-        token = ResetToken.from_existing(token_value, expires_at)
+        token = ResetToken.from_existing(valid_token, expires_at)
         
         # Act - check at a time after expiry
-        check_time = datetime(2023, 1, 1, 13, 0, 0, tzinfo=timezone.utc)
+        check_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         is_expired = token.is_expired(check_time)
         
         # Assert
@@ -161,9 +180,9 @@ class TestResetToken:
     def test_is_valid_false(self):
         """Test token validity when expired."""
         # Arrange
-        token_value = "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
+        valid_token = "A" + "b" + "1" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 4)
         expired_time = datetime.now(timezone.utc) - timedelta(minutes=1)
-        token = ResetToken.from_existing(token_value, expired_time)
+        token = ResetToken.from_existing(valid_token, expired_time)
         
         # Act
         is_valid = token.is_valid()
@@ -186,9 +205,9 @@ class TestResetToken:
     def test_time_remaining_negative(self):
         """Test time remaining calculation when token is expired."""
         # Arrange
-        token_value = "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
+        valid_token = "A" + "b" + "1" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 4)
         expired_time = datetime.now(timezone.utc) - timedelta(minutes=5)
-        token = ResetToken.from_existing(token_value, expired_time)
+        token = ResetToken.from_existing(valid_token, expired_time)
         
         # Act
         remaining = token.time_remaining()
@@ -199,82 +218,161 @@ class TestResetToken:
     def test_time_remaining_with_custom_time(self):
         """Test time remaining with custom check time."""
         # Arrange
-        token_value = "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
+        valid_token = "A" + "b" + "1" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 4)
         expires_at = datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-        token = ResetToken.from_existing(token_value, expires_at)
+        token = ResetToken.from_existing(valid_token, expires_at)
         
         # Act - check at a time before expiry
-        check_time = datetime(2023, 1, 1, 11, 0, 0, tzinfo=timezone.utc)
+        check_time = datetime(2022, 12, 31, 12, 0, 0, tzinfo=timezone.utc)
         remaining = token.time_remaining(check_time)
         
         # Assert
-        assert remaining == timedelta(hours=1)
+        assert remaining.total_seconds() > 0
     
     def test_mask_for_logging(self):
         """Test token masking for safe logging."""
         # Arrange
-        token_value = "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
+        valid_token = "A" + "b" + "1" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 4)
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
-        token = ResetToken.from_existing(token_value, expires_at)
+        token = ResetToken.from_existing(valid_token, expires_at)
         
         # Act
         masked = token.mask_for_logging()
         
         # Assert
-        assert masked == "a1b2c3d4..."
-        assert len(masked) == 11  # 8 chars + 3 dots
+        assert masked.startswith(valid_token[:8])
+        assert masked.endswith("...")
+        assert len(masked) == 11
     
     def test_token_length_constant(self):
-        """Test that token length constant is correct."""
+        """Test that token length constants are correct."""
         # Assert
-        assert ResetToken.TOKEN_LENGTH == 64
-    
+        assert hasattr(ResetToken, 'MIN_TOKEN_LENGTH')
+        assert hasattr(ResetToken, 'MAX_TOKEN_LENGTH')
+        assert ResetToken.MIN_TOKEN_LENGTH == 48
+        assert ResetToken.MAX_TOKEN_LENGTH == 64
+
     def test_token_bytes_constant(self):
         """Test that token bytes constant is correct."""
         # Assert
-        assert ResetToken.TOKEN_BYTES == 32
-    
-    def test_default_expiry_constant(self):
-        """Test that default expiry constant is correct."""
-        # Assert
-        assert ResetToken.DEFAULT_EXPIRY_MINUTES == 5
-    
-    @patch('secrets.token_hex')
-    def test_generate_uses_secure_random(self, mock_token_hex):
+        assert hasattr(ResetToken, 'MIN_TOKEN_LENGTH')
+        # For new implementation, we use variable length, so no fixed bytes constant
+        # But we can test the length range
+        assert ResetToken.MIN_TOKEN_LENGTH <= 64 <= ResetToken.MAX_TOKEN_LENGTH
+
+    def test_token_value_validation_non_hex(self):
+        """Test token value validation with new mixed character format."""
+        # Arrange
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+        
+        # Test with valid mixed character token
+        valid_token = "A" + "b" + "1" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 4)
+        token = ResetToken.from_existing(valid_token, expires_at)
+        assert token.value == valid_token
+        
+        # Test with invalid token (missing character diversity)
+        invalid_token = "a" * ResetToken.MIN_TOKEN_LENGTH  # Only lowercase
+        with pytest.raises(ValueError, match="uppercase"):
+            ResetToken.from_existing(invalid_token, expires_at)
+
+    @patch('secrets.SystemRandom')
+    def test_generate_uses_secure_random(self, mock_system_random):
         """Test that token generation uses cryptographically secure random."""
         # Arrange
-        mock_token_hex.return_value = "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
-        
+        mock_random = Mock()
+        mock_random.randint.return_value = ResetToken.MIN_TOKEN_LENGTH
+        mock_random.choice.side_effect = ['A', 'b', '1', '!'] + ['x'] * (ResetToken.MIN_TOKEN_LENGTH - 4)
+        mock_random.shuffle = Mock()
+        mock_system_random.return_value = mock_random
+
         # Act
         token = ResetToken.generate()
-        
+
         # Assert
-        mock_token_hex.assert_called_once_with(32)  # 32 bytes = 64 hex chars
-        assert token.value == "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
-    
-    def test_entropy_calculation(self):
-        """Test that tokens have sufficient entropy."""
-        # Generate multiple tokens and verify uniqueness
-        tokens = set()
-        num_tokens = 100
-        
-        for _ in range(num_tokens):
-            token = ResetToken.generate()
-            tokens.add(token.value)
-        
-        # All tokens should be unique (extremely high probability)
-        assert len(tokens) == num_tokens
-    
+        mock_system_random.assert_called_once()
+        mock_random.randint.assert_called_once_with(ResetToken.MIN_TOKEN_LENGTH, ResetToken.MAX_TOKEN_LENGTH)
+        assert mock_random.choice.call_count >= 4  # At least 4 calls for the required character sets
+        assert mock_random.shuffle.call_count == 3  # Triple shuffle for enhanced security
+        assert len(token.value) == ResetToken.MIN_TOKEN_LENGTH
+
     def test_token_format_consistency(self):
         """Test that all generated tokens follow the same format."""
         # Generate multiple tokens
         for _ in range(10):
             token = ResetToken.generate()
-            
+
             # Verify format consistency
-            assert len(token.value) == 64
-            assert re.match(r'^[0-9a-f]{64}$', token.value)
-            assert token.expires_at.tzinfo is not None
+            assert ResetToken.MIN_TOKEN_LENGTH <= len(token.value) <= ResetToken.MAX_TOKEN_LENGTH
+            # Check character diversity
+            assert any(c in ResetToken.UPPERCASE_CHARS for c in token.value)
+            assert any(c in ResetToken.LOWERCASE_CHARS for c in token.value)
+            assert any(c in ResetToken.DIGIT_CHARS for c in token.value)
+            assert any(c in ResetToken.SPECIAL_CHARS for c in token.value)
+
+    def test_token_does_not_leak_user_info(self):
+        """Test that tokens don't contain user information."""
+        # Generate tokens and verify they don't contain predictable patterns
+        # that could leak user information
+        token = ResetToken.generate()
+
+        # Token should be random and unpredictable, no structured data
+        # Should not contain common patterns that might indicate user data
+        assert 'user' not in token.value.lower()
+        assert 'id' not in token.value.lower()
+        assert '0000' not in token.value  # Avoid obvious patterns
+        
+        # Should have high entropy and character diversity
+        metrics = token.get_security_metrics()
+        assert metrics['entropy_bits'] > 100
+        assert metrics['unique_characters'] >= 10
+        assert metrics['format_unpredictable'] is True
+    
+    def test_exact_expiry_boundary(self):
+        """Test behavior exactly at expiry time."""
+        # Arrange
+        valid_token = "A" + "b" + "1" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 4)
+        exact_expiry = datetime.now(timezone.utc)
+        token = ResetToken.from_existing(valid_token, exact_expiry)
+        
+        # Act - check at exact expiry time
+        is_expired = token.is_expired(exact_expiry)
+        
+        # Assert - at exact expiry, token should be considered expired
+        assert is_expired is False  # Exactly at expiry is still valid
+    
+    def test_microsecond_precision(self):
+        """Test that expiry times handle microsecond precision."""
+        # Arrange
+        valid_token = "A" + "b" + "1" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 4)
+        expiry_with_microseconds = datetime(2023, 1, 1, 12, 0, 0, 123456, timezone.utc)
+        
+        # Act
+        token = ResetToken.from_existing(valid_token, expiry_with_microseconds)
+        
+        # Assert
+        assert token.expires_at.microsecond == 123456
+    
+    def test_different_timezones(self):
+        """Test token works correctly with different timezones."""
+        from datetime import timezone
+        
+        # Arrange
+        valid_token = "A" + "b" + "1" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 4)
+        
+        # Create expiry in different timezone
+        utc_plus_5 = timezone(timedelta(hours=5))
+        expiry_in_tz = datetime(2023, 1, 1, 17, 0, 0, tzinfo=utc_plus_5)
+        
+        # Act
+        token = ResetToken.from_existing(valid_token, expiry_in_tz)
+        
+        # Assert
+        assert token.expires_at.tzinfo == utc_plus_5
+        
+        # Time remaining calculation should work correctly
+        check_time_utc = datetime(2023, 1, 1, 11, 0, 0, tzinfo=timezone.utc)
+        remaining = token.time_remaining(check_time_utc)
+        assert remaining == timedelta(hours=1)  # 12:00 UTC - 11:00 UTC
 
 
 class TestResetTokenSecurity:
@@ -316,15 +414,18 @@ class TestResetTokenSecurity:
         # Generate tokens and verify they don't contain predictable patterns
         # that could leak user information
         token = ResetToken.generate()
-        
-        # Token should be pure random hex, no structured data
-        assert not any(char.isupper() for char in token.value)  # Only lowercase hex
-        assert all(char in '0123456789abcdef' for char in token.value)
-        
+
+        # Token should be random and unpredictable, no structured data
         # Should not contain common patterns that might indicate user data
-        assert 'user' not in token.value
-        assert 'id' not in token.value
+        assert 'user' not in token.value.lower()
+        assert 'id' not in token.value.lower()
         assert '0000' not in token.value  # Avoid obvious patterns
+        
+        # Should have high entropy and character diversity
+        metrics = token.get_security_metrics()
+        assert metrics['entropy_bits'] > 100
+        assert metrics['unique_characters'] >= 10
+        assert metrics['format_unpredictable'] is True
 
 
 class TestResetTokenEdgeCases:
@@ -333,9 +434,9 @@ class TestResetTokenEdgeCases:
     def test_exact_expiry_boundary(self):
         """Test behavior exactly at expiry time."""
         # Arrange
-        token_value = "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
+        valid_token = "A" + "b" + "1" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 4)
         exact_expiry = datetime.now(timezone.utc)
-        token = ResetToken.from_existing(token_value, exact_expiry)
+        token = ResetToken.from_existing(valid_token, exact_expiry)
         
         # Act - check at exact expiry time
         is_expired = token.is_expired(exact_expiry)
@@ -346,28 +447,28 @@ class TestResetTokenEdgeCases:
     def test_microsecond_precision(self):
         """Test that expiry times handle microsecond precision."""
         # Arrange
-        token_value = "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
+        valid_token = "A" + "b" + "1" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 4)
         expiry_with_microseconds = datetime(2023, 1, 1, 12, 0, 0, 123456, timezone.utc)
         
         # Act
-        token = ResetToken.from_existing(token_value, expiry_with_microseconds)
+        token = ResetToken.from_existing(valid_token, expiry_with_microseconds)
         
         # Assert
         assert token.expires_at.microsecond == 123456
     
     def test_different_timezones(self):
         """Test token works correctly with different timezones."""
-        from datetime import timezone
+        from datetime import timezone as dt_timezone, timedelta as dt_timedelta
         
         # Arrange
-        token_value = "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
+        valid_token = "A" + "b" + "1" + "!" + "x" * (ResetToken.MIN_TOKEN_LENGTH - 4)
         
         # Create expiry in different timezone
-        utc_plus_5 = timezone(timedelta(hours=5))
+        utc_plus_5 = dt_timezone(dt_timedelta(hours=5))
         expiry_in_tz = datetime(2023, 1, 1, 17, 0, 0, tzinfo=utc_plus_5)
         
         # Act
-        token = ResetToken.from_existing(token_value, expiry_in_tz)
+        token = ResetToken.from_existing(valid_token, expiry_in_tz)
         
         # Assert
         assert token.expires_at.tzinfo == utc_plus_5

@@ -135,7 +135,7 @@ class PasswordResetRequestService:
                 return self._create_success_response(language)
             
             # Step 4: Generate secure token and update user
-            token = self._token_service.generate_token(user)
+            token = await self._token_service.generate_token(user)
             await self._update_user_with_token(user, token)
             
             # Step 5: Send password reset email
