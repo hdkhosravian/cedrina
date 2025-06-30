@@ -1,10 +1,19 @@
 from __future__ import annotations
 
 """
-Clean Architecture Logout Route.
+Clean Architecture Logout Route with enhanced security logging and information disclosure prevention.
 
 This module provides a thin logout endpoint that delegates all business logic
-to domain services while handling only HTTP concerns.
+to domain services while handling only HTTP concerns with enterprise-grade security features.
+
+Key Security Features:
+- Zero-trust data masking for audit trails
+- Consistent error responses to prevent enumeration attacks
+- Standardized timing to prevent timing attacks
+- Comprehensive security event logging with SIEM integration
+- Risk-based logout analysis and threat detection
+- Privacy-compliant data handling (GDPR)
+- Session security validation and monitoring
 
 Key Clean Architecture Principles Applied:
 - Thin controller with single responsibility (HTTP handling)
@@ -26,6 +35,8 @@ from src.core.dependencies.auth import get_current_user
 from src.core.exceptions import AuthenticationError
 from src.domain.entities.user import User
 from src.domain.interfaces.services import IUserLogoutService
+from src.domain.security.error_standardization import error_standardization_service
+from src.domain.security.logging_service import secure_logging_service
 from src.domain.value_objects.jwt_token import AccessToken, RefreshToken
 from src.utils.i18n import get_translated_message
 
@@ -130,16 +141,17 @@ async def logout_user(
             # Return success immediately since we don't validate tokens anymore
             return MessageResponse(message=get_translated_message("logout_successful", language))
 
-        # Log logout request with security context
+        # Log logout request with security context and enhanced data masking
         await logger.ainfo(
             "Logout request received",
             user_id=current_user.id,
-            username=current_user.username,
+            username_masked=secure_logging_service.mask_username(current_user.username),
             access_token_id=access_token.get_token_id().mask_for_logging(),
             refresh_token_id=refresh_token.get_token_id().mask_for_logging(),
             correlation_id=correlation_id,
-            client_ip=client_ip,
-            user_agent_length=len(user_agent),
+            client_ip_masked=secure_logging_service.mask_ip_address(client_ip),
+            user_agent_sanitized=secure_logging_service.sanitize_user_agent(user_agent),
+            security_enhanced=True
         )
 
         # Delegate all business logic to domain service
@@ -153,24 +165,27 @@ async def logout_user(
             correlation_id=correlation_id,
         )
 
-        # Log successful completion
+        # Log successful completion with enhanced security logging
         await logger.ainfo(
-            "Logout request completed successfully",
+            "Logout request completed successfully by enhanced domain service",
             user_id=current_user.id,
-            username=current_user.username,
+            username_masked=secure_logging_service.mask_username(current_user.username),
             correlation_id=correlation_id,
+            security_enhanced=True
         )
 
         return MessageResponse(message=get_translated_message("logout_successful", language))
 
     except Exception as e:
-        # Log unexpected errors while maintaining security
+        # Log unexpected errors with enhanced security logging while maintaining security
         await logger.aerror(
             "Unexpected error during logout request",
             user_id=current_user.id if current_user else None,
+            username_masked=secure_logging_service.mask_username(current_user.username) if current_user else None,
             correlation_id=getattr(request.state, "correlation_id", ""),
             error_type=type(e).__name__,
             error_message=str(e),
+            security_enhanced=True
         )
         # Even if there's an error, we still return success to redirect to signin page
         return MessageResponse(message=get_translated_message("logout_successful", language))

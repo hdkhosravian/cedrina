@@ -42,8 +42,8 @@ from src.domain.services.authentication.oauth_service import OAuthAuthentication
 from src.domain.services.authentication.password_change_service import (
     PasswordChangeService,
 )
-from src.domain.services.authentication.user_authentication_service import (
-    UserAuthenticationService,
+from src.domain.services.authentication.enhanced_user_authentication_service import (
+    EnhancedUserAuthenticationService,
 )
 from src.domain.services.authentication.user_logout_service import (
     UserLogoutService,
@@ -163,24 +163,29 @@ def get_user_authentication_service(
     user_repository: IUserRepository = Depends(get_user_repository),
     event_publisher: IEventPublisher = Depends(get_event_publisher),
 ) -> IUserAuthenticationService:
-    """Factory that returns clean user authentication service.
+    """Factory that returns enhanced user authentication service with security logging.
     
-    This factory creates the domain authentication service with its
-    dependencies, following dependency injection principles.
+    This factory creates the enhanced domain authentication service with its
+    dependencies, following dependency injection principles. The enhanced service
+    includes comprehensive security logging, error standardization, and information
+    disclosure prevention.
     
     Args:
         user_repository: User repository dependency for data access
         event_publisher: Event publisher dependency for domain events
         
     Returns:
-        IUserAuthenticationService: Clean authentication service
+        IUserAuthenticationService: Enhanced authentication service with security features
         
     Note:
-        The authentication service depends on abstractions (interfaces)
-        rather than concrete implementations, following dependency
-        inversion principle from SOLID.
+        The enhanced authentication service implements enterprise-grade security:
+        - Zero-trust data masking for audit trails
+        - Consistent error responses to prevent enumeration
+        - Standardized timing to prevent timing attacks
+        - Comprehensive security event logging
+        - Risk-based authentication analysis
     """
-    return UserAuthenticationService(
+    return EnhancedUserAuthenticationService(
         user_repository=user_repository,
         event_publisher=event_publisher,
     )

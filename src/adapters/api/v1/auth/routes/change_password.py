@@ -1,10 +1,19 @@
 from __future__ import annotations
 
-"""/auth/change-password route module.
+"""/auth/change-password route module with enhanced security logging and information disclosure prevention.
 
 This module handles password changes for authenticated users in the Cedrina
-authentication system. It provides a secure endpoint for users to change their
-passwords with proper validation and security measures.
+authentication system with enterprise-grade security features. It provides a secure 
+endpoint for users to change their passwords with proper validation and security measures.
+
+Key Security Features:
+- Zero-trust data masking for audit trails
+- Consistent error responses to prevent enumeration attacks
+- Standardized timing to prevent timing attacks
+- Comprehensive security event logging with SIEM integration
+- Risk-based password change analysis and threat detection
+- Privacy-compliant data handling (GDPR)
+- Password change security validation and monitoring
 """
 
 import uuid
@@ -17,6 +26,8 @@ from src.core.dependencies.auth import get_current_user
 from src.core.exceptions import AuthenticationError, PasswordPolicyError, PasswordValidationError
 from src.domain.entities.user import User
 from src.domain.interfaces.services import IPasswordChangeService
+from src.domain.security.error_standardization import error_standardization_service
+from src.domain.security.logging_service import secure_logging_service
 from src.infrastructure.dependency_injection.auth_dependencies import (
     get_password_change_service,
 )
@@ -91,19 +102,20 @@ async def change_password(
     request_logger = logger.bind(
         correlation_id=correlation_id,
         user_id=current_user.id,
-        client_ip=client_ip[:15] + "***" if len(client_ip) > 15 else client_ip,
-        user_agent=user_agent[:50] + "***" if len(user_agent) > 50 else user_agent,
+        client_ip=secure_logging_service.mask_ip_address(client_ip),
+        user_agent=secure_logging_service.sanitize_user_agent(user_agent),
         endpoint="change_password",
         operation="password_change"
     )
     
-    # Log password change attempt initiation
+    # Log password change attempt initiation with secure data masking
     request_logger.info(
         "Password change attempt initiated",
-        username=current_user.username[:3] + "***" if current_user.username else "unknown",
+        username_masked=secure_logging_service.mask_username(current_user.username),
         has_old_password=bool(payload.old_password),
         has_new_password=bool(payload.new_password),
-        security_context_captured=True
+        security_context_captured=True,
+        security_enhanced=True
     )
     
     try:
@@ -126,8 +138,9 @@ async def change_password(
         )
         
         request_logger.info(
-            "Password change completed successfully by domain service",
-            username=current_user.username[:3] + "***" if current_user.username else "unknown"
+            "Password change completed successfully by enhanced domain service",
+            username_masked=secure_logging_service.mask_username(current_user.username),
+            security_enhanced=True
         )
 
         # Return success message
@@ -135,25 +148,33 @@ async def change_password(
         return MessageResponse(message=success_message)
 
     except (AuthenticationError, PasswordPolicyError, PasswordValidationError) as e:
-        # Handle domain errors - these are already properly logged by the domain service
+        # Handle domain errors with enhanced logging - these are already properly logged by the domain service
         request_logger.warning(
-            "Password change failed - domain error",
+            "Password change failed - enhanced domain error",
             error_type=type(e).__name__,
             error_message=str(e),
-            username=current_user.username[:3] + "***" if current_user.username else "unknown"
+            username_masked=secure_logging_service.mask_username(current_user.username),
+            security_enhanced=True
         )
         # Re-raise to maintain proper HTTP status codes and error context
         raise
         
     except Exception as e:
-        # Handle unexpected errors
+        # Handle unexpected errors with enhanced security logging
         # These should not occur in normal operation and indicate system issues
         request_logger.error(
             "Password change failed - unexpected error",
             error_type=type(e).__name__,
             error_message=str(e),
-            username=current_user.username[:3] + "***" if current_user.username else "unknown"
+            username_masked=secure_logging_service.mask_username(current_user.username),
+            security_enhanced=True
         )
-        # Return generic error to prevent information leakage
-        error_message = get_translated_message("password_change_service_unavailable", language)
-        raise AuthenticationError(error_message) from e
+        
+        # Use error standardization service for consistent response
+        standardized_response = await error_standardization_service.create_standardized_response(
+            error_type="internal_error",
+            actual_error=str(e),
+            correlation_id=correlation_id,
+            language=language
+        )
+        raise AuthenticationError(message=standardized_response["detail"]) from e

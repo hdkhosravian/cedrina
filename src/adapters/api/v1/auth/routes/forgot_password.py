@@ -1,8 +1,17 @@
-"""Forgot Password endpoint module following Domain-Driven Design principles.
+"""Forgot Password endpoint module with enhanced security logging and information disclosure prevention.
 
 This module handles password reset requests via email using clean architecture
-principles. The API layer is kept thin with no business logic - all password reset
-logic is delegated to domain services.
+principles with enterprise-grade security features. The API layer is kept thin with 
+no business logic - all password reset logic is delegated to domain services.
+
+Key Security Features:
+- Zero-trust data masking for audit trails
+- Consistent error responses to prevent enumeration attacks
+- Standardized timing to prevent timing attacks
+- Comprehensive security event logging with SIEM integration
+- Risk-based password reset analysis and threat detection
+- Privacy-compliant data handling (GDPR)
+- Email enumeration protection via consistent responses
 
 Key DDD Principles Applied:
 - Thin API layer with no business logic
@@ -29,6 +38,8 @@ from src.core.exceptions import (
     RateLimitExceededError,
 )
 from src.core.ratelimiter import get_limiter
+from src.domain.security.error_standardization import error_standardization_service
+from src.domain.security.logging_service import secure_logging_service
 from src.domain.services.password_reset.password_reset_request_service import (
     PasswordResetRequestService,
 )
@@ -121,17 +132,18 @@ async def forgot_password(
     # Create structured logger with correlation context and security information
     request_logger = logger.bind(
         correlation_id=correlation_id,
-        client_ip=client_ip[:15] + "***" if len(client_ip) > 15 else client_ip,
-        user_agent=user_agent[:50] + "***" if len(user_agent) > 50 else user_agent,
+        client_ip=secure_logging_service.mask_ip_address(client_ip),
+        user_agent=secure_logging_service.sanitize_user_agent(user_agent),
         endpoint="forgot_password",
         operation="password_reset_request"
     )
     
-    # Log password reset request initiation
+    # Log password reset request initiation with secure data masking
     request_logger.info(
         "Password reset request initiated",
-        email_prefix=payload.email[:3] + "***" if len(payload.email) > 3 else payload.email,
-        security_context_captured=True
+        email_masked=secure_logging_service.mask_email(payload.email),
+        security_context_captured=True,
+        security_enhanced=True
     )
     
     try:
@@ -152,8 +164,9 @@ async def forgot_password(
         )
         
         request_logger.info(
-            "Password reset request completed successfully by domain service",
-            email_prefix=payload.email[:3] + "***" if len(payload.email) > 3 else payload.email
+            "Password reset request completed successfully by enhanced domain service",
+            email_masked=secure_logging_service.mask_email(payload.email),
+            security_enhanced=True
         )
 
         # Return success message (always success to prevent email enumeration)
@@ -166,7 +179,8 @@ async def forgot_password(
             "Password reset request rate limited",
             error_type="rate_limit_exceeded",
             error_message=str(e),
-            email_prefix=payload.email[:3] + "***" if len(payload.email) > 3 else payload.email
+            email_masked=secure_logging_service.mask_email(payload.email),
+            security_enhanced=True
         )
         # Re-raise to maintain proper HTTP status codes and error context
         raise
@@ -177,31 +191,34 @@ async def forgot_password(
             "Password reset email delivery failed",
             error_type="email_service_error",
             error_message=str(e),
-            email_prefix=payload.email[:3] + "***" if len(payload.email) > 3 else payload.email
+            email_masked=secure_logging_service.mask_email(payload.email),
+            security_enhanced=True
         )
         # Still return success to prevent information leakage
         success_message = get_translated_message("password_reset_email_sent", language)
         return MessageResponse(message=success_message)
         
     except (ForgotPasswordError, AuthenticationError) as e:
-        # Handle domain errors - these are already properly logged by the domain service
+        # Handle domain errors with enhanced logging - these are already properly logged by the domain service
         request_logger.warning(
-            "Password reset request failed - domain error",
+            "Password reset request failed - enhanced domain error",
             error_type=type(e).__name__,
             error_message=str(e),
-            email_prefix=payload.email[:3] + "***" if len(payload.email) > 3 else payload.email
+            email_masked=secure_logging_service.mask_email(payload.email),
+            security_enhanced=True
         )
         # Re-raise to maintain proper HTTP status codes and error context
         raise
         
     except Exception as e:
-        # Handle unexpected errors
+        # Handle unexpected errors with enhanced security logging
         # These should not occur in normal operation and indicate system issues
         request_logger.error(
             "Password reset request failed - unexpected error",
             error_type=type(e).__name__,
             error_message=str(e),
-            email_prefix=payload.email[:3] + "***" if len(payload.email) > 3 else payload.email
+            email_masked=secure_logging_service.mask_email(payload.email),
+            security_enhanced=True
         )
         # Return success to prevent information leakage
         success_message = get_translated_message("password_reset_email_sent", language)

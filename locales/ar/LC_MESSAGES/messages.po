@@ -149,3 +149,68 @@ msgstr "رمز إعادة تعيين كلمة المرور غير صالح أو 
 msgid "password_reset_success"
 msgstr "تم إعادة تعيين كلمة المرور بنجاح"
 
+# Enhanced security logging and error standardization (2025-01-27)
+
+msgid "password_reset_service_unavailable"
+msgstr "خدمة إعادة تعيين كلمة المرور غير متاحة مؤقتاً"
+
+msgid "logout_service_unavailable"
+msgstr "خدمة تسجيل الخروج غير متاحة مؤقتاً"
+
+msgid "security_enhanced_logging_enabled"
+msgstr "تم تفعيل التسجيل الأمني المحسن"
+
+msgid "security_event_logged"
+msgstr "تم تسجيل الحدث الأمني"
+
+msgid "risk_assessment_completed"
+msgstr "تم إكمال تقييم المخاطر"
+
+msgid "threat_detection_triggered"
+msgstr "تم تفعيل كشف التهديدات"
+
+msgid "data_masking_applied"
+msgstr "تم تطبيق إخفاء البيانات"
+
+msgid "privacy_compliance_verified"
+msgstr "تم التحقق من الامتثال للخصوصية"
+
+msgid "siem_integration_active"
+msgstr "تكامل SIEM نشط"
+
+msgid "audit_trail_generated"
+msgstr "تم إنشاء مسار التدقيق"
+
+msgid "correlation_id_tracked"
+msgstr "يتم تتبع معرف الارتباط"
+
+msgid "timing_attack_prevention_active"
+msgstr "منع هجمات التوقيت نشط"
+
+msgid "enumeration_attack_prevention_active"
+msgstr "منع هجمات التعداد نشط"
+
+msgid "zero_trust_data_handling_active"
+msgstr "معالجة البيانات بثقة صفرية نشطة"
+
+msgid "security_context_captured"
+msgstr "تم التقاط السياق الأمني"
+
+msgid "enhanced_authentication_active"
+msgstr "المصادقة المحسنة نشطة"
+
+msgid "enhanced_registration_active"
+msgstr "التسجيل المحسن نشط"
+
+msgid "enhanced_oauth_active"
+msgstr "مصادقة OAuth المحسنة نشطة"
+
+msgid "enhanced_password_change_active"
+msgstr "تغيير كلمة المرور المحسن نشط"
+
+msgid "enhanced_password_reset_active"
+msgstr "إعادة تعيين كلمة المرور المحسنة نشطة"
+
+msgid "enhanced_logout_active"
+msgstr "تسجيل الخروج المحسن نشط"
+

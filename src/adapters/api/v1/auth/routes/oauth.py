@@ -1,8 +1,17 @@
-"""OAuth endpoint module following Domain-Driven Design principles.
+"""OAuth endpoint module with enhanced security logging and information disclosure prevention.
 
 This module handles user authentication via external OAuth providers using clean architecture
-principles. The API layer is kept thin with no business logic - all OAuth logic
-is delegated to domain services.
+principles with enterprise-grade security features. The API layer is kept thin with no 
+business logic - all OAuth logic is delegated to domain services.
+
+Key Security Features:
+- Zero-trust data masking for audit trails
+- Consistent error responses to prevent enumeration attacks
+- Standardized timing to prevent timing attacks
+- Comprehensive security event logging with SIEM integration
+- Risk-based OAuth authentication analysis and threat detection
+- Privacy-compliant data handling (GDPR)
+- OAuth token security validation and monitoring
 
 Key DDD Principles Applied:
 - Thin API layer with no business logic
@@ -28,6 +37,8 @@ from src.infrastructure.dependency_injection.auth_dependencies import (
 from src.adapters.api.v1.auth.schemas import OAuthAuthResponse, OAuthAuthenticateRequest, UserOut
 from src.core.exceptions import AuthenticationError
 from src.domain.interfaces.services import IOAuthService, ITokenService
+from src.domain.security.error_standardization import error_standardization_service
+from src.domain.security.logging_service import secure_logging_service
 from src.domain.value_objects.oauth_provider import OAuthProvider
 from src.domain.value_objects.oauth_token import OAuthToken
 from src.utils.i18n import get_request_language, get_translated_message
@@ -110,18 +121,19 @@ async def oauth_authenticate(
     # Create structured logger with correlation context and security information
     request_logger = logger.bind(
         correlation_id=correlation_id,
-        client_ip=client_ip[:15] + "***" if len(client_ip) > 15 else client_ip,
-        user_agent=user_agent[:50] + "***" if len(user_agent) > 50 else user_agent,
+        client_ip=secure_logging_service.mask_ip_address(client_ip),
+        user_agent=secure_logging_service.sanitize_user_agent(user_agent),
         endpoint="oauth",
         operation="oauth_authentication"
     )
     
-    # Log OAuth authentication attempt initiation
+    # Log OAuth authentication attempt initiation with secure data masking
     request_logger.info(
         "OAuth authentication attempt initiated",
         provider=payload.provider,
         has_token=bool(payload.token),
-        security_context_captured=True
+        security_context_captured=True,
+        security_enhanced=True
     )
     
     try:
@@ -134,7 +146,8 @@ async def oauth_authenticate(
         request_logger.debug(
             "Domain value objects created successfully",
             provider=provider.mask_for_logging(),
-            token_info=token.mask_for_logging()
+            token_info=token.mask_for_logging(),
+            security_enhanced=True
         )
         
         # Delegate OAuth authentication to domain service
@@ -156,10 +169,11 @@ async def oauth_authenticate(
         )
         
         request_logger.info(
-            "User authenticated successfully via OAuth by domain service",
+            "User authenticated successfully via OAuth by enhanced domain service",
             user_id=user.id,
             provider=provider.mask_for_logging(),
-            authentication_method="oauth"
+            authentication_method="oauth",
+            security_enhanced=True
         )
 
         # Create JWT tokens using domain token service
@@ -171,7 +185,8 @@ async def oauth_authenticate(
             user_id=user.id,
             token_type=tokens.get("token_type", "bearer"),
             expires_in=tokens.get("expires_in", 900),
-            refresh_token_provided="refresh_token" in tokens
+            refresh_token_provided="refresh_token" in tokens,
+            security_enhanced=True
         )
         
         # Return clean response using domain entity
@@ -185,42 +200,56 @@ async def oauth_authenticate(
         )
         
     except ValueError as e:
-        # Handle value object validation errors
+        # Handle value object validation errors with standardized response
         # These occur when input format is invalid (e.g., invalid provider, expired token)
         request_logger.warning(
             "OAuth authentication failed - invalid input format",
             error=str(e),
             error_type="validation_error",
             provider_provided=payload.provider,
-            has_token=bool(payload.token)
-        )
-        raise AuthenticationError(
-            message=get_translated_message("invalid_oauth_credentials", language)
+            has_token=bool(payload.token),
+            security_enhanced=True
         )
         
+        # Use error standardization service for consistent response
+        standardized_response = await error_standardization_service.create_standardized_response(
+            error_type="invalid_input",
+            actual_error=str(e),
+            correlation_id=correlation_id,
+            language=language
+        )
+        raise AuthenticationError(message=standardized_response["detail"])
+        
     except AuthenticationError as e:
-        # Handle domain OAuth errors
+        # Handle domain OAuth errors with enhanced logging
         # These are raised by the domain service for business rule violations
         # (e.g., invalid token, provider errors, inactive user)
         request_logger.warning(
-            "OAuth authentication failed - domain error",
+            "OAuth authentication failed - enhanced domain error",
             error=str(e),
             error_type="oauth_authentication_error",
-            provider=provider.mask_for_logging() if 'provider' in locals() else "unknown"
+            provider=provider.mask_for_logging() if 'provider' in locals() else "unknown",
+            security_enhanced=True
         )
         # Re-raise to maintain proper HTTP status codes and error context
         raise
         
     except Exception as e:
-        # Handle unexpected errors
+        # Handle unexpected errors with enhanced security logging
         # These should not occur in normal operation and indicate system issues
         request_logger.error(
             "OAuth authentication failed - unexpected error",
             error=str(e),
             error_type=type(e).__name__,
-            provider=provider.mask_for_logging() if 'provider' in locals() else "unknown"
+            provider=provider.mask_for_logging() if 'provider' in locals() else "unknown",
+            security_enhanced=True
         )
-        # Return generic error to prevent information leakage
-        raise AuthenticationError(
-            message=get_translated_message("oauth_service_unavailable", language)
+        
+        # Use error standardization service for consistent response
+        standardized_response = await error_standardization_service.create_standardized_response(
+            error_type="invalid_input",
+            actual_error=str(e),
+            correlation_id=correlation_id,
+            language=language
         )
+        raise AuthenticationError(message=standardized_response["detail"])

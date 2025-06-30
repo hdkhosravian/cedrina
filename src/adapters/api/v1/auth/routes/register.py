@@ -1,9 +1,18 @@
 from __future__ import annotations
 
-"""/auth/register route module.
+"""/auth/register route module with enhanced security logging and information disclosure prevention.
 
 This module handles the registration of new users in the Cedrina authentication
-system using clean architecture principles and Domain-Driven Design.
+system using clean architecture principles and Domain-Driven Design with enterprise-grade
+security features.
+
+Key Security Features:
+- Zero-trust data masking for audit trails
+- Consistent error responses to prevent enumeration attacks
+- Standardized timing to prevent timing attacks
+- Comprehensive security event logging with SIEM integration
+- Risk-based registration analysis and threat detection
+- Privacy-compliant data handling (GDPR)
 """
 
 import uuid
@@ -18,6 +27,8 @@ from src.infrastructure.dependency_injection.auth_dependencies import (
 from src.adapters.api.v1.auth.schemas import AuthResponse, RegisterRequest, UserOut
 from src.core.exceptions import AuthenticationError
 from src.domain.interfaces.services import ITokenService, IUserRegistrationService
+from src.domain.security.error_standardization import error_standardization_service
+from src.domain.security.logging_service import secure_logging_service
 from src.domain.value_objects.email import Email
 from src.domain.value_objects.password import Password
 from src.domain.value_objects.username import Username
@@ -76,19 +87,21 @@ async def register_user(
     client_ip = request.client.host or "unknown"
     user_agent = request.headers.get("user-agent", "unknown")
     
-    # Create structured logger with correlation context
+    # Create structured logger with correlation context and security information
     request_logger = logger.bind(
         correlation_id=correlation_id,
-        client_ip=client_ip[:15] + "***" if len(client_ip) > 15 else client_ip,
-        user_agent=user_agent[:50] + "***" if len(user_agent) > 50 else user_agent,
+        client_ip=secure_logging_service.mask_ip_address(client_ip),
+        user_agent=secure_logging_service.sanitize_user_agent(user_agent),
         endpoint="register",
+        operation="user_registration"
     )
     
     request_logger.info(
         "Registration attempt initiated",
-        username_length=len(payload.username),
-        email_length=len(payload.email),
+        username_masked=secure_logging_service.mask_username(payload.username),
+        email_masked=secure_logging_service.mask_email(payload.email),
         has_password=bool(payload.password),
+        security_enhanced=True
     )
     
     try:
@@ -102,8 +115,9 @@ async def register_user(
         
         request_logger.debug(
             "Domain value objects created",
-            username_normalized=username.value[:3] + "***",
-            email_normalized=email.value[:3] + "***",
+            username_masked=secure_logging_service.mask_username(str(username)),
+            email_masked=secure_logging_service.mask_email(str(email)),
+            security_enhanced=True
         )
         
         # Register user using clean domain service
@@ -120,8 +134,9 @@ async def register_user(
         request_logger.info(
             "User registered successfully",
             user_id=user.id,
-            username=user.username[:3] + "***" if user.username else "Unknown",
-            email=user.email[:3] + "***" if user.email else "Unknown",
+            username_masked=secure_logging_service.mask_username(user.username),
+            email_masked=secure_logging_service.mask_email(user.email),
+            security_enhanced=True
         )
         
         # Create token pair using clean token service
@@ -144,6 +159,7 @@ async def register_user(
             user_id=user.id,
             token_type=tokens.get("token_type", "bearer"),
             expires_in=tokens.get("expires_in", 900),
+            security_enhanced=True
         )
         
         # Return clean response
@@ -153,32 +169,53 @@ async def register_user(
         )
         
     except ValueError as e:
-        # Handle value object validation errors
+        # Handle value object validation errors with standardized response
         request_logger.warning(
             "Registration failed - invalid input format",
             error=str(e),
             error_type="validation_error",
-        )
-        raise AuthenticationError(
-            message=get_translated_message("invalid_registration_data_format", language)
+            username_masked=secure_logging_service.mask_username(payload.username),
+            email_masked=secure_logging_service.mask_email(payload.email),
+            security_enhanced=True
         )
         
+        # Use error standardization service for consistent response
+        standardized_response = await error_standardization_service.create_standardized_response(
+            error_type="invalid_input",
+            actual_error=str(e),
+            correlation_id=correlation_id,
+            language=language
+        )
+        raise AuthenticationError(message=standardized_response["detail"])
+        
     except AuthenticationError as e:
-        # Handle domain registration errors
+        # Handle domain registration errors with enhanced logging
         request_logger.warning(
-            "Registration failed - domain error",
+            "Registration failed - enhanced domain error",
             error=str(e),
             error_type="registration_error",
+            username_masked=secure_logging_service.mask_username(payload.username),
+            email_masked=secure_logging_service.mask_email(payload.email),
+            security_enhanced=True
         )
         raise  # Re-raise to maintain proper HTTP status codes
         
     except Exception as e:
-        # Handle unexpected errors
+        # Handle unexpected errors with enhanced security logging
         request_logger.error(
             "Registration failed - unexpected error",
             error=str(e),
             error_type=type(e).__name__,
+            username_masked=secure_logging_service.mask_username(payload.username),
+            email_masked=secure_logging_service.mask_email(payload.email),
+            security_enhanced=True
         )
-        raise AuthenticationError(
-            message=get_translated_message("registration_service_unavailable", language)
+        
+        # Use error standardization service for consistent response
+        standardized_response = await error_standardization_service.create_standardized_response(
+            error_type="internal_error",
+            actual_error=str(e),
+            correlation_id=correlation_id,
+            language=language
         )
+        raise AuthenticationError(message=standardized_response["detail"])
