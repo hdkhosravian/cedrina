@@ -256,8 +256,8 @@ class UserAuthenticationService(IUserAuthenticationService):
                 return False
             
             # Use domain value object for secure password verification
-            hashed_password = HashedPassword(user.hashed_password)
-            is_valid = hashed_password.verify(str(password))
+            # Delegate to the Password's verify_against_hash method for constant-time comparison
+            is_valid = password.verify_against_hash(user.hashed_password)
             
             logger.debug(
                 "Password verification completed",

@@ -14,6 +14,12 @@ class Session(SQLModel, table=True):
     hashes and JWT IDs (jti) for revocation. It supports token rotation and session
     management, integrating with PostgreSQL for persistence and Redis for caching.
 
+    Security Features:
+        - Tracks last activity time for inactivity-based expiration
+        - Supports session revocation with audit trail
+        - Enforces session limits per user
+        - Provides consistency between Redis and PostgreSQL storage
+
     Attributes:
         id (Optional[int]): Primary key, auto-incremented by the database.
         jti (str): Unique JWT ID (UUID) for token revocation.
@@ -21,11 +27,13 @@ class Session(SQLModel, table=True):
         refresh_token_hash (str): Hashed refresh token for validation.
         created_at (datetime): Session creation timestamp.
         expires_at (datetime): Refresh token expiration timestamp.
+        last_activity_at (datetime): Last activity timestamp for inactivity tracking.
         revoked_at (Optional[datetime]): Revocation timestamp, null if active.
 
     Table Arguments:
         Unique index on jti for fast revocation checks.
         Index on user_id and expires_at for efficient session queries.
+        Index on last_activity_at for inactivity-based cleanup.
 
     """
 
@@ -66,6 +74,14 @@ class Session(SQLModel, table=True):
         sa_column=Column(DateTime, nullable=False),  # Explicit DateTime type for Alembic
         description="Refresh token expiration timestamp",
     )
+    last_activity_at: datetime = Field(
+        sa_column=Column(
+            DateTime,  # Explicit DateTime type for Alembic
+            server_default=text("CURRENT_TIMESTAMP"),  # Database timestamp
+            nullable=False,
+        ),
+        description="Last activity timestamp for inactivity tracking",
+    )
     revoked_at: Optional[datetime] = Field(
         sa_column=Column(DateTime, nullable=True),  # Explicit DateTime type for Alembic
         description="Revocation timestamp, null if session is active",
@@ -76,5 +92,8 @@ class Session(SQLModel, table=True):
         Index(
             "ix_sessions_user_id_expires_at", "user_id", "expires_at"
         ),  # Index for session queries
+        Index(
+            "ix_sessions_last_activity_at", "last_activity_at"
+        ),  # Index for inactivity-based cleanup
         {"extend_existing": True},
     )

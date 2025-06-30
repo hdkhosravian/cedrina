@@ -5,11 +5,15 @@ providing type-safe representations of tokens in the domain.
 """
 
 import secrets
+import string
+import base64
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, Optional, ClassVar
+import hashlib
+import uuid
 
-from jose import JWTError, jwt
+from jwt import decode as jwt_decode, PyJWTError
 from structlog import get_logger
 
 logger = get_logger(__name__)
@@ -20,47 +24,48 @@ class TokenId:
     """Value object for JWT token identifier (jti claim).
     
     Provides secure token ID generation and validation for JWT tokens.
+    Advanced: 256 bits entropy, 43-char URL-safe base64, strict validation.
     """
     
     value: str
     
-    # Token ID constants
-    TOKEN_ID_LENGTH: ClassVar[int] = 24  # URL-safe base64 characters
+    # Token ID constants (RFC 7519, NIST, OAuth2 best practice)
+    TOKEN_ID_LENGTH: ClassVar[int] = 43  # 32 bytes (256 bits) base64url = 43 chars (no padding)
+    MIN_ENTROPY_BITS: ClassVar[int] = 256
+    VALID_CHARS: ClassVar[str] = string.ascii_letters + string.digits + '-_'
     
     def __post_init__(self):
         """Validate token ID after initialization."""
         if not self.value:
             raise ValueError("Token ID cannot be empty")
-        
         if len(self.value) != self.TOKEN_ID_LENGTH:
-            raise ValueError(f"Token ID must be exactly {self.TOKEN_ID_LENGTH} characters")
-        
-        # Validate URL-safe base64 characters
-        import string
-        valid_chars = string.ascii_letters + string.digits + '-_'
-        if not all(c in valid_chars for c in self.value):
+            raise ValueError(f"Token ID must be exactly {self.TOKEN_ID_LENGTH} characters (256 bits, base64url)")
+        if not all(c in self.VALID_CHARS for c in self.value):
             raise ValueError("Token ID contains invalid characters")
     
     @classmethod
     def generate(cls) -> 'TokenId':
-        """Generate a new secure token ID.
-        
-        Returns:
-            TokenId: New cryptographically secure token ID
-        """
-        token_id = secrets.token_urlsafe(cls.TOKEN_ID_LENGTH)
+        """Generate a new cryptographically secure token ID (256 bits, 43-char base64url)."""
+        # 32 bytes = 256 bits
+        raw_bytes = secrets.token_bytes(32)
+        token_id = base64.urlsafe_b64encode(raw_bytes).rstrip(b'=').decode('ascii')
+        assert len(token_id) == cls.TOKEN_ID_LENGTH, f"Expected {cls.TOKEN_ID_LENGTH} chars, got {len(token_id)}"
         return cls(token_id)
     
+    def get_entropy_bits(self) -> int:
+        """Calculate the entropy in bits for this token ID."""
+        # Each char encodes 6 bits (base64url)
+        return len(self.value) * 6
+    
+    def is_cryptographically_secure(self) -> bool:
+        """Check if this token ID meets cryptographic security requirements."""
+        return len(self.value) == self.TOKEN_ID_LENGTH and self.get_entropy_bits() >= self.MIN_ENTROPY_BITS
+    
     def mask_for_logging(self) -> str:
-        """Return masked token ID for safe logging.
-        
-        Returns:
-            str: Masked token ID (first 4 chars + asterisks)
-        """
+        """Return masked token ID for safe logging."""
         return self.value[:4] + '*' * (len(self.value) - 4)
     
     def __str__(self) -> str:
-        """String representation."""
         return self.value
 
 
@@ -124,7 +129,7 @@ class AccessToken:
             ValueError: If token is invalid
         """
         try:
-            claims = jwt.decode(
+            claims = jwt_decode(
                 token,
                 public_key,
                 algorithms=[cls.ALGORITHM],
@@ -132,7 +137,7 @@ class AccessToken:
                 audience=audience
             )
             return cls(token=token, claims=claims)
-        except JWTError as e:
+        except PyJWTError as e:
             raise ValueError(f"Invalid access token: {str(e)}")
     
     def get_user_id(self) -> int:
@@ -269,7 +274,7 @@ class RefreshToken:
             ValueError: If token is invalid
         """
         try:
-            claims = jwt.decode(
+            claims = jwt_decode(
                 token,
                 public_key,
                 algorithms=[cls.ALGORITHM],
@@ -277,7 +282,7 @@ class RefreshToken:
                 audience=audience
             )
             return cls(token=token, claims=claims)
-        except JWTError as e:
+        except PyJWTError as e:
             raise ValueError(f"Invalid refresh token: {str(e)}")
     
     def get_user_id(self) -> int:

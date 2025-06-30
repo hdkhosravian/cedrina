@@ -1,19 +1,21 @@
 import asyncio
 import hashlib
-import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Mapping, Optional
 
-from jose import JWTError, jwt
+from jwt import encode as jwt_encode, decode as jwt_decode, PyJWTError
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from structlog import get_logger
 
 from src.core.config.settings import settings
 from src.core.exceptions import AuthenticationError
 from src.domain.entities.user import User
 from src.domain.services.auth.session import SessionService
+from src.domain.value_objects.jwt_token import TokenId
 from src.utils.i18n import get_translated_message
+from src.core.logging import logger
 
 logger = get_logger(__name__)
 
@@ -44,21 +46,22 @@ class TokenService:
         self.session_service = session_service or SessionService(db_session, redis_client)
 
     async def create_access_token(self, user: User) -> str:
-        """Create a JWT access token with advanced claims.
+        """Create a JWT access token with enhanced security.
 
         Args:
             user (User): User for whom to create the token.
 
         Returns:
-            str: Encoded JWT access token.
+            str: Encoded JWT access token with enhanced JTI security.
 
         Note:
-            Uses RS256 (RSA with SHA-256) for signing, which is more secure than symmetric
-            algorithms like HS256 as it uses a private-public key pair. The token includes
-            claims like subject (sub), issuer (iss), audience (aud), and a unique JWT ID (jti)
-            to prevent replay attacks.
-
+            Uses enhanced TokenId generation for improved cryptographic security
+            and collision resistance. The JTI now provides 256 bits of entropy
+            instead of the previous 192 bits.
         """
+        # Generate enhanced secure JTI
+        token_id = TokenId.generate()
+        
         payload = {
             "sub": str(user.id),
             "username": user.username,
@@ -69,10 +72,10 @@ class TokenService:
             "exp": datetime.now(timezone.utc)
             + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
             "iat": datetime.now(timezone.utc),
-            "jti": secrets.token_urlsafe(24),
+            "jti": str(token_id),
         }
-        token = jwt.encode(payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="RS256")
-        logger.debug("Access token created", user_id=user.id, jti=payload["jti"])
+        token = jwt_encode(payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="RS256")
+        logger.debug("Access token created", user_id=user.id, jti=token_id.mask_for_logging())
         return token
 
     async def create_refresh_token(self, user: User, jti: Optional[str] = None) -> str:
@@ -80,7 +83,7 @@ class TokenService:
 
         Args:
             user (User): User for whom to create the token.
-            jti (str): JWT ID for the refresh token.
+            jti (str): JWT ID for the refresh token. If None, generates enhanced secure JTI.
 
         Returns:
             str: Encoded JWT refresh token.
@@ -89,11 +92,15 @@ class TokenService:
             Refresh tokens are stored as hashes in Redis and PostgreSQL to prevent theft.
             The token expiration is set to a longer duration than access tokens, and token
             rotation is implemented during refresh to enhance security.
-
+            Uses enhanced TokenId generation for improved cryptographic security.
         """
-        # Auto-generate a new JTI if the caller did not supply one
+        # Auto-generate a new enhanced secure JTI if the caller did not supply one
         if jti is None:
-            jti = secrets.token_urlsafe(24)
+            token_id = TokenId.generate()
+            jti = str(token_id)
+        else:
+            # Validate provided JTI
+            token_id = TokenId(jti)
 
         payload = {
             "sub": str(user.id),
@@ -103,7 +110,7 @@ class TokenService:
             "iat": datetime.now(timezone.utc),
             "jti": jti,
         }
-        refresh_token = jwt.encode(
+        refresh_token = jwt_encode(
             payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="RS256"
         )
         refresh_token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
@@ -116,7 +123,7 @@ class TokenService:
             self.session_service.create_session(user.id, jti, refresh_token_hash, payload["exp"]),
         )
 
-        logger.debug("Refresh token created", user_id=user.id, jti=jti)
+        logger.debug("Refresh token created", user_id=user.id, jti=token_id.mask_for_logging())
         return refresh_token
 
     async def refresh_tokens(self, refresh_token: str, language: str = "en") -> Mapping[str, str]:
@@ -135,11 +142,12 @@ class TokenService:
         Note:
             Implements token rotation by revoking the old refresh token and issuing a new one,
             reducing the risk of token theft. Validates token signature, issuer, audience, and
-            checks for revocation in both Redis and PostgreSQL.
+            checks for revocation in both Redis and PostgreSQL. Now includes session activity
+            tracking and enhanced validation.
 
         """
         try:
-            payload = jwt.decode(
+            payload = jwt_decode(
                 refresh_token,
                 settings.JWT_PUBLIC_KEY,
                 algorithms=["RS256"],
@@ -158,10 +166,16 @@ class TokenService:
                 logger.warning("Invalid refresh token", jti=jti)
                 raise AuthenticationError(get_translated_message("invalid_refresh_token", language))
 
-            # Verify session
-            session = await self.session_service.get_session(jti, user_id)
-            if not session or session.revoked_at:
-                logger.warning("Revoked or invalid session", jti=jti)
+            # Enhanced session validation with activity tracking
+            if not await self.session_service.is_session_valid(jti, user_id):
+                logger.warning("Invalid session during token refresh", jti=jti)
+                raise AuthenticationError(
+                    get_translated_message("session_revoked_or_invalid", language)
+                )
+
+            # Update session activity
+            if not await self.session_service.update_session_activity(jti, user_id):
+                logger.warning("Session activity update failed", jti=jti)
                 raise AuthenticationError(
                     get_translated_message("session_revoked_or_invalid", language)
                 )
@@ -176,17 +190,17 @@ class TokenService:
             await self.session_service.revoke_session(jti, user_id, language)
 
             # Create new tokens
-            new_jti = secrets.token_urlsafe(24)
+            new_token_id = TokenId.generate()
             access_token = await self.create_access_token(user)
-            refresh_token = await self.create_refresh_token(user, new_jti)
-            logger.info("Tokens refreshed", user_id=user_id, new_jti=new_jti)
+            refresh_token = await self.create_refresh_token(user, str(new_token_id))
+            logger.info("Tokens refreshed", user_id=user_id, new_jti=new_token_id.mask_for_logging())
             return {
                 "access_token": access_token,
                 "refresh_token": refresh_token,
                 "token_type": "bearer",
                 "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             }
-        except JWTError as e:
+        except PyJWTError as e:
             logger.error("JWT decode failed", error=str(e))
             raise AuthenticationError(get_translated_message("invalid_refresh_token", language))
 
@@ -206,10 +220,11 @@ class TokenService:
         Note:
             Validates token signature, issuer, audience, and expiration. Additionally,
             checks if the associated user is active to prevent access by deactivated accounts.
+            Now includes enhanced session validation and access token blacklist checking.
 
         """
         try:
-            payload = jwt.decode(
+            payload = jwt_decode(
                 token,
                 settings.JWT_PUBLIC_KEY,
                 algorithms=["RS256"],
@@ -217,15 +232,16 @@ class TokenService:
                 audience=settings.JWT_AUDIENCE,
             )
             user_id = int(payload["sub"])
+            jti = payload["jti"]
 
             # Concurrently check if token blacklisted and fetch user details.
-            blacklisted_task = asyncio.create_task(self._is_token_blacklisted(payload["jti"]))
+            blacklisted_task = asyncio.create_task(self._is_token_blacklisted(jti))
             user_task = asyncio.create_task(self.db_session.get(User, user_id))
 
             blacklisted, user = await asyncio.gather(blacklisted_task, user_task)
 
             if blacklisted:
-                logger.warning("Blacklisted token used", jti=payload["jti"], user_id=user_id)
+                logger.warning("Blacklisted token used", jti=jti, user_id=user_id)
                 raise AuthenticationError(
                     get_translated_message("token_revoked_or_blacklisted", language)
                 )
@@ -236,9 +252,16 @@ class TokenService:
                     get_translated_message("user_is_invalid_or_inactive", language)
                 )
 
-            logger.debug("JWT validated", user_id=user_id, jti=payload["jti"])
+            # Enhanced session validation for access tokens
+            if not await self.session_service.is_session_valid(jti, user_id):
+                logger.warning("Invalid session during token validation", jti=jti, user_id=user_id)
+                raise AuthenticationError(
+                    get_translated_message("session_revoked_or_invalid", language)
+                )
+
+            logger.debug("JWT validated", user_id=user_id, jti=jti)
             return payload
-        except JWTError as e:
+        except PyJWTError as e:
             logger.error("JWT validation failed", error=str(e))
             raise AuthenticationError(get_translated_message("invalid_token", language)) from e
 

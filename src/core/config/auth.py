@@ -38,6 +38,12 @@ class AuthSettings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # Session management security settings
+    SESSION_INACTIVITY_TIMEOUT_MINUTES: int = 30  # Session expires after 30 minutes of inactivity
+    MAX_CONCURRENT_SESSIONS_PER_USER: int = 5  # Maximum active sessions per user
+    SESSION_CONSISTENCY_TIMEOUT_SECONDS: int = 5  # Timeout for Redis-PostgreSQL consistency checks
+    ACCESS_TOKEN_BLACKLIST_TTL_HOURS: int = 24  # How long to keep revoked access tokens in blacklist
+
     @model_validator(mode="after")
     def _load_and_validate_jwt_keys(self) -> "AuthSettings":
         """Loads JWT keys, prioritizing .pem files over environment variables.

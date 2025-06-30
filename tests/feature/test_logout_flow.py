@@ -84,7 +84,7 @@ def test_client_with_mocks(test_user, mock_db_session, mock_redis_client, mock_s
     
     # Create token service mock for authentication dependencies
     token_service_mock = AsyncMock()
-    token_service_mock.validate_token.return_value = {"jti": "a" * 24, "sub": str(test_user.id)}
+    token_service_mock.validate_token.return_value = {"jti": "a" * 43, "sub": str(test_user.id)}
     token_service_mock.revoke_access_token = AsyncMock()
     token_service_mock.revoke_refresh_token = AsyncMock()
 
@@ -106,7 +106,7 @@ def test_client_with_mocks(test_user, mock_db_session, mock_redis_client, mock_s
 def valid_access_token(test_user):
     payload = {
         "sub": str(test_user.id),
-        "jti": "a" * 24,
+        "jti": "a" * 43,
         "exp": int((datetime.now(timezone.utc) + timedelta(days=1)).timestamp()),
         "iat": int(datetime.now(timezone.utc).timestamp()),
         "iss": settings.JWT_ISSUER,
@@ -123,7 +123,7 @@ def test_logout_revokes_tokens_step_by_step(test_client_with_mocks, test_user):
     valid_refresh_token = jwt.encode(
         {
             "sub": str(test_user.id),
-            "jti": "r" * 24,
+            "jti": "r" * 43,
             "exp": datetime.now(timezone.utc) + timedelta(days=7),
             "iat": datetime.now(timezone.utc),
             "iss": settings.JWT_ISSUER,
@@ -226,7 +226,7 @@ def test_logout_successful_token_blacklisting(test_client_with_mocks, test_user)
     valid_refresh_token = jwt.encode(
         {
             "sub": str(test_user.id),
-            "jti": "r" * 24,
+            "jti": "r" * 43,
             "exp": datetime.now(timezone.utc) + timedelta(days=7),
             "iat": datetime.now(timezone.utc),
             "iss": settings.JWT_ISSUER,
@@ -262,7 +262,7 @@ def test_logout_with_session_service_error(test_client_with_mocks, test_user):
     valid_refresh_token = jwt.encode(
         {
             "sub": str(test_user.id),
-            "jti": "r" * 24,
+            "jti": "r" * 43,
             "exp": datetime.now(timezone.utc) + timedelta(days=7),
             "iat": datetime.now(timezone.utc),
             "iss": settings.JWT_ISSUER,
@@ -299,7 +299,7 @@ def test_logout_with_user_dependency_failure(
 
     # Create token service mock for authentication dependencies
     token_service_mock = AsyncMock()
-    token_service_mock.validate_token.return_value = {"jti": "a" * 24, "sub": str(test_user.id)}
+    token_service_mock.validate_token.return_value = {"jti": "a" * 43, "sub": str(test_user.id)}
     token_service_mock.revoke_access_token = AsyncMock()
     token_service_mock.revoke_refresh_token = AsyncMock()
 
@@ -318,7 +318,7 @@ def test_logout_with_user_dependency_failure(
         logout_response = client.request(
             "DELETE",
             "/api/v1/auth/logout",
-            json={"refresh_token": "r" * 24},
+            json={"refresh_token": "r" * 43},
             headers={"Authorization": f"Bearer {valid_access_token}"},
         )
 
@@ -343,7 +343,7 @@ def test_logout_rejects_other_users_refresh_token(
     other_user_refresh_token = jwt.encode(
         {
             "sub": str(other_test_user.id),  # This token belongs to other_test_user (id=2)
-            "jti": "r" * 24,
+            "jti": "r" * 43,
             "exp": datetime.now(timezone.utc) + timedelta(days=7),
             "iat": datetime.now(timezone.utc),
             "iss": settings.JWT_ISSUER,
@@ -359,7 +359,7 @@ def test_logout_rejects_other_users_refresh_token(
 
     # Create token service mock for authentication dependencies
     token_service_mock = AsyncMock()
-    token_service_mock.validate_token.return_value = {"jti": "a" * 24, "sub": str(test_user.id)}
+    token_service_mock.validate_token.return_value = {"jti": "a" * 43, "sub": str(test_user.id)}
     token_service_mock.revoke_access_token = AsyncMock()
     token_service_mock.revoke_refresh_token = AsyncMock()
 
@@ -405,7 +405,7 @@ def test_logout_allows_own_refresh_token(
     user_refresh_token = jwt.encode(
         {
             "sub": str(test_user.id),  # This token belongs to test_user (id=1)
-            "jti": "r" * 24,
+            "jti": "r" * 43,
             "exp": datetime.now(timezone.utc) + timedelta(days=7),
             "iat": datetime.now(timezone.utc),
             "iss": settings.JWT_ISSUER,
@@ -418,7 +418,7 @@ def test_logout_allows_own_refresh_token(
     # Create token service mock
     token_service_mock = AsyncMock()
     token_service_mock.session_service = mock_session_service
-    token_service_mock.validate_token.return_value = {"jti": "a" * 24, "sub": str(test_user.id)}
+    token_service_mock.validate_token.return_value = {"jti": "a" * 43, "sub": str(test_user.id)}
     token_service_mock.revoke_access_token = AsyncMock()
     token_service_mock.revoke_refresh_token = AsyncMock()
     token_service_mock.logout_user = AsyncMock()
@@ -483,7 +483,7 @@ def test_logout_rejects_expired_refresh_token(
     expired_refresh_token = jwt.encode(
         {
             "sub": str(test_user.id),
-            "jti": "r" * 24,
+            "jti": "r" * 43,
             "exp": datetime.now(timezone.utc) - timedelta(days=1),  # Expired 1 day ago
             "iat": datetime.now(timezone.utc) - timedelta(days=8),
             "iss": settings.JWT_ISSUER,
@@ -496,7 +496,7 @@ def test_logout_rejects_expired_refresh_token(
     # Create token service mock
     token_service_mock = AsyncMock()
     token_service_mock.session_service = mock_session_service
-    token_service_mock.validate_token.return_value = {"jti": "a" * 24, "sub": str(test_user.id)}
+    token_service_mock.validate_token.return_value = {"jti": "a" * 43, "sub": str(test_user.id)}
     token_service_mock.revoke_access_token = AsyncMock()
     token_service_mock.revoke_refresh_token = AsyncMock()
 
@@ -552,7 +552,7 @@ def test_tokens_are_invalid_after_logout(valid_access_token):
     # Create comprehensive token service mock
     token_service_mock = AsyncMock()
     token_service_mock.session_service = mock_session_service
-    token_service_mock.validate_token.return_value = {"jti": "a" * 24, "sub": str(test_user.id)}
+    token_service_mock.validate_token.return_value = {"jti": "a" * 43, "sub": str(test_user.id)}
     token_service_mock.revoke_access_token = AsyncMock()
     token_service_mock.revoke_refresh_token = AsyncMock()
     token_service_mock.logout_user = AsyncMock()
@@ -571,7 +571,7 @@ def test_tokens_are_invalid_after_logout(valid_access_token):
         valid_refresh_token = jwt.encode(
             {
                 "sub": str(test_user.id),
-                "jti": "r" * 24,
+                "jti": "r" * 43,
                 "exp": datetime.now(timezone.utc) + timedelta(days=7),
                 "iat": datetime.now(timezone.utc),
                 "iss": settings.JWT_ISSUER,

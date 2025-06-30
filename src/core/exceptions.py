@@ -40,6 +40,7 @@ __all__: Final = [
     "ForgotPasswordError",
     "UserNotFoundError",
     "ValidationError",
+    "SessionLimitExceededError",
 ]
 
 
@@ -245,4 +246,12 @@ class ValidationError(CedrinaError):
     """Exception raised when input validation fails."""
 
     def __init__(self, message: str, code: str = "validation_error"):
+        CedrinaError.__init__(self, message, code)
+
+
+@dataclass(slots=True)
+class SessionLimitExceededError(CedrinaError):
+    """Exception raised when a session limit is exceeded."""
+
+    def __init__(self, message: str, code: str = "session_limit_exceeded"):
         CedrinaError.__init__(self, message, code)

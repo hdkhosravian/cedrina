@@ -1,3 +1,4 @@
+import logging
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from starlette.requests import Request
@@ -15,6 +16,8 @@ AUTH_ROUTES = {
 
 # Public routes that should not be rate-limited by this function.
 PUBLIC_ROUTES = {"/api/v1/health", "/api/v1/health/"}
+
+logger = logging.getLogger("rate_limiter.security")
 
 
 def default_key_func(request: Request) -> str:
@@ -93,19 +96,26 @@ def _should_bypass_rate_limit(request: Request) -> bool:
     """
     # Get client IP
     client_ip = request.client.host if request.client else None
-
-    # Get endpoint path
     endpoint = request.url.path
 
-    # Try to extract user information from request
+    # Secure: Only use authenticated user from trusted context (not headers)
     user_id = None
     user_tier = None
+    user = getattr(getattr(request, "state", None), "user", None)
+    if user is not None:
+        user_id = getattr(user, "id", None)
+        user_tier = getattr(user, "tier", None)
+    else:
+        # Check for spoofed header attempt and log it
+        suspicious_headers = []
+        for h in ["X-User-ID", "X-User-Tier"]:
+            if h in request.headers:
+                suspicious_headers.append(h)
+        if suspicious_headers:
+            logger.warning(
+                f"Potential rate limit bypass attempt via headers: {suspicious_headers} from IP {client_ip} on endpoint {endpoint}"
+            )
 
-    # Extract user info from headers (if available)
-    user_id = request.headers.get("X-User-ID")
-    user_tier = request.headers.get("X-User-Tier")
-
-    # Check if rate limiting should be bypassed
     return rate_limiting_config.should_bypass_rate_limit(
         client_ip=client_ip, user_id=user_id, endpoint=endpoint, user_tier=user_tier
     )
@@ -121,20 +131,14 @@ def _get_bypass_reason(request: Request) -> str | None:
         String describing the bypass reason, or None if no bypass
 
     """
-    # Get client IP
     client_ip = request.client.host if request.client else None
-
-    # Get endpoint path
     endpoint = request.url.path
-
-    # Try to extract user information from request
     user_id = None
     user_tier = None
-
-    # Extract user info from headers (if available)
-    user_id = request.headers.get("X-User-ID")
-    user_tier = request.headers.get("X-User-Tier")
-
+    user = getattr(getattr(request, "state", None), "user", None)
+    if user is not None:
+        user_id = getattr(user, "id", None)
+        user_tier = getattr(user, "tier", None)
     return rate_limiting_config.get_bypass_reason(
         client_ip=client_ip, user_id=user_id, endpoint=endpoint, user_tier=user_tier
     )

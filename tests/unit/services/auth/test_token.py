@@ -14,6 +14,7 @@ from src.domain.entities.session import Session
 from src.domain.entities.user import Role, User
 from src.domain.services.auth.session import SessionService
 from src.domain.services.auth.token import TokenService
+from src.domain.value_objects.jwt_token import TokenId
 
 
 @pytest_asyncio.fixture
@@ -64,8 +65,8 @@ async def test_create_access_token(token_service):
 async def test_create_refresh_token(token_service, db_session, redis_client, mocker):
     # Arrange
     user = User(id=1, username="testuser", email="test@example.com", role=Role.USER, is_active=True)
-    jti = "test-jti"
-    mocker.patch("secrets.token_urlsafe", return_value=jti)
+    jti = TokenId.generate().value
+    mocker.patch("src.domain.value_objects.jwt_token.TokenId.generate", return_value=TokenId(jti))
 
     # Act
     token = await token_service.create_refresh_token(user)
@@ -106,9 +107,10 @@ async def test_refresh_tokens_success(token_service, db_session, redis_client, m
     db_session.get.return_value = user
     mocker.patch("secrets.token_urlsafe", return_value="new-jti")
 
-    # Mock SessionService methods
-    token_service.session_service.get_session.return_value = session
-    token_service.session_service.revoke_session.return_value = None
+    # Mock SessionService methods for enhanced session validation
+    token_service.session_service.is_session_valid = AsyncMock(return_value=True)
+    token_service.session_service.update_session_activity = AsyncMock(return_value=True)
+    token_service.session_service.revoke_session = AsyncMock(return_value=None)
 
     # Act
     result = await token_service.refresh_tokens(refresh_token)
@@ -117,7 +119,8 @@ async def test_refresh_tokens_success(token_service, db_session, redis_client, m
     assert "access_token" in result
     assert "refresh_token" in result
     assert result["token_type"] == "bearer"
-    token_service.session_service.get_session.assert_called_once_with(jti, user.id)
+    token_service.session_service.is_session_valid.assert_called_once_with(jti, user.id)
+    token_service.session_service.update_session_activity.assert_called_once_with(jti, user.id)
     token_service.session_service.revoke_session.assert_called_once_with(jti, user.id, "en")
 
 
@@ -266,6 +269,6 @@ async def test_jti_length_in_tokens(token_service):
         issuer=settings.JWT_ISSUER,
     )
 
-    # Assert JTI length is 24 URL-safe characters
-    assert len(access_payload["jti"]) == 32  # 24 bytes URL-safe encoded results in 32 characters
-    assert len(refresh_payload["jti"]) == 32  # 24 bytes URL-safe encoded results in 32 characters
+    # Assert JTI length is 43 URL-safe characters (new standard)
+    assert len(access_payload["jti"]) == 43
+    assert len(refresh_payload["jti"]) == 43

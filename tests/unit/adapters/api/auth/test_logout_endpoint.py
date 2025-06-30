@@ -5,6 +5,7 @@ support and concurrent token revocation operations.
 """
 
 from unittest.mock import AsyncMock
+from datetime import datetime, timezone, timedelta
 
 import pytest
 from jose import jwt
@@ -54,11 +55,11 @@ def valid_refresh_token():
     """Create a valid refresh token for testing."""
     payload = {
         "sub": "1",
+        "jti": "r" * 43,  # 43 characters
+        "exp": datetime.now(timezone.utc) + timedelta(days=7),
+        "iat": datetime.now(timezone.utc),
         "iss": settings.JWT_ISSUER,
         "aud": settings.JWT_AUDIENCE,
-        "exp": 9999999999,
-        "iat": 1000000000,
-        "jti": "r" * 24,  # 24 characters
     }
     return jwt.encode(payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="RS256")
 
@@ -68,11 +69,11 @@ def valid_access_token():
     """Create a valid access token for testing."""
     payload = {
         "sub": "1",
+        "jti": "a" * 43,  # 43 characters
+        "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+        "iat": datetime.now(timezone.utc),
         "iss": settings.JWT_ISSUER,
         "aud": settings.JWT_AUDIENCE,
-        "exp": 9999999999,
-        "iat": 1000000000,
-        "jti": "a" * 24,  # 24 characters
     }
     return jwt.encode(payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="RS256")
 
@@ -139,11 +140,11 @@ class TestLogoutEndpoint:
         # Arrange - create refresh token for different user
         different_user_payload = {
             "sub": "999",  # Different user ID
+            "jti": "r" * 43,  # 43 characters
+            "exp": datetime.now(timezone.utc) + timedelta(days=7),
+            "iat": datetime.now(timezone.utc),
             "iss": settings.JWT_ISSUER,
             "aud": settings.JWT_AUDIENCE,
-            "exp": 9999999999,
-            "iat": 1000000000,
-            "jti": "r" * 24,  # 24 characters
         }
         different_user_token = jwt.encode(
             different_user_payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="RS256"

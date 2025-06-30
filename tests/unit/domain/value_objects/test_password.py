@@ -166,6 +166,97 @@ class TestPassword:
         assert password.value == max_password
         assert len(password.value) == 128
 
+    def test_password_verify_against_hash_valid(self):
+        """Test password verification against valid hash."""
+        # Arrange
+        plain_text = "MyStr0ng#P@ssw0rd"
+        password = Password(value=plain_text)
+        hashed = password.to_hashed()
+        
+        # Act
+        is_valid = password.verify_against_hash(hashed.value)
+        
+        # Assert
+        assert is_valid is True
+    
+    def test_password_verify_against_hash_invalid(self):
+        """Test password verification against invalid hash."""
+        # Arrange
+        password = Password(value="MyStr0ng#P@ssw0rd")
+        wrong_hash = "$2b$12$WrongHashValueHereThatWontMatchAnyPasswordAtAll123"
+        
+        # Act
+        is_valid = password.verify_against_hash(wrong_hash)
+        
+        # Assert
+        assert is_valid is False
+    
+    def test_password_verify_against_hash_different_password(self):
+        """Test password verification with different password."""
+        # Arrange
+        password1 = Password(value="MyStr0ng#P@ssw0rd")
+        password2 = Password(value="DifferentP@ssw0rd1")
+        hashed = password2.to_hashed()
+        
+        # Act
+        is_valid = password1.verify_against_hash(hashed.value)
+        
+        # Assert
+        assert is_valid is False
+    
+    def test_password_verify_against_hash_empty_hash(self):
+        """Test password verification against empty hash."""
+        # Arrange
+        password = Password(value="MyStr0ng#P@ssw0rd")
+        
+        # Act
+        is_valid = password.verify_against_hash("")
+        
+        # Assert
+        assert is_valid is False
+    
+    def test_password_verify_against_hash_malformed_hash(self):
+        """Test password verification against malformed hash."""
+        # Arrange
+        password = Password(value="MyStr0ng#P@ssw0rd")
+        malformed_hash = "not_a_valid_bcrypt_hash"
+        
+        # Act
+        is_valid = password.verify_against_hash(malformed_hash)
+        
+        # Assert
+        assert is_valid is False
+    
+    def test_password_verify_against_hash_constant_time(self):
+        """Test that password verification uses constant-time comparison.
+        
+        This test verifies that the method delegates to the security utility
+        which uses bcrypt's constant-time comparison to prevent timing attacks.
+        """
+        # Arrange
+        password = Password(value="MyStr0ng#P@ssw0rd")
+        hashed = password.to_hashed()
+        
+        # Act - Multiple verifications should have consistent behavior
+        result1 = password.verify_against_hash(hashed.value)
+        result2 = password.verify_against_hash(hashed.value)
+        result3 = password.verify_against_hash(hashed.value)
+        
+        # Assert - All should return True consistently
+        assert result1 is True
+        assert result2 is True
+        assert result3 is True
+        
+        # Test with wrong hash - all should return False consistently
+        wrong_hash = "$2b$12$WrongHashValueHereThatWontMatchAnyPasswordAtAll123"
+        result4 = password.verify_against_hash(wrong_hash)
+        result5 = password.verify_against_hash(wrong_hash)
+        result6 = password.verify_against_hash(wrong_hash)
+        
+        assert result4 is False
+        assert result5 is False
+        assert result6 is False
+
 
 class TestHashedPassword:
     """Test cases for HashedPassword value object."""

@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 from typing import ClassVar
 
-from src.utils.security import hash_password
+from src.utils.security import hash_password, verify_password
 
 
 @dataclass(frozen=True)
@@ -96,6 +96,39 @@ class Password:
                 return True
         
         return False
+    
+    def verify_against_hash(self, hashed_password: str) -> bool:
+        """Verify this password against a bcrypt hash using constant-time comparison.
+        
+        This method provides secure password verification by delegating to the
+        security utility function that uses bcrypt's built-in constant-time
+        comparison to prevent timing attacks.
+        
+        Args:
+            hashed_password: The bcrypt hash to verify against
+            
+        Returns:
+            bool: True if password matches the hash, False otherwise
+            
+        Security Features:
+            - Constant-time comparison via bcrypt
+            - Resistant to timing attacks
+            - Uses same bcrypt configuration as password hashing
+            - Handles bcrypt hash format validation internally
+            - Returns False for any invalid hash format (no information disclosure)
+            
+        Example:
+            >>> password = Password("SecurePass123!")
+            >>> hashed = "$2b$12$..."  # From database
+            >>> is_valid = password.verify_against_hash(hashed)
+        """
+        try:
+            return verify_password(self.value, hashed_password)
+        except Exception:
+            # Return False for any invalid hash format or verification error
+            # This prevents information disclosure through error messages
+            # and ensures consistent behavior regardless of hash validity
+            return False
     
     def to_hashed(self) -> 'HashedPassword':
         """Convert to hashed password.

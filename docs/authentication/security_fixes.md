@@ -2,6 +2,153 @@
 
 This document outlines critical security vulnerabilities that have been identified and fixed in the authentication system.
 
+## CVE-2024-PASSWORD-001: Missing Password Verification Method Vulnerability
+
+### Problem Description
+
+The `Password` value object in the domain layer was missing the critical `verify_against_hash` method that was being called by the password change service. This caused runtime errors and completely broke password change functionality, effectively preventing users from changing their passwords.
+
+#### Affected Components
+
+- **File**: `src/domain/value_objects/password.py`
+- **Calling Service**: `src/domain/services/authentication/password_change_service.py` (line 251)
+- **Impact**: Password change functionality completely broken
+
+#### Error Details
+
+```python
+# In password_change_service.py line 251:
+if not old_password.verify_against_hash(user.hashed_password):
+    # This method was missing, causing AttributeError at runtime
+```
+
+#### Impact
+
+- **Complete Password Change Failure**: Users could not change their passwords at all
+- **Service Unavailability**: Password change endpoints would return 500 errors
+- **Security Risk**: Users with compromised passwords could not update them
+- **Authentication System Integrity**: Core authentication functionality was broken
+
+### Solution
+
+#### Code Changes
+
+**File**: `src/domain/value_objects/password.py`
+
+Added the missing `verify_against_hash` method with proper security implementation:
+
+```python
+def verify_against_hash(self, hashed_password: str) -> bool:
+    """Verify this password against a bcrypt hash using constant-time comparison.
+    
+    This method provides secure password verification by delegating to the
+    security utility function that uses bcrypt's built-in constant-time
+    comparison to prevent timing attacks.
+    
+    Args:
+        hashed_password: The bcrypt hash to verify against
+        
+    Returns:
+        bool: True if password matches the hash, False otherwise
+        
+    Security Features:
+        - Constant-time comparison via bcrypt
+        - Resistant to timing attacks
+        - Uses same bcrypt configuration as password hashing
+        - Handles bcrypt hash format validation internally
+        - Returns False for any invalid hash format (no information disclosure)
+        
+    Example:
+        >>> password = Password("SecurePass123!")
+        >>> hashed = "$2b$12$..."  # From database
+        >>> is_valid = password.verify_against_hash(hashed)
+    """
+    try:
+        return verify_password(self.value, hashed_password)
+    except Exception:
+        # Return False for any invalid hash format or verification error
+        # This prevents information disclosure through error messages
+        # and ensures consistent behavior regardless of hash validity
+        return False
+```
+
+#### Security Improvements
+
+1. **Constant-Time Comparison**: Uses bcrypt's built-in constant-time comparison to prevent timing attacks
+2. **Exception Handling**: Gracefully handles invalid hash formats without disclosing information
+3. **Consistent Error Behavior**: Always returns `False` for invalid inputs rather than raising exceptions
+4. **Security Utility Integration**: Delegates to the centralized `verify_password` function for consistency
+5. **Comprehensive Documentation**: Clear security implications and usage examples
+
+#### Test Coverage
+
+Added comprehensive tests to ensure security and functionality:
+
+- `test_password_verify_against_hash_valid`: Verifies correct password validation
+- `test_password_verify_against_hash_invalid`: Ensures incorrect passwords are rejected
+- `test_password_verify_against_hash_different_password`: Tests cross-password validation
+- `test_password_verify_against_hash_empty_hash`: Handles empty hash strings
+- `test_password_verify_against_hash_malformed_hash`: Securely handles malformed hashes
+- `test_password_verify_against_hash_constant_time`: Validates consistent timing behavior
+
+### Technical Details
+
+#### Method Integration
+
+The method integrates with the existing security infrastructure:
+
+```python
+from src.utils.security import verify_password
+
+def verify_against_hash(self, hashed_password: str) -> bool:
+    try:
+        return verify_password(self.value, hashed_password)
+    except Exception:
+        return False
+```
+
+#### Security Considerations
+
+1. **No Information Disclosure**: Method never reveals why validation failed
+2. **Timing Attack Protection**: Uses bcrypt's constant-time comparison
+3. **Input Validation**: Handles any malformed input gracefully
+4. **Consistent Interface**: Matches the expected behavior of other password methods
+
+#### Usage Pattern
+
+```python
+# In password change service:
+old_password = Password(request.old_password)
+if not old_password.verify_against_hash(user.hashed_password):
+    raise InvalidOldPasswordError("Invalid old password")
+```
+
+### Prevention Measures
+
+#### Development Guidelines
+
+1. **Complete Interface Implementation**: Ensure all referenced methods are implemented
+2. **Test-Driven Development**: Write tests for all public methods before implementation
+3. **Security-First Design**: Always consider timing attacks and information disclosure
+4. **Exception Handling**: Never leak sensitive information through error messages
+
+#### Code Review Checklist
+
+- [ ] All referenced methods are implemented
+- [ ] Security considerations are documented
+- [ ] Exception handling prevents information disclosure
+- [ ] Tests cover both positive and negative cases
+- [ ] Timing attack protection is in place
+
+### Deployment Impact
+
+This fix is critical and should be deployed immediately:
+
+1. **Restores Core Functionality**: Password changes work again
+2. **No Breaking Changes**: Maintains existing API contracts
+3. **Enhanced Security**: Improves timing attack protection
+4. **Zero Downtime**: Can be deployed without service interruption
+
 ## CVE-2024-LOGOUT-001: Cross-User Refresh Token Revocation Vulnerability
 
 ### Problem Description

@@ -404,9 +404,10 @@ class TestExistingServiceSecurity:
         # Mock Redis to return valid hash
         mock_redis_client.get.return_value = token_hash.encode()
 
-        # Mock session for user_two (not user_one)
-        session = Session(user_id=user_two.id, jti="user-two-jti", refresh_token_hash=token_hash)
-        mock_session_service.get_session.return_value = session
+        # Mock enhanced session validation methods
+        mock_session_service.is_session_valid = AsyncMock(return_value=True)
+        mock_session_service.update_session_activity = AsyncMock(return_value=True)
+        mock_session_service.revoke_session = AsyncMock(return_value=None)
 
         # Mock database to return user_two
         mock_db_session.get.return_value = user_two
@@ -418,8 +419,9 @@ class TestExistingServiceSecurity:
         # It extracts user_id from token and validates session belongs to that user
         result = await token_service.refresh_tokens(user_two_token)
 
-        # Verify it called get_session with user_two's ID (from token)
-        mock_session_service.get_session.assert_called_once_with("user-two-jti", user_two.id)
+        # Verify it called enhanced session validation methods with user_two's ID (from token)
+        mock_session_service.is_session_valid.assert_called_once_with("user-two-jti", user_two.id)
+        mock_session_service.update_session_activity.assert_called_once_with("user-two-jti", user_two.id)
 
         # Verify it retrieved user_two from database
         mock_db_session.get.assert_called_once_with(User, user_two.id)
