@@ -600,3 +600,64 @@ class IUserLogoutService(ABC):
             AuthenticationError: If token validation or revocation fails
         """
         pass 
+
+
+class IPasswordEncryptionService(ABC):
+    """Interface for password encryption service implementing defense-in-depth security.
+    
+    This service provides encryption-at-rest for password hashes, adding an additional
+    security layer beyond bcrypt hashing. Even if database is compromised, encrypted
+    password hashes remain protected without the encryption key.
+    
+    Security Features:
+        - AES-256-GCM encryption with authenticated encryption
+        - Key separation (encryption key different from database credentials)
+        - Constant-time operations to prevent timing attacks
+        - Secure key derivation and IV generation
+    """
+    
+    @abstractmethod
+    async def encrypt_password_hash(self, bcrypt_hash: str) -> str:
+        """Encrypt a bcrypt password hash for secure database storage.
+        
+        Args:
+            bcrypt_hash: The bcrypt-hashed password to encrypt
+            
+        Returns:
+            str: Base64-encoded encrypted hash for database storage
+            
+        Raises:
+            ValueError: If hash format is invalid
+            EncryptionError: If encryption operation fails
+        """
+        pass
+    
+    @abstractmethod
+    async def decrypt_password_hash(self, encrypted_hash: str) -> str:
+        """Decrypt an encrypted password hash for verification.
+        
+        Args:
+            encrypted_hash: Base64-encoded encrypted hash from database
+            
+        Returns:
+            str: Decrypted bcrypt hash for password verification
+            
+        Raises:
+            ValueError: If encrypted hash format is invalid
+            DecryptionError: If decryption operation fails
+        """
+        pass
+    
+    @abstractmethod
+    def is_encrypted_format(self, value: str) -> bool:
+        """Check if a value is in encrypted format.
+        
+        Used for migration compatibility to detect legacy unencrypted hashes.
+        
+        Args:
+            value: Value to check
+            
+        Returns:
+            bool: True if value appears to be encrypted
+        """
+        pass 

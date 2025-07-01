@@ -41,6 +41,8 @@ __all__: Final = [
     "UserNotFoundError",
     "ValidationError",
     "SessionLimitExceededError",
+    "EncryptionError",
+    "DecryptionError",
 ]
 
 
@@ -254,4 +256,33 @@ class SessionLimitExceededError(CedrinaError):
     """Exception raised when a session limit is exceeded."""
 
     def __init__(self, message: str, code: str = "session_limit_exceeded"):
+        CedrinaError.__init__(self, message, code)
+
+
+# ---------------------------------------------------------------------------
+# Encryption service errors
+# ---------------------------------------------------------------------------
+
+
+@dataclass(slots=True)
+class EncryptionError(CedrinaError):
+    """Exception raised when password hash encryption operations fail.
+    
+    This error indicates a failure in the encryption-at-rest layer for password hashes.
+    It could be due to key issues, invalid input format, or cryptographic failures.
+    """
+
+    def __init__(self, message: str, code: str = "encryption_error"):
+        CedrinaError.__init__(self, message, code)
+
+
+@dataclass(slots=True)
+class DecryptionError(CedrinaError):
+    """Exception raised when password hash decryption operations fail.
+    
+    This error indicates a failure in decrypting password hashes from database storage.
+    Common causes include corrupted encrypted data, key rotation issues, or tampering.
+    """
+
+    def __init__(self, message: str, code: str = "decryption_error"):
         CedrinaError.__init__(self, message, code)

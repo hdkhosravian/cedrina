@@ -6,7 +6,7 @@ ensuring password strength requirements are enforced consistently across the dom
 
 import re
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 from src.utils.security import hash_password, verify_password
 
@@ -145,7 +145,7 @@ class HashedPassword:
     
     Represents a securely hashed password that can be safely stored.
     This value object ensures passwords are always properly hashed
-    before storage.
+    before storage and supports both legacy unencrypted and new encrypted storage.
     
     Attributes:
         value: The hashed password string (immutable)
@@ -158,12 +158,29 @@ class HashedPassword:
         if not self.value:
             raise ValueError("Hashed password cannot be empty")
         
-        # Basic validation for bcrypt hash format
-        if not self.value.startswith("$2b$"):
-            raise ValueError("Invalid hashed password format")
+        # Support both encrypted and unencrypted bcrypt hashes for migration
+        if self.is_encrypted():
+            # For encrypted hashes, validate the format more thoroughly
+            if not self.value.startswith("enc_v1:"):
+                raise ValueError("Invalid encrypted password format")
+            # Ensure there's actual data after the prefix
+            if len(self.value) <= 7 or self.value == "enc_v1:":  # "enc_v1:" is 7 characters
+                raise ValueError("Invalid encrypted password format")
+        else:
+            # For unencrypted bcrypt hashes, validate full format
+            if not self.value.startswith("$2b$"):
+                raise ValueError("Invalid hashed password format")
+            
+            if len(self.value) != 60:  # Standard bcrypt hash length
+                raise ValueError("Invalid hashed password length")
+    
+    def is_encrypted(self) -> bool:
+        """Check if this hashed password is encrypted.
         
-        if len(self.value) != 60:  # Standard bcrypt hash length
-            raise ValueError("Invalid hashed password length")
+        Returns:
+            bool: True if the hash is encrypted (has enc_v1: prefix)
+        """
+        return self.value.startswith("enc_v1:")
     
     @classmethod
     def from_plain_password(cls, password: Password) -> 'HashedPassword':
@@ -173,7 +190,7 @@ class HashedPassword:
             password: Plain password value object
             
         Returns:
-            HashedPassword: Securely hashed password
+            HashedPassword: Securely hashed password (unencrypted for compatibility)
         """
         hashed_value = hash_password(password.value)
         return cls(value=hashed_value)
@@ -183,9 +200,99 @@ class HashedPassword:
         """Create from existing hash (e.g., from database).
         
         Args:
-            hashed_value: Pre-hashed password string
+            hashed_value: Pre-hashed password string (encrypted or unencrypted)
             
         Returns:
             HashedPassword: Validated hashed password object
         """
-        return cls(value=hashed_value) 
+        return cls(value=hashed_value)
+
+
+@dataclass(frozen=True)
+class EncryptedPassword:
+    """Encrypted password value object for defense-in-depth security.
+    
+    This value object represents a password that has been both hashed (bcrypt) and 
+    encrypted (AES) for storage. It provides an additional security layer beyond
+    bcrypt hashing to protect against database compromise scenarios.
+    
+    Security Features:
+        - Two-layer protection: bcrypt + AES encryption
+        - Migration compatibility with legacy unencrypted hashes
+        - Immutable design prevents accidental modification
+        - Clear separation between encrypted and unencrypted formats
+        
+    Attributes:
+        encrypted_value: The encrypted bcrypt hash (with enc_v1: prefix)
+    """
+    
+    encrypted_value: str
+    
+    def __post_init__(self) -> None:
+        """Validate encrypted password format."""
+        if not self.encrypted_value:
+            raise ValueError("Encrypted password cannot be empty")
+        
+        if not self.encrypted_value.startswith("enc_v1:"):
+            raise ValueError("Invalid encrypted password format: must start with 'enc_v1:'")
+    
+    @classmethod
+    async def from_hashed_password(
+        cls, 
+        hashed_password: HashedPassword, 
+        encryption_service: 'IPasswordEncryptionService'
+    ) -> 'EncryptedPassword':
+        """Create encrypted password from hashed password.
+        
+        Args:
+            hashed_password: Hashed password value object
+            encryption_service: Service to handle encryption
+            
+        Returns:
+            EncryptedPassword: Encrypted password for secure storage
+            
+        Raises:
+            EncryptionError: If encryption fails
+        """
+        from src.domain.interfaces.services import IPasswordEncryptionService
+        
+        # If already encrypted, return as-is
+        if hashed_password.is_encrypted():
+            return cls(encrypted_value=hashed_password.value)
+        
+        # Encrypt the bcrypt hash
+        encrypted_value = await encryption_service.encrypt_password_hash(hashed_password.value)
+        return cls(encrypted_value=encrypted_value)
+    
+    async def to_bcrypt_hash(
+        self, 
+        encryption_service: 'IPasswordEncryptionService'
+    ) -> str:
+        """Decrypt to get the original bcrypt hash for verification.
+        
+        Args:
+            encryption_service: Service to handle decryption
+            
+        Returns:
+            str: Decrypted bcrypt hash for password verification
+            
+        Raises:
+            DecryptionError: If decryption fails
+        """
+        return await encryption_service.decrypt_password_hash(self.encrypted_value)
+    
+    def get_storage_value(self) -> str:
+        """Get the value to store in the database.
+        
+        Returns:
+            str: Encrypted value for database storage
+        """
+        return self.encrypted_value
+    
+    def __repr__(self) -> str:
+        """Return safe string representation without exposing sensitive data.
+        
+        Returns:
+            str: Safe representation for logging/debugging
+        """
+        return f"EncryptedPassword(encrypted=True, format='enc_v1')" 

@@ -42,8 +42,8 @@ from src.domain.services.authentication.oauth_service import OAuthAuthentication
 from src.domain.services.authentication.password_change_service import (
     PasswordChangeService,
 )
-from src.domain.services.authentication.enhanced_user_authentication_service import (
-    EnhancedUserAuthenticationService,
+from src.domain.services.authentication.user_authentication_security_service import (
+    UserAuthenticationSecurityService,
 )
 from src.domain.services.authentication.user_logout_service import (
     UserLogoutService,
@@ -185,7 +185,7 @@ def get_user_authentication_service(
         - Comprehensive security event logging
         - Risk-based authentication analysis
     """
-    return EnhancedUserAuthenticationService(
+    return UserAuthenticationSecurityService(
         user_repository=user_repository,
         event_publisher=event_publisher,
     )

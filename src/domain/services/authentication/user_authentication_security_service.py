@@ -1,4 +1,4 @@
-"""Enhanced User Authentication Service with Security Logging and Information Disclosure Prevention.
+"""User Authentication Service with Security Logging and Information Disclosure Prevention.
 
 This service extends the base authentication service with advanced security features:
 - Structured security event logging
@@ -36,8 +36,8 @@ from src.utils.i18n import get_translated_message
 logger = structlog.get_logger(__name__)
 
 
-class EnhancedUserAuthenticationService(IUserAuthenticationService):
-    """Enhanced authentication service with security logging and information disclosure prevention.
+class UserAuthenticationSecurityService(IUserAuthenticationService):
+    """Authentication service with security logging and information disclosure prevention.
     
     This service implements enterprise-grade security practices:
     - Consistent error responses regardless of failure reason
@@ -52,7 +52,7 @@ class EnhancedUserAuthenticationService(IUserAuthenticationService):
         user_repository: IUserRepository,
         event_publisher: IEventPublisher,
     ):
-        """Initialize enhanced authentication service.
+        """Initialize authentication service with security features.
         
         Args:
             user_repository: Repository for user data access
@@ -60,7 +60,7 @@ class EnhancedUserAuthenticationService(IUserAuthenticationService):
         """
         self._user_repository = user_repository
         self._event_publisher = event_publisher
-        self._logger = structlog.get_logger("auth.enhanced")
+        self._logger = structlog.get_logger("auth.security")
     
     async def authenticate_user(
         self,
@@ -98,7 +98,7 @@ class EnhancedUserAuthenticationService(IUserAuthenticationService):
         try:
             # Log authentication attempt with secure context
             self._logger.info(
-                "Enhanced authentication attempt initiated",
+                "Authentication attempt with security features initiated",
                 correlation_id=correlation_id,
                 username_masked=secure_logging_service.mask_username(str(username)),
                 ip_masked=secure_logging_service.mask_ip_address(client_ip),
@@ -177,7 +177,7 @@ class EnhancedUserAuthenticationService(IUserAuthenticationService):
             
             # Log successful authentication with secure data
             self._logger.info(
-                "Enhanced authentication successful",
+                "Authentication with security features successful",
                 user_id=user.id,
                 username_masked=secure_logging_service.mask_username(user.username),
                 correlation_id=correlation_id,
@@ -205,11 +205,11 @@ class EnhancedUserAuthenticationService(IUserAuthenticationService):
             )
             
         except Exception as e:
-            # Handle unexpected errors with secure logging and standardization
+            # Handle unexpected errors with standardization
             return await self._handle_authentication_failure(
                 attempted_username=username,
                 failure_reason="system_error",
-                actual_error=f"Unexpected system error: {str(e)}",
+                actual_error=f"System error: {str(e)}",
                 correlation_id=correlation_id,
                 user_agent=user_agent,
                 ip_address=client_ip,
@@ -218,42 +218,56 @@ class EnhancedUserAuthenticationService(IUserAuthenticationService):
             )
     
     async def verify_password(self, user: User, password: Password) -> bool:
-        """Verify password with timing attack protection.
-        
-        This method uses constant-time comparison to prevent timing attacks
-        while maintaining the existing password verification logic.
+        """Verify password for user using domain value objects with security logging.
         
         Args:
-            user: User entity to verify password for
-            password: Password value object to verify
+            user: User entity with hashed password
+            password: Password value object to verify against user's hashed password
             
         Returns:
-            bool: True if password is valid
+            bool: True if password matches user's hashed password, False otherwise
+            
+        Security Features:
+        - Constant-time comparison prevents timing attacks
+        - No sensitive data in logs
+        - Fail-safe error handling
+        - Domain value object validation
         """
         try:
-            # Use the domain password verification logic
-            hashed_password = HashedPassword(user.password_hash)
-            is_valid = await password.verify_against_hash(hashed_password)
+            # Validate inputs
+            if not user or not user.hashed_password or not password:
+                self._logger.debug(
+                    "Password verification failed - missing data",
+                    user_id=user.id if user else None,
+                    has_hashed_password=bool(user and user.hashed_password),
+                    has_password=bool(password),
+                    security_enhanced=True
+                )
+                return False
             
-            # Add timing consistency for security
-            # This ensures similar timing regardless of password validity
-            if not is_valid:
-                # Perform dummy hash operation to maintain consistent timing
-                dummy_password = Password("dummy_password_for_timing")
-                dummy_hash = HashedPassword("$2b$12$dummy.hash.for.timing.consistency.only")
-                await dummy_password.verify_against_hash(dummy_hash)
+            # Use domain value object for secure password verification
+            # Delegate to the Password's verify_against_hash method for constant-time comparison
+            is_valid = password.verify_against_hash(user.hashed_password)
+            
+            self._logger.debug(
+                "Password verification completed with security",
+                user_id=user.id,
+                is_valid=is_valid,
+                verification_method="constant_time_comparison",
+                security_enhanced=True
+            )
             
             return is_valid
             
         except Exception as e:
-            # Log verification error securely
+            # Log error without exposing sensitive information
             self._logger.error(
-                "Password verification error",
-                user_id=user.id,
+                "Password verification error with security context",
+                user_id=user.id if user else None,
+                error=str(e),
                 error_type=type(e).__name__,
-                secure_verification=True
+                security_enhanced=True
             )
-            # Always return False for errors to maintain security
             return False
     
     async def _handle_authentication_failure(
@@ -267,63 +281,74 @@ class EnhancedUserAuthenticationService(IUserAuthenticationService):
         language: str,
         request_start_time: float
     ) -> None:
-        """Handle authentication failure with enhanced security and standardization.
+        """Handle authentication failure with consistent responses and timing.
+        
+        This method implements zero-trust security by:
+        - Standardizing response timing to prevent enumeration
+        - Masking actual failure reasons in responses
+        - Logging detailed failure information securely
+        - Publishing security events for monitoring
         
         Args:
             attempted_username: Username that was attempted
-            failure_reason: Standardized failure reason
-            actual_error: Actual error details (for secure logging)
+            failure_reason: Internal reason for failure
+            actual_error: Actual error that occurred
             correlation_id: Request correlation ID
             user_agent: User agent string
             ip_address: Client IP address
-            language: Language code for responses
-            request_start_time: When the request started
+            language: Language for error messages
+            request_start_time: When request started (for timing standardization)
             
         Raises:
             AuthenticationError: Standardized authentication error
         """
-        # Log failure securely for monitoring
-        error_standardization_service.log_error_safely(
-            error_type=failure_reason,
-            error_details={
-                "username": str(attempted_username),
-                "ip_address": ip_address,
-                "user_agent": user_agent,
-                "actual_error": actual_error
-            },
+        # Log detailed failure information securely
+        self._logger.warning(
+            "Authentication failure with security context",
+            username_masked=secure_logging_service.mask_username(str(attempted_username)),
+            failure_reason=failure_reason,
+            actual_error=actual_error,
             correlation_id=correlation_id,
-            user_context={"username": str(attempted_username)}
+            ip_masked=secure_logging_service.mask_ip_address(ip_address),
+            user_agent_sanitized=self._sanitize_user_agent(user_agent),
+            security_enhanced=True
         )
         
-        # Publish authentication failure domain event
-        try:
-            failure_event = AuthenticationFailedEvent.create(
-                attempted_username=secure_logging_service.mask_username(str(attempted_username)),
-                failure_reason=failure_reason,
-                correlation_id=correlation_id,
-                user_agent=self._sanitize_user_agent(user_agent),
-                ip_address=secure_logging_service.mask_ip_address(ip_address),
-            )
-            await self._event_publisher.publish(failure_event)
-        except Exception as e:
-            self._logger.error(
-                "Failed to publish authentication failure event",
-                error=str(e),
-                correlation_id=correlation_id,
-                secure_event_publishing=True
-            )
-        
-        # Create standardized authentication error response
-        error_response = await error_standardization_service.create_authentication_error_response(
-            actual_failure_reason=failure_reason,
-            username=str(attempted_username),
+        # Create and publish authentication failure event
+        failure_event = AuthenticationFailedEvent.create(
+            attempted_username=str(attempted_username),
+            failure_reason=failure_reason,
             correlation_id=correlation_id,
-            language=language,
-            request_start_time=request_start_time
+            user_agent=user_agent,
+            ip_address=ip_address,
+        )
+        
+        await self._event_publisher.publish(failure_event)
+        
+        # Log security event
+        secure_logging_service.log_authentication_attempt(
+            username=str(attempted_username),
+            success=False,
+            correlation_id=correlation_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            failure_reason=failure_reason
+        )
+        
+        # Apply standardized timing to prevent timing attacks
+        elapsed_time = time.time() - request_start_time
+        await error_standardization_service.apply_standard_timing(elapsed_time)
+        
+        # Create standardized error response
+        standardized_response = await error_standardization_service.create_standardized_response(
+            error_type="authentication_failed",
+            actual_error=actual_error,
+            correlation_id=correlation_id,
+            language=language
         )
         
         # Raise standardized authentication error
-        raise AuthenticationError(error_response["detail"])
+        raise AuthenticationError(message=standardized_response["detail"])
     
     async def _publish_successful_login_event(
         self,
@@ -332,43 +357,50 @@ class EnhancedUserAuthenticationService(IUserAuthenticationService):
         user_agent: str,
         ip_address: str,
     ) -> None:
-        """Publish successful login event with secure data masking.
+        """Publish successful login domain event with security context.
+        
+        This method publishes successful login events for audit trails and
+        security monitoring. It captures important security context information
+        for compliance and monitoring purposes.
         
         Args:
-            user: Authenticated user entity
-            correlation_id: Request correlation ID
-            user_agent: User agent string
-            ip_address: Client IP address
+            user: Successfully authenticated user entity
+            correlation_id: Request correlation ID for tracing
+            user_agent: Browser/client user agent for security context
+            ip_address: Client IP address for security context
+            
+        Domain Events Published:
+        - UserLoggedInEvent: Contains user information and security context
         """
         try:
-            # Create login event with masked sensitive data
+            # Create and publish successful login domain event
             login_event = UserLoggedInEvent.create(
                 user_id=user.id,
-                username=secure_logging_service.mask_username(user.username),
-                login_method="username_password",
+                username=user.username,
                 correlation_id=correlation_id,
-                user_agent=self._sanitize_user_agent(user_agent),
-                ip_address=secure_logging_service.mask_ip_address(ip_address),
+                user_agent=user_agent,
+                ip_address=ip_address,
+                previous_login_at=getattr(user, 'last_login_at', None),
             )
             
             await self._event_publisher.publish(login_event)
             
             self._logger.info(
-                "Successful login event published",
+                "Login event published with security context",
                 user_id=user.id,
                 correlation_id=correlation_id,
                 event_type="UserLoggedInEvent",
-                secure_event_publishing=True
+                security_enhanced=True
             )
             
         except Exception as e:
             # Log event publishing failure but don't fail authentication
             self._logger.error(
-                "Failed to publish successful login event",
+                "Failed to publish login event with security context",
                 user_id=user.id,
                 error=str(e),
                 correlation_id=correlation_id,
-                secure_event_publishing=True
+                security_enhanced=True
             )
     
     def _sanitize_user_agent(self, user_agent: str) -> str:
@@ -378,22 +410,17 @@ class EnhancedUserAuthenticationService(IUserAuthenticationService):
             user_agent: Raw user agent string
             
         Returns:
-            str: Sanitized user agent string
+            str: Sanitized user agent string safe for logging
         """
         if not user_agent:
             return "unknown"
         
-        # Extract browser family without detailed version info
-        if "Chrome" in user_agent:
-            return "Chrome/***"
-        elif "Firefox" in user_agent:
-            return "Firefox/***"
-        elif "Safari" in user_agent:
-            return "Safari/***"
-        elif "Edge" in user_agent:
-            return "Edge/***"
-        else:
-            return "Unknown/***"
+        # Limit length and remove potentially harmful characters
+        sanitized = user_agent[:200]  # Reasonable length limit
+        # Remove control characters and other potentially harmful content
+        sanitized = ''.join(char for char in sanitized if char.isprintable())
+        
+        return sanitized or "sanitized"
     
     def _analyze_risk_indicators(
         self,
@@ -401,32 +428,29 @@ class EnhancedUserAuthenticationService(IUserAuthenticationService):
         ip_address: str,
         user_agent: str
     ) -> list[str]:
-        """Analyze request for security risk indicators.
+        """Analyze risk indicators for authentication attempt.
         
         Args:
-            username: Attempted username
+            username: Username being attempted
             ip_address: Client IP address
             user_agent: User agent string
             
         Returns:
-            List[str]: Detected risk indicators
+            list[str]: List of risk indicators detected
         """
         risk_indicators = []
         
-        # Check for suspicious patterns in username
+        # Check for suspicious patterns
         username_str = str(username).lower()
-        suspicious_patterns = ["admin", "root", "test", "demo", "guest"]
-        if any(pattern in username_str for pattern in suspicious_patterns):
-            risk_indicators.append("suspicious_username_pattern")
+        if any(pattern in username_str for pattern in ['admin', 'root', 'test', 'guest']):
+            risk_indicators.append("suspicious_username")
         
-        # Check for missing or suspicious user agent
-        if not user_agent or len(user_agent) < 10:
-            risk_indicators.append("missing_or_minimal_user_agent")
-        elif "curl" in user_agent.lower() or "wget" in user_agent.lower():
-            risk_indicators.append("automated_client_detected")
+        # Check for common automation patterns
+        if user_agent and any(pattern in user_agent.lower() for pattern in ['bot', 'crawler', 'script']):
+            risk_indicators.append("automated_user_agent")
         
-        # Check for local/internal IP addresses
-        if ip_address.startswith(("127.", "10.", "192.168.", "172.")):
-            risk_indicators.append("internal_ip_address")
+        # Check for empty or missing user agent
+        if not user_agent or len(user_agent.strip()) < 10:
+            risk_indicators.append("minimal_user_agent")
         
-        return risk_indicators 
+        return risk_indicators
