@@ -10,8 +10,8 @@ from typing import List, Optional, Set
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from src.domain.rate_limiting.entities import RateLimitPolicy
-from src.domain.rate_limiting.value_objects import RateLimitAlgorithm, RateLimitQuota
+from src.core.rate_limiting.entities import RateLimitPolicy
+from src.core.rate_limiting.value_objects import RateLimitAlgorithm, RateLimitQuota
 
 
 class RateLimitingConfig(BaseSettings):

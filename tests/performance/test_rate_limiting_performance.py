@@ -14,12 +14,12 @@ from unittest.mock import AsyncMock
 import psutil
 import pytest
 
-from src.domain.rate_limiting.entities import RateLimitRequest
-from src.domain.rate_limiting.services import (
+from src.core.rate_limiting.entities import RateLimitRequest
+from src.core.rate_limiting.services import (
     RateLimitContext,
     RateLimitService,
 )
-from src.domain.rate_limiting.value_objects import RateLimitAlgorithm, RateLimitQuota
+from src.core.rate_limiting.value_objects import RateLimitAlgorithm, RateLimitQuota
 
 
 @pytest.mark.performance

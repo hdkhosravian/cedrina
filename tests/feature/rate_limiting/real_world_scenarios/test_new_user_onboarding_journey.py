@@ -60,7 +60,7 @@ class TestNewUserOnboardingJourney:
         register_endpoint = api_endpoints["auth"]["register"]
 
         # Configure rate limiter to block after 3 registration attempts
-        with patch("src.domain.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
+        with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
             mock_limiter = AsyncMock()
             mock_limiter_class.return_value = mock_limiter
 
@@ -105,7 +105,7 @@ class TestNewUserOnboardingJourney:
         print("\n⏳ Step 2: Waiting for rate limit reset and registering user...")
 
         # Reset the rate limiter for successful registration
-        with patch("src.domain.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
+        with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
             mock_limiter = AsyncMock()
             mock_limiter_class.return_value = mock_limiter
             mock_limiter.check_rate_limit.return_value = {
@@ -130,7 +130,7 @@ class TestNewUserOnboardingJourney:
 
         login_endpoint = api_endpoints["auth"]["login"]
 
-        with patch("src.domain.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
+        with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
             mock_limiter = AsyncMock()
             mock_limiter_class.return_value = mock_limiter
 
@@ -170,7 +170,7 @@ class TestNewUserOnboardingJourney:
         # Step 4: Successful login after rate limit reset
         print("\n🔑 Step 4: Successful login after rate limit reset...")
 
-        with patch("src.domain.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
+        with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
             mock_limiter = AsyncMock()
             mock_limiter_class.return_value = mock_limiter
             mock_limiter.check_rate_limit.return_value = {
@@ -203,7 +203,7 @@ class TestNewUserOnboardingJourney:
             }
 
             with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
+                "src.core.rate_limiting.services.AdvancedRateLimiter"
             ) as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter
@@ -268,7 +268,7 @@ class TestNewUserOnboardingJourney:
             }
 
             with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
+                "src.core.rate_limiting.services.AdvancedRateLimiter"
             ) as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter
@@ -328,7 +328,7 @@ class TestNewUserOnboardingJourney:
         register_endpoint = api_endpoints["auth"]["register"]
         base_user = user_scenarios["new_user"]
 
-        with patch("src.domain.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
+        with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
             mock_limiter = AsyncMock()
             mock_limiter_class.return_value = mock_limiter
 
@@ -409,7 +409,7 @@ class TestNewUserOnboardingJourney:
             }
 
             with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
+                "src.core.rate_limiting.services.AdvancedRateLimiter"
             ) as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter

@@ -5,8 +5,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.core.exceptions import RateLimitError
-from src.domain.rate_limiting.entities import RateLimitRequest
-from src.domain.rate_limiting.services import (
+from src.core.rate_limiting.entities import RateLimitRequest
+from src.core.rate_limiting.services import (
     RateLimitContext,
     RateLimitKey,
     RateLimitQuota,
@@ -37,7 +37,7 @@ async def test_dos_attack_protection(monkeypatch):
 
     # Replace the actual RateLimitService with our mock
     monkeypatch.setattr(
-        "src.domain.rate_limiting.services.RateLimitService",
+        "src.core.rate_limiting.services.RateLimitService",
         lambda *args, **kwargs: mock_rate_limit_service,
     )
 

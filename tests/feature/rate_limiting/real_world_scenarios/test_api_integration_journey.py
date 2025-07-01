@@ -59,7 +59,7 @@ class TestAPIIntegrationJourney:
         register_endpoint = api_endpoints["auth"]["register"]
 
         # Simulate API developer account registration
-        with patch("src.domain.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
+        with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
             mock_limiter = AsyncMock()
             mock_limiter_class.return_value = mock_limiter
             mock_limiter.check_rate_limit.return_value = {
@@ -90,9 +90,7 @@ class TestAPIIntegrationJourney:
                 "tier": "api",
             }
 
-            with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
-            ) as mock_limiter_class:
+            with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter
 
@@ -136,9 +134,7 @@ class TestAPIIntegrationJourney:
                 "tier": "api",
             }
 
-            with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
-            ) as mock_limiter_class:
+            with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter
 
@@ -202,9 +198,7 @@ class TestAPIIntegrationJourney:
                 "tier": "api",
             }
 
-            with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
-            ) as mock_limiter_class:
+            with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter
 
@@ -272,9 +266,7 @@ class TestAPIIntegrationJourney:
                 "tier": "api",
             }
 
-            with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
-            ) as mock_limiter_class:
+            with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter
 
@@ -343,9 +335,7 @@ class TestAPIIntegrationJourney:
                 "tier": "api",
             }
 
-            with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
-            ) as mock_limiter_class:
+            with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter
 
@@ -450,9 +440,7 @@ class TestAPIIntegrationJourney:
                 "tier": "api",
             }
 
-            with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
-            ) as mock_limiter_class:
+            with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter
 

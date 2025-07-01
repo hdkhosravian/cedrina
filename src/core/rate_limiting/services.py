@@ -93,7 +93,7 @@ class AdvancedRateLimiter:
             String describing the bypass reason, or None if no bypass
 
         """
-        from src.config.rate_limiting import rate_limiting_config
+        from src.core.rate_limiting.config import rate_limiting_config
 
         return rate_limiting_config.get_bypass_reason(
             client_ip=request.client_ip,

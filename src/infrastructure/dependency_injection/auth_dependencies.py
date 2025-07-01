@@ -57,7 +57,7 @@ from src.domain.services.password_reset.password_reset_request_service import (
 from src.domain.services.password_reset.password_reset_service import (
     PasswordResetService,
 )
-from src.domain.services.password_reset.rate_limiting_service import (
+from src.core.rate_limiting.password_reset_service import (
     RateLimitingService,
 )
 from src.infrastructure.database.async_db import get_async_db

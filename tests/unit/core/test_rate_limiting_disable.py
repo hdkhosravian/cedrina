@@ -9,7 +9,7 @@ Tests the ability to disable rate limiting at various levels:
 - Emergency disable
 """
 
-from src.config.rate_limiting import RateLimitingConfig
+from src.core.rate_limiting.config import RateLimitingConfig
 
 
 class TestRateLimitingConfigDisable:

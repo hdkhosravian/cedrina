@@ -17,12 +17,12 @@ from unittest.mock import AsyncMock
 import pytest
 import redis.asyncio as redis
 
-from src.domain.rate_limiting.entities import RateLimitQuota, RateLimitRequest, RateLimitResult
-from src.domain.rate_limiting.repositories import RedisRateLimitRepository
-from src.domain.rate_limiting.services import RateLimitContext, RateLimitService
+from src.core.rate_limiting.entities import RateLimitQuota, RateLimitRequest, RateLimitResult
+from src.core.rate_limiting.repositories import RedisRateLimitRepository
+from src.core.rate_limiting.services import RateLimitContext, RateLimitService
 
-# Import rate limiting domain components
-from src.domain.rate_limiting.value_objects import (
+# Import rate limiting core components
+from src.core.rate_limiting.value_objects import (
     RateLimitKey,
     RateLimitQuota,
 )

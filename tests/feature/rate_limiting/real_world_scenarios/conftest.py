@@ -12,9 +12,9 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi.testclient import TestClient
 
-from src.domain.rate_limiting.entities import RateLimitPolicy, RateLimitQuota
-from src.domain.rate_limiting.services import AdvancedRateLimiter
-from src.domain.rate_limiting.value_objects import RateLimitAlgorithm
+from src.core.rate_limiting.entities import RateLimitPolicy, RateLimitQuota
+from src.core.rate_limiting.services import AdvancedRateLimiter
+from src.core.rate_limiting.value_objects import RateLimitAlgorithm
 
 
 class ScenarioClient:

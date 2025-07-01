@@ -3,7 +3,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from starlette.requests import Request
 
-from src.config.rate_limiting import rate_limiting_config
+from src.core.rate_limiting.config import rate_limiting_config
 from src.core.config.settings import settings
 
 # A set of targeted authentication routes for rate-limiting.
