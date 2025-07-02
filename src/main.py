@@ -59,7 +59,7 @@ from src.core.handlers import (
     user_not_found_error_handler,
 )
 from src.core.logging import configure_logging, logger
-from src.core.ratelimiter import get_limiter
+from src.core.rate_limiting.ratelimiter import get_limiter
 from src.infrastructure.database import check_database_health, create_db_and_tables
 from src.utils.i18n import get_request_language, get_translated_message, setup_i18n
 

@@ -13,7 +13,7 @@ Rate limiting mitigates DoS risks (OWASP A03:2021 - Injection mitigation).
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from src.core.dependencies.auth import get_current_user
-from src.core.ratelimiter import get_limiter
+from src.core.rate_limiting.ratelimiter import get_limiter
 from src.domain.entities.user import User
 from src.domain.services.auth.policy import PolicyService
 from src.permissions.dependencies import check_permission

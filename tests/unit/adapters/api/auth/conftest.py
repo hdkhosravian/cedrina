@@ -26,7 +26,7 @@ async def setup_database():
 @pytest_asyncio.fixture
 async def async_client():
     """Provides an async test client."""
-    from src.core.ratelimiter import get_limiter
+    from src.core.rate_limiting.ratelimiter import get_limiter
     
     # Ensure limiter is available in app state for testing
     if not hasattr(app.state, 'limiter'):

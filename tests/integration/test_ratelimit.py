@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from src.core.config.settings import settings
 from src.core.exceptions import AuthenticationError
-from src.core.ratelimiter import get_limiter
+from src.core.rate_limiting.ratelimiter import get_limiter
 from src.main import app
 
 

@@ -37,7 +37,7 @@ from src.core.exceptions import (
     ForgotPasswordError,
     RateLimitExceededError,
 )
-from src.core.ratelimiter import get_limiter
+from src.core.rate_limiting.ratelimiter import get_limiter
 from src.domain.security.error_standardization import error_standardization_service
 from src.domain.security.logging_service import secure_logging_service
 from src.domain.services.password_reset.password_reset_request_service import (

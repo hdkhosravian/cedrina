@@ -28,7 +28,7 @@ from fastapi.testclient import TestClient
 
 from src.core.dependencies.auth import get_current_user
 from src.core.exceptions import AuthenticationError
-from src.core.ratelimiter import get_limiter
+from src.core.rate_limiting.ratelimiter import get_limiter
 from src.domain.entities.user import Role, User
 from src.main import app
 from src.permissions.dependencies import get_enforcer
