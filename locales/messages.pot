@@ -89,3 +89,77 @@ msgstr ""
 msgid "password_reset_success"
 msgstr ""
 
+# Session management security (2025-01-27)
+msgid "session_creation_timeout"
+msgstr ""
+
+msgid "session_creation_failed"
+msgstr ""
+
+msgid "session_limit_exceeded"
+msgstr ""
+
+msgid "session_inactivity_timeout"
+msgstr ""
+
+msgid "session_consistency_error"
+msgstr ""
+
+msgid "access_token_blacklisted"
+msgstr ""
+
+msgid "token_revoked_or_blacklisted"
+msgstr ""
+
+msgid "user_is_invalid_or_inactive"
+msgstr ""
+
+msgid "invalid_token"
+msgstr ""
+
+msgid "session_revoked_or_invalid"
+msgstr ""
+
+msgid "invalid_refresh_token"
+msgstr ""
+
+msgid "user_account_inactive"
+msgstr ""
+
+msgid "user_not_found"
+msgstr ""
+
+msgid "invalid_old_password"
+msgstr ""
+
+msgid "new_password_must_be_different"
+msgstr ""
+
+msgid "rate_limit_exceeded"
+msgstr ""
+
+# Enhanced Token Security (2025-06-30)
+msgid "token_cannot_be_empty"
+msgstr ""
+
+msgid "token_must_contain_uppercase"
+msgstr ""
+
+msgid "token_must_contain_lowercase"
+msgstr ""
+
+msgid "token_must_contain_digits"
+msgstr ""
+
+msgid "token_must_contain_special_chars"
+msgstr ""
+
+msgid "token_length_invalid"
+msgstr ""
+
+msgid "token_expiry_cannot_be_empty"
+msgstr ""
+
+msgid "token_expiry_must_be_timezone_aware"
+msgstr ""
+

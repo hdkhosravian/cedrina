@@ -11,12 +11,11 @@ Rate limiting mitigates DoS risks (OWASP A03:2021 - Injection mitigation).
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from src.core.dependencies.auth import get_current_user
+from src.core.rate_limiting.ratelimiter import get_limiter
 from src.domain.entities.user import User
-from src.domain.services.auth.policy import PolicyService
+from src.domain.services.security.policy import PolicyService
 from src.permissions.dependencies import check_permission
 from src.permissions.enforcer import get_enforcer
 
@@ -24,8 +23,8 @@ from .schemas import PolicyListResponse, PolicyRequest, PolicyResponse
 
 router = APIRouter(tags=["admin", "policies"])
 
-# Rate limiting setup: 10 requests per minute per IP
-limiter = Limiter(key_func=get_remote_address)
+# Use centralized rate limiter for consistency
+limiter = get_limiter()
 
 
 def get_policy_service(enforcer=Depends(get_enforcer)) -> PolicyService:
@@ -69,7 +68,7 @@ async def add_policy(
 
     """
     locale = getattr(request.state, "language", "en")
-    ip_address = get_remote_address(request)
+    client_ip = request.client.host or "unknown"
     user_agent = request.headers.get("User-Agent", "unknown")
     performed_by = str(current_user.id) if current_user.id else "anonymous"
 
@@ -88,7 +87,7 @@ async def add_policy(
             policy_request.object,
             policy_request.action,
             performed_by,
-            ip_address,
+            client_ip,
             user_agent,
             attributes if attributes else None,
             locale,
@@ -143,7 +142,7 @@ async def remove_policy(
 
     """
     locale = getattr(request.state, "language", "en")
-    ip_address = get_remote_address(request)
+    client_ip = request.client.host or "unknown"
     user_agent = request.headers.get("User-Agent", "unknown")
     performed_by = str(current_user.id) if current_user.id else "anonymous"
     try:
@@ -152,7 +151,7 @@ async def remove_policy(
             policy_request.object,
             policy_request.action,
             performed_by,
-            ip_address,
+            client_ip,
             user_agent,
             locale,
         )

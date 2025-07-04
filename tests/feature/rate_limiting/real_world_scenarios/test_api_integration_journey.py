@@ -36,8 +36,7 @@ from .conftest import (
 class TestAPIIntegrationJourney:
     """Test complete API integration journey with rate limiting scenarios."""
 
-    @pytest.mark.asyncio
-    async def test_developer_api_integration_journey(
+    def test_developer_api_integration_journey(
         self,
         scenario_client: ScenarioClient,
         scenario_state: ScenarioState,
@@ -59,7 +58,7 @@ class TestAPIIntegrationJourney:
         register_endpoint = api_endpoints["auth"]["register"]
 
         # Simulate API developer account registration
-        with patch("src.domain.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
+        with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
             mock_limiter = AsyncMock()
             mock_limiter_class.return_value = mock_limiter
             mock_limiter.check_rate_limit.return_value = {
@@ -90,9 +89,7 @@ class TestAPIIntegrationJourney:
                 "tier": "api",
             }
 
-            with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
-            ) as mock_limiter_class:
+            with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter
 
@@ -136,9 +133,7 @@ class TestAPIIntegrationJourney:
                 "tier": "api",
             }
 
-            with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
-            ) as mock_limiter_class:
+            with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter
 
@@ -202,9 +197,7 @@ class TestAPIIntegrationJourney:
                 "tier": "api",
             }
 
-            with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
-            ) as mock_limiter_class:
+            with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter
 
@@ -272,9 +265,7 @@ class TestAPIIntegrationJourney:
                 "tier": "api",
             }
 
-            with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
-            ) as mock_limiter_class:
+            with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter
 
@@ -314,8 +305,7 @@ class TestAPIIntegrationJourney:
         print(f"   - Rate limit encounters: {api_summary['rate_limit_hits']}")
         print("   - Developer learned proper rate limit handling")
 
-    @pytest.mark.asyncio
-    async def test_burst_vs_sustained_traffic_patterns(
+    def test_burst_vs_sustained_traffic_patterns(
         self,
         scenario_client: ScenarioClient,
         scenario_state: ScenarioState,
@@ -343,9 +333,7 @@ class TestAPIIntegrationJourney:
                 "tier": "api",
             }
 
-            with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
-            ) as mock_limiter_class:
+            with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter
 
@@ -421,8 +409,7 @@ class TestAPIIntegrationJourney:
 
         print("✅ Burst vs sustained traffic patterns handled correctly")
 
-    @pytest.mark.asyncio
-    async def test_multi_endpoint_rate_limiting(
+    def test_multi_endpoint_rate_limiting(
         self,
         scenario_client: ScenarioClient,
         scenario_state: ScenarioState,
@@ -450,9 +437,7 @@ class TestAPIIntegrationJourney:
                 "tier": "api",
             }
 
-            with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
-            ) as mock_limiter_class:
+            with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter
 

@@ -26,7 +26,7 @@ class TestSimplifiedRateLimitingScenarios:
         new_user = user_scenarios["new_user"]
 
         # Mock the rate limiter with realistic registration limits
-        with patch("src.domain.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
+        with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
             mock_limiter = AsyncMock()
             mock_limiter_class.return_value = mock_limiter
 
@@ -100,7 +100,7 @@ class TestSimplifiedRateLimitingScenarios:
         # Test: Burst traffic pattern
         print("   Testing burst traffic pattern...")
 
-        with patch("src.domain.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
+        with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
             mock_limiter = AsyncMock()
             mock_limiter_class.return_value = mock_limiter
 
@@ -183,7 +183,7 @@ class TestSimplifiedRateLimitingScenarios:
             print(f"   Testing {tier} tier limits for {user['username']}...")
 
             with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
+                "src.core.rate_limiting.services.AdvancedRateLimiter"
             ) as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter

@@ -8,13 +8,16 @@ from sqlmodel import Column, Field, Index, SQLModel  # For ORM and table definit
 
 
 class Provider(str, Enum):
-    """Enumeration for OAuth providers supported by the authentication system.
+    """A Value Object representing the supported OAuth providers.
+
+    This enumeration ensures that only recognized and configured OAuth providers
+    can be associated with a user's profile, providing type safety and
+    domain consistency.
 
     Attributes:
-        GOOGLE: Google OAuth provider.
-        MICROSOFT: Microsoft OAuth provider.
-        FACEBOOK: Facebook OAuth provider.
-
+        GOOGLE: Represents the Google OAuth 2.0 provider.
+        MICROSOFT: Represents the Microsoft Identity Platform (OAuth 2.0) provider.
+        FACEBOOK: Represents the Facebook Login (OAuth 2.0) provider.
     """
 
     GOOGLE = "google"
@@ -23,26 +26,27 @@ class Provider(str, Enum):
 
 
 class OAuthProfile(SQLModel, table=True):
-    """OAuthProfile model for linking users to OAuth provider accounts.
+    """Represents a link between a User and an external OAuth provider.
 
-    This model stores provider-specific user data, including encrypted access tokens
-    using PostgreSQL's pgcrypto extension. It associates OAuth accounts with users
-    via a foreign key and ensures uniqueness per provider and user ID.
+    This entity, part of the Authentication Bounded Context, stores the necessary
+    information to manage a user's identity as provided by a third-party OAuth
+    service. It ensures that a user's account can be securely associated with
+    one or more external login methods.
+
+    The access token is encrypted at rest in the database for security.
 
     Attributes:
-        id (Optional[int]): Primary key, auto-incremented by the database.
-        user_id (int): Foreign key referencing the User model.
-        provider (Provider): OAuth provider (e.g., google, microsoft, facebook).
-        provider_user_id (str): Unique user ID from the provider.
-        access_token (bytes): Encrypted OAuth access token (pgcrypto).
-        expires_at (datetime): Access token expiration timestamp.
-        created_at (datetime): Profile creation timestamp.
-        updated_at (Optional[datetime]): Last update timestamp.
-
-    Table Arguments:
-        Unique index on provider and provider_user_id to prevent duplicate profiles.
-        Index on user_id for efficient queries.
-
+        id: The unique identifier for the OAuth profile record.
+        user_id: A foreign key that links this profile to the main `User` aggregate.
+        provider: The specific OAuth provider this profile is for (e.g., Google).
+        provider_user_id: The unique identifier for the user as provided by the
+            external OAuth service.
+        access_token: The encrypted OAuth access token, required for making API
+            calls on behalf of the user.
+        expires_at: The timestamp when the access token is no longer valid.
+        created_at: The timestamp when this OAuth profile was first created.
+        updated_at: The timestamp of the last update to this profile, such as a
+            token refresh.
     """
 
     __tablename__ = "oauth_profiles"  # Explicit table name for clarity
@@ -50,31 +54,31 @@ class OAuthProfile(SQLModel, table=True):
     id: Optional[int] = Field(
         default=None,  # Auto-incremented by database
         primary_key=True,  # Primary key constraint
-        description="Unique identifier for the OAuth profile",
+        description="The unique identifier for the OAuth profile.",
     )
     user_id: int = Field(
         foreign_key="users.id",  # References users table
         nullable=False,  # Required field
-        description="Foreign key referencing the User",
+        description="Foreign key linking this profile to a User.",
     )
     provider: Provider = Field(
         sa_column=Column(
             postgresql.ENUM(Provider, name="provider", create_type=False),  # Use PostgreSQL enum
             nullable=False,
         ),
-        description="OAuth provider (google, microsoft, facebook)",
+        description="The OAuth provider (e.g., Google, Microsoft, Facebook).",
     )
     provider_user_id: str = Field(
         sa_column=Column(String, nullable=False),  # Provider's user ID
-        description="Unique user ID from the OAuth provider",
+        description="The unique identifier for the user from the OAuth provider.",
     )
     access_token: bytes = Field(
         sa_column=Column(LargeBinary, nullable=False),  # Encrypted token
-        description="Encrypted OAuth access token using pgcrypto",
+        description="The encrypted OAuth access token.",
     )
     expires_at: datetime = Field(
         nullable=False,  # Required for token validity
-        description="Access token expiration timestamp",
+        description="The expiration timestamp for the access token.",
     )
     created_at: datetime = Field(
         sa_column=Column(
@@ -82,7 +86,7 @@ class OAuthProfile(SQLModel, table=True):
             server_default=text("CURRENT_TIMESTAMP"),  # Database timestamp
             nullable=False,
         ),
-        description="Profile creation timestamp",
+        description="The timestamp when the OAuth profile was created.",
     )
     updated_at: Optional[datetime] = Field(
         sa_column=Column(
@@ -90,7 +94,7 @@ class OAuthProfile(SQLModel, table=True):
             server_onupdate=text("CURRENT_TIMESTAMP"),  # Update on modification
             nullable=True,
         ),
-        description="Last update timestamp",
+        description="The timestamp of the last profile update (e.g., token refresh).",
     )
 
     __table_args__ = (

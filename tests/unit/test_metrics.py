@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from src.core.config.settings import settings
 from src.core.dependencies.auth import get_current_user
 from src.core.metrics import metrics_collector
-from src.core.ratelimiter import get_limiter
+from src.core.rate_limiting.ratelimiter import get_limiter
 from src.domain.entities.user import Role, User
 from src.main import app
 
