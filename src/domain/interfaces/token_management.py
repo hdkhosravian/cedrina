@@ -17,8 +17,10 @@ Token Management Domain Services:
 """
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Optional, Tuple
 
+from src.domain.entities.session import Session
 from src.domain.entities.user import User
 from src.domain.value_objects.jwt_token import AccessToken, RefreshToken
 
@@ -160,30 +162,32 @@ class ISessionService(ABC):
     """
 
     @abstractmethod
-    async def create_session(self, user_id: int, jti: str, refresh_token_hash: str) -> None:
+    async def create_session(self, user_id: int, jti: str, refresh_token_hash: str, expires_at: datetime) -> None:
         """Creates and persists a new session record.
 
         Args:
             user_id: The ID of the user for whom the session is created.
             jti: The unique identifier (jti) of the initial JWT access token.
             refresh_token_hash: The hash of the associated refresh token.
+            expires_at: The timestamp when the session expires.
         """
         raise NotImplementedError
 
     @abstractmethod
-    async def get_session(self, jti: str) -> Optional[dict]:
-        """Retrieves a session by its JWT identifier (jti).
+    async def get_session(self, jti: str, user_id: int) -> Optional[Session]:
+        """Retrieves a session by its JWT identifier (jti) and user ID.
 
         Args:
             jti: The unique identifier of the session to retrieve.
+            user_id: The ID of the user who owns the session.
 
         Returns:
-            A dictionary representing the session, or `None` if not found.
+            A Session entity, or `None` if not found.
         """
         raise NotImplementedError
 
     @abstractmethod
-    async def revoke_session(self, jti: str) -> None:
+    async def revoke_session(self, jti: str, user_id: int, language: str = "en") -> None:
         """Revokes a session, effectively logging the user out.
 
         This marks the session as revoked in the database, preventing any
@@ -191,17 +195,36 @@ class ISessionService(ABC):
 
         Args:
             jti: The unique identifier of the session to revoke.
+            user_id: The ID of the user who owns the session.
+            language: Language code for error messages. Defaults to "en".
         """
         raise NotImplementedError
 
     @abstractmethod
-    async def is_session_valid(self, jti: str) -> bool:
+    async def is_session_valid(self, jti: str, user_id: int) -> bool:
         """Checks if a session is valid and not revoked.
 
         Args:
             jti: The unique identifier of the session to check.
+            user_id: The ID of the user who owns the session.
 
         Returns:
             `True` if the session is valid, `False` otherwise.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def update_session_activity(self, jti: str, user_id: int) -> bool:
+        """Updates session activity timestamp and validates session.
+
+        This method updates the last_activity_at timestamp and performs
+        comprehensive session validation including inactivity timeout.
+
+        Args:
+            jti: The unique identifier of the session to update.
+            user_id: The ID of the user who owns the session.
+
+        Returns:
+            `True` if session is valid and updated, `False` otherwise.
         """
         raise NotImplementedError 

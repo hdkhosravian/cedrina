@@ -17,6 +17,7 @@ from abc import ABC
 from typing import Optional, Tuple
 
 from src.domain.entities.user import User
+from src.domain.entities.session import Session
 from src.domain.interfaces.token_management import ITokenService, ISessionService
 from src.domain.value_objects.jwt_token import AccessToken, RefreshToken
 
@@ -85,7 +86,8 @@ class TestTokenManagementInterfaces:
             'create_session',
             'get_session',
             'revoke_session',
-            'is_session_valid'
+            'is_session_valid',
+            'update_session_activity'
         }
         assert all(method in abstract_methods for method in expected_methods)
         
@@ -99,6 +101,7 @@ class TestTokenManagementInterfaces:
         assert 'user_id' in params
         assert 'jti' in params
         assert 'refresh_token_hash' in params
+        assert 'expires_at' in params
         assert sig.return_annotation is None
         
         # Check get_session signature
@@ -106,7 +109,8 @@ class TestTokenManagementInterfaces:
         params = list(sig.parameters.keys())
         assert 'self' in params
         assert 'jti' in params
-        assert sig.return_annotation == Optional[dict]
+        assert 'user_id' in params
+        assert sig.return_annotation == Optional[Session]
 
     def test_interfaces_follow_single_responsibility_principle(self):
         """Test that each interface follows the Single Responsibility Principle."""
@@ -118,7 +122,7 @@ class TestTokenManagementInterfaces:
         
         # ISessionService - only session state management
         session_methods = ISessionService.__abstractmethods__
-        assert len(session_methods) == 4  # All session-related methods
+        assert len(session_methods) == 5  # All session-related methods
         assert all('session' in method for method in session_methods)
 
     def test_interfaces_use_ubiquitous_language(self):
@@ -138,6 +142,7 @@ class TestTokenManagementInterfaces:
         assert 'get_session' in ISessionService.__abstractmethods__
         assert 'revoke_session' in ISessionService.__abstractmethods__
         assert 'is_session_valid' in ISessionService.__abstractmethods__
+        assert 'update_session_activity' in ISessionService.__abstractmethods__
 
     def test_interfaces_use_domain_value_objects(self):
         """Test that interfaces use domain value objects for type safety."""
@@ -168,6 +173,7 @@ class TestTokenManagementInterfaces:
         # ISessionService security methods
         assert 'revoke_session' in ISessionService.__abstractmethods__
         assert 'is_session_valid' in ISessionService.__abstractmethods__
+        assert 'update_session_activity' in ISessionService.__abstractmethods__
 
     def test_interfaces_include_i18n_support(self):
         """Test that interfaces include internationalization support."""
