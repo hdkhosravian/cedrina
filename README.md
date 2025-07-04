@@ -57,6 +57,11 @@ Comprehensive documentation is available in the [`docs/`](docs/) directory:
 - **[Permissions & Authorization](docs/features/permissions/README.md)** - Role-based access control
 - **[Internationalization (i18n)](docs/features/internationalization.md)** - Multi-language support
 
+### Security
+- **[Security Audit TODO](docs/security/SECURITY_AUDIT_TODO.md)** - Critical security improvements and audit findings
+- **[Authentication Security](docs/authentication/security_fixes.md)** - Security enhancements and fixes
+- **[Input Validation Security](docs/authentication/input_validation_security_fixes.md)** - Input sanitization and validation
+
 ### Development
 - **[Development Setup](docs/development/setup.md)** - Local development environment
 - **[Testing Guide](docs/development/testing.md)** - Comprehensive testing strategy
@@ -107,11 +112,14 @@ Cedrina follows clean architecture principles with clear separation of concerns:
 - **SQLModel**: Type-safe ORM with Pydantic integration
 
 ### Security Features
-- **Input Validation**: Comprehensive Pydantic validation
-- **Rate Limiting**: Redis-based rate limiting with multiple strategies
-- **CORS**: Configurable cross-origin resource sharing
-- **Audit Logging**: Structured logging for security events
-- **Password Policies**: Enforced password complexity requirements
+- **🔐 Defense-in-Depth**: Multi-layered security architecture with enterprise-grade implementations
+- **🛡️ Input Validation**: Advanced sanitization with injection attack detection and prevention
+- **⚡ Rate Limiting**: Redis-based protection against brute force and DoS attacks
+- **📊 Audit Logging**: Comprehensive security event logging with SIEM integration
+- **🔑 Password Security**: Bcrypt hashing with optional AES encryption layer
+- **🎫 Token Security**: RS256-signed JWT tokens with ownership validation
+- **🌐 OAuth Security**: CSRF protection and secure OAuth 2.0 implementation
+- **📈 Security Monitoring**: Real-time threat detection and risk assessment
 
 ## 🛠️ Development
 
