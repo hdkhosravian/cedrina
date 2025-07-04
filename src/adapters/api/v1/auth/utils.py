@@ -9,7 +9,7 @@ duplication across authentication endpoints like login, register, and OAuth.
 from src.adapters.api.v1.auth.schemas import TokenPair
 from src.core.config.settings import settings
 from src.domain.entities.user import User
-from src.domain.services.auth.token import TokenService
+from src.infrastructure.services.authentication.token import TokenService
 
 
 async def create_token_pair(token_service: TokenService, user: User) -> TokenPair:

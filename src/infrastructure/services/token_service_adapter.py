@@ -10,7 +10,7 @@ import structlog
 
 from src.domain.entities.user import User
 from src.domain.interfaces.services import ITokenService
-from src.domain.services.auth.token import TokenService as LegacyTokenService
+from src.infrastructure.services.authentication.token import TokenService as LegacyTokenService
 
 logger = structlog.get_logger(__name__)
 

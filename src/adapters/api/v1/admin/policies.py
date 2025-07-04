@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from src.core.dependencies.auth import get_current_user
 from src.core.rate_limiting.ratelimiter import get_limiter
 from src.domain.entities.user import User
-from src.domain.services.auth.policy import PolicyService
+from src.domain.services.security.policy import PolicyService
 from src.permissions.dependencies import check_permission
 from src.permissions.enforcer import get_enforcer
 

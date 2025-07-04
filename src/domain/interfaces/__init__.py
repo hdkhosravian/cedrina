@@ -4,7 +4,7 @@ These interfaces define contracts that infrastructure and application
 layers must implement, ensuring clean separation of concerns.
 """
 
-from .repositories import IUserRepository
+from .repositories import IUserRepository, IOAuthProfileRepository
 from .services import (
     IRateLimitingService,
     IPasswordResetTokenService,
@@ -14,6 +14,7 @@ from .services import (
 
 __all__ = [
     "IUserRepository",
+    "IOAuthProfileRepository",
     "IRateLimitingService",
     "IPasswordResetTokenService", 
     "IPasswordResetEmailService",

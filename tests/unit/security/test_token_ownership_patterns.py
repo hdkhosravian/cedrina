@@ -374,7 +374,7 @@ class TestExistingServiceSecurity:
         import hashlib
 
         from src.domain.entities.session import Session
-        from src.domain.services.auth.token import TokenService
+        from src.infrastructure.services.authentication.token import TokenService
 
         # Create test users
         user_one = User(
@@ -441,7 +441,7 @@ class TestExistingServiceSecurity:
         from unittest.mock import MagicMock
 
         from src.domain.entities.session import Session
-        from src.domain.services.auth.session import SessionService
+        from src.infrastructure.services.authentication.session import SessionService
 
         # Create test user
         user = User(

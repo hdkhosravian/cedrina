@@ -35,8 +35,7 @@ from .conftest import (
 class TestNewUserOnboardingJourney:
     """Test complete new user onboarding with rate limiting scenarios."""
 
-    @pytest.mark.asyncio
-    async def test_complete_user_onboarding_journey(
+    def test_complete_user_onboarding_journey(
         self,
         scenario_client: ScenarioClient,
         scenario_state: ScenarioState,
@@ -309,8 +308,7 @@ class TestNewUserOnboardingJourney:
         print(f"   - Users affected: {rate_limit_summary['users_affected']}")
         print(f"   - Endpoints tested: {rate_limit_summary['endpoints_affected']}")
 
-    @pytest.mark.asyncio
-    async def test_concurrent_user_registration_scenario(
+    def test_concurrent_user_registration_scenario(
         self,
         scenario_client: ScenarioClient,
         user_scenarios: dict,
@@ -379,8 +377,7 @@ class TestNewUserOnboardingJourney:
 
         print("✅ Concurrent registration rate limiting working correctly")
 
-    @pytest.mark.asyncio
-    async def test_user_behavior_adaptation_scenario(
+    def test_user_behavior_adaptation_scenario(
         self,
         scenario_client: ScenarioClient,
         scenario_state: ScenarioState,

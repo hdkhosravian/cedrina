@@ -632,8 +632,9 @@ class RateLimitService:
                             is allowed, remaining requests, and reset time.
 
         """
+        start_time = time.time()
         if timestamp is None:
-            timestamp = time.time()
+            timestamp = start_time
 
         try:
             # Generate a secure key for the rate limit context
@@ -641,6 +642,21 @@ class RateLimitService:
 
             # Use fixed window algorithm (simplified for now)
             result = await self._handle_fixed_window(quota, rate_limit_key, timestamp)
+
+            # Calculate processing time
+            processing_time_ms = (time.time() - start_time) * 1000
+
+            # Add observability metadata
+            result.processing_time_ms = processing_time_ms
+            result.metadata.update({
+                "processing_time_ms": processing_time_ms,
+                "trace_id": str(context.request.request_id),
+                "correlation_id": str(context.request.request_id),
+                "algorithm": result.algorithm.value,
+                "quota_max_requests": quota.max_requests,
+                "quota_window_seconds": quota.window_seconds,
+                "request_timestamp": timestamp,
+            })
 
             # Log rate limit check for observability
             logger.info(
@@ -652,6 +668,7 @@ class RateLimitService:
             return result
         except Exception as e:
             # Handle Redis failures and other errors gracefully
+            processing_time_ms = (time.time() - start_time) * 1000
             logger.warning(
                 f"Rate limit check failed for key={context.request.rate_limit_key.composite_key}: {e}"
             )
@@ -659,9 +676,19 @@ class RateLimitService:
             # Return a fallback result that allows the request (fail open for availability)
             from .entities import RateLimitResult
 
-            return RateLimitResult.fallback_result(
+            fallback_result = RateLimitResult.fallback_result(
                 request_key=context.request.rate_limit_key, error_details=str(e)
             )
+            fallback_result.processing_time_ms = processing_time_ms
+            fallback_result.metadata.update({
+                "processing_time_ms": processing_time_ms,
+                "trace_id": str(context.request.request_id),
+                "correlation_id": str(context.request.request_id),
+                "error_type": type(e).__name__,
+                "fallback_used": True,
+            })
+            
+            return fallback_result
 
     async def _handle_token_bucket(
         self, quota: RateLimitQuota, key: RateLimitKey, timestamp: float

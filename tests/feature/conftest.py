@@ -100,7 +100,7 @@ async def db_session():
 
 
 @pytest.fixture(scope="function")
-async def regular_user(db_session: AsyncSession):
+def regular_user():
     user = User(
         id=1,
         username="testuser",
@@ -115,7 +115,7 @@ async def regular_user(db_session: AsyncSession):
 
 
 @pytest.fixture(scope="function")
-async def admin_user(db_session: AsyncSession):
+def admin_user():
     admin = User(
         id=2,
         username="admin_user",
@@ -130,12 +130,12 @@ async def admin_user(db_session: AsyncSession):
 
 
 @pytest.fixture(scope="function")
-async def regular_user_headers(regular_user: User):
+def regular_user_headers(regular_user: User):
     # Mock token creation or authentication header
     return {"Authorization": "Bearer token_for_regular_user"}
 
 
 @pytest.fixture(scope="function")
-async def admin_user_headers(admin_user: User):
+def admin_user_headers(admin_user: User):
     # Mock token creation or authentication header
     return {"Authorization": f"Bearer token_for_{admin_user.username}"}

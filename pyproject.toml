@@ -79,3 +79,44 @@ target-version = ["py312"]
 
 [tool.pytest]
 cov_fail_under = 50  # Temporarily lower the threshold to pass CI/CD
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = [
+    "-ra",
+    "-q",
+    "--disable-warnings",
+    "--cov=src",
+    "--cov-report=html",
+    "--cov-report=term",
+    "--ignore=tests/legacy",
+    "--ignore=legacy",
+    "--ignore=**/legacy/**",
+    "--asyncio-mode=auto"
+]
+testpaths = ["tests"]
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+python_functions = ["test_*"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+env_files = [".env"]
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+    "ignore::UserWarning",
+    "ignore::RuntimeWarning",
+    "ignore::pytest.PytestRemovedIn9Warning",
+    "ignore::sqlalchemy.exc.MovedIn20Warning"
+]
+markers = [
+    "unit: mark a test as a unit test",
+    "integration: mark a test as an integration test",
+    "performance: mark a test as a performance test",
+    "feature: Feature tests",
+    "slow: Slow running tests",
+    "security: Security tests",
+    "auth: Authentication tests",
+    "rate_limiting: Rate limiting tests"
+]
+cov_fail_under = 50

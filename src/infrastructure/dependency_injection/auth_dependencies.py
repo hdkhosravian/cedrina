@@ -37,7 +37,7 @@ from src.domain.interfaces.services import (
     IUserLogoutService,
     IUserRegistrationService,
 )
-from src.domain.services.auth.token import TokenService as LegacyTokenService
+from src.infrastructure.services.authentication.token import TokenService as LegacyTokenService
 from src.domain.services.authentication.oauth_service import OAuthAuthenticationService
 from src.domain.services.authentication.password_change_service import (
     PasswordChangeService,

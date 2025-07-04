@@ -19,7 +19,7 @@ from cryptography.fernet import Fernet
 from unittest.mock import Mock, patch
 
 from src.core.exceptions import DecryptionError, EncryptionError
-from src.domain.services.auth.password_encryption import PasswordEncryptionService
+from src.infrastructure.services.authentication.password_encryption import PasswordEncryptionService
 
 
 class TestPasswordEncryptionService:
@@ -64,7 +64,7 @@ class TestPasswordEncryptionService:
 
     def test_initialization_with_invalid_key_falls_back(self):
         """Test service falls back to generated key when invalid key provided."""
-        with patch('src.domain.services.auth.password_encryption.logger') as mock_logger:
+        with patch('src.infrastructure.services.authentication.password_encryption.logger') as mock_logger:
             service = PasswordEncryptionService(encryption_key="invalid_key")
             
             # Should still initialize but with fallback key
@@ -305,7 +305,7 @@ class TestPasswordEncryptionService:
 
     def test_logging_does_not_expose_sensitive_data(self, encryption_service, valid_bcrypt_hash):
         """Test that logging doesn't expose sensitive password data."""
-        with patch('src.domain.services.auth.password_encryption.logger') as mock_logger:
+        with patch('src.infrastructure.services.authentication.password_encryption.logger') as mock_logger:
             # Any logging calls should not contain sensitive data
             # This test ensures we don't accidentally log password hashes or keys
             

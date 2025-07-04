@@ -10,7 +10,7 @@ import pytest
 from casbin import Enforcer
 
 from src.core.exceptions import PermissionError
-from src.domain.services.auth.policy import PolicyService
+from src.domain.services.security.policy import PolicyService
 
 
 @pytest.fixture

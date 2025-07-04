@@ -229,7 +229,7 @@ def scenario_state():
 
 
 @pytest.fixture(scope="function")
-async def mock_redis():
+def mock_redis():
     """Mock Redis client for rate limiting tests."""
     redis_mock = AsyncMock()
 

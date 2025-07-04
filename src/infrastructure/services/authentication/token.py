@@ -12,7 +12,7 @@ from structlog import get_logger
 from src.core.config.settings import settings
 from src.core.exceptions import AuthenticationError
 from src.domain.entities.user import User
-from src.domain.services.auth.session import SessionService
+from src.infrastructure.services.authentication.session import SessionService
 from src.domain.value_objects.jwt_token import TokenId
 from src.utils.i18n import get_translated_message
 from src.core.logging import logger

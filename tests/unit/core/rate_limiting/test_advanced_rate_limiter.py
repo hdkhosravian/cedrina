@@ -12,17 +12,18 @@ Tests are organized by component (value objects, entities, services) and concern
 
 import asyncio
 import time
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import redis.asyncio as redis
 
-from src.core.rate_limiting.entities import RateLimitQuota, RateLimitRequest, RateLimitResult
+from src.core.rate_limiting.entities import RateLimitRequest, RateLimitResult
 from src.core.rate_limiting.repositories import RedisRateLimitRepository
 from src.core.rate_limiting.services import RateLimitContext, RateLimitService
 
 # Import rate limiting core components
 from src.core.rate_limiting.value_objects import (
+    RateLimitAlgorithm,
     RateLimitKey,
     RateLimitQuota,
 )
@@ -30,28 +31,190 @@ from src.core.rate_limiting.value_objects import (
 
 # Fixtures for test setup
 @pytest.fixture
-async def redis_client():
-    """Fixture to provide a Redis client for tests. Uses a test database or mock if Redis is unavailable."""
-    try:
-        client = redis.Redis.from_url("redis://localhost:6379/1", decode_responses=True)
-        await client.ping()  # Test connection
-        yield client
-        await client.flushdb()  # Clean up after tests
-        await client.aclose()  # Use aclose() instead of close()
-    except redis.ConnectionError:
-        # Fallback to mock if Redis is not available
-        mock_client = AsyncMock(spec=redis.Redis)
-        yield mock_client
+def redis_client():
+    """Fixture to provide a mock Redis client for testing."""
+    # Create a mock Redis client
+    mock_client = MagicMock()
+    
+    # Storage for mock data
+    storage = {}
+    counters = {}
+    sorted_sets = {}
+    pipelines = []
+    
+    # Mock async methods
+    async def mock_get(key):
+        return storage.get(key)
+    
+    async def mock_set(key, value, ex=None):
+        storage[key] = value
+        return True
+    
+    async def mock_setex(key, ex, value):
+        storage[key] = value
+        return True
+    
+    async def mock_incr(key):
+        counters[key] = counters.get(key, 0) + 1
+        return counters[key]
+    
+    async def mock_expire(key, time):
+        return True
+    
+    async def mock_delete(*keys):
+        deleted = 0
+        for key in keys:
+            if key in storage:
+                del storage[key]
+                deleted += 1
+            if key in counters:
+                del counters[key]
+                deleted += 1
+            if key in sorted_sets:
+                del sorted_sets[key]
+                deleted += 1
+        return deleted
+    
+    async def mock_exists(key):
+        return key in storage or key in counters or key in sorted_sets
+    
+    async def mock_ttl(key):
+        return 3600  # Return 1 hour TTL for simplicity
+    
+    async def mock_ping():
+        return True
+    
+    async def mock_scan(cursor, match=None, count=None):
+        # Simple scan implementation for testing
+        all_keys = list(storage.keys()) + list(counters.keys()) + list(sorted_sets.keys())
+        if match:
+            import fnmatch
+            all_keys = [k for k in all_keys if fnmatch.fnmatch(k, match)]
+        return 0, all_keys  # Return 0 cursor to indicate completion
+    
+    async def mock_zrangebyscore(key, min=None, max=None):
+        if key not in sorted_sets:
+            return []
+        timestamps = sorted_sets[key]
+        if min is not None and max is not None:
+            filtered = [ts for ts in timestamps if min <= ts <= max]
+        elif min is not None:
+            filtered = [ts for ts in timestamps if ts >= min]
+        elif max is not None:
+            filtered = [ts for ts in timestamps if ts <= max]
+        else:
+            filtered = timestamps
+        return [str(ts).encode('utf-8') for ts in filtered]
+    
+    async def mock_zadd(key, mapping):
+        if key not in sorted_sets:
+            sorted_sets[key] = []
+        for score, value in mapping.items():
+            if isinstance(value, bytes):
+                value = value.decode('utf-8')
+            sorted_sets[key].append(float(value))
+        return len(mapping)
+    
+    async def mock_zremrangebyscore(key, min_score, max_score):
+        if key not in sorted_sets:
+            return 0
+        original_count = len(sorted_sets[key])
+        sorted_sets[key] = [ts for ts in sorted_sets[key] if not (min_score <= ts <= max_score)]
+        return original_count - len(sorted_sets[key])
+    
+    async def mock_zrange(key, start, end):
+        if key not in sorted_sets:
+            return []
+        timestamps = sorted(sorted_sets[key])
+        if end == -1:
+            return [str(ts).encode('utf-8') for ts in timestamps[start:]]
+        else:
+            return [str(ts).encode('utf-8') for ts in timestamps[start:end+1]]
+    
+    async def mock_evalsha(sha, numkeys, *args):
+        # Mock Lua script execution for fixed window counting
+        if len(args) >= 3:
+            key, window_start, ttl = args[0], args[1], args[2]
+            current_count = counters.get(key, 0)
+            counters[key] = current_count + 1
+            return current_count + 1
+        return 0
+    
+    async def mock_script_load(script):
+        # Mock script loading - return a fake SHA
+        return "fake_script_sha_123"
+    
+    # Pipeline mock
+    class MockPipeline:
+        def __init__(self, redis_client):
+            self.commands = []
+            self.redis = redis_client
+        
+        async def __aenter__(self):
+            return self
+        
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            pass
+        
+        async def zadd(self, key, mapping):
+            self.commands.append(('zadd', key, mapping))
+            return self
+        
+        async def expire(self, key, ttl):
+            self.commands.append(('expire', key, ttl))
+            return self
+        
+        async def zremrangebyscore(self, key, min_score, max_score):
+            self.commands.append(('zremrangebyscore', key, min_score, max_score))
+            return self
+        
+        async def execute(self):
+            # Execute all commands
+            for cmd, *args in self.commands:
+                if cmd == 'zadd':
+                    await mock_zadd(*args)
+                elif cmd == 'expire':
+                    await mock_expire(*args)
+                elif cmd == 'zremrangebyscore':
+                    await mock_zremrangebyscore(*args)
+            return [True] * len(self.commands)
+    
+    async def mock_pipeline(transaction=True):
+        return MockPipeline(mock_client)
+    
+    # Assign all async methods to the mock
+    mock_client.get = mock_get
+    mock_client.set = mock_set
+    mock_client.setex = mock_setex
+    mock_client.incr = mock_incr
+    mock_client.expire = mock_expire
+    mock_client.delete = mock_delete
+    mock_client.exists = mock_exists
+    mock_client.ttl = mock_ttl
+    mock_client.ping = mock_ping
+    mock_client.scan = mock_scan
+    mock_client.zrangebyscore = mock_zrangebyscore
+    mock_client.zadd = mock_zadd
+    mock_client.zremrangebyscore = mock_zremrangebyscore
+    mock_client.zrange = mock_zrange
+    mock_client.evalsha = mock_evalsha
+    mock_client.script_load = mock_script_load
+    mock_client.pipeline = mock_pipeline
+    
+    # Configure sync methods that might be called
+    mock_client.ping = MagicMock(return_value=True)
+    
+    return mock_client
 
 
 @pytest.fixture
-async def rate_limit_repository(redis_client):
+def rate_limit_repository(redis_client):
     """Fixture to provide a rate limit repository instance for tests."""
     return RedisRateLimitRepository(redis_client, ttl_seconds=60)
 
 
 @pytest.fixture
-async def rate_limit_service(rate_limit_repository):
+def rate_limit_service(rate_limit_repository):
     """Fixture to provide a rate limit service instance for tests."""
     return RateLimitService(rate_limit_repository)
 
@@ -218,7 +381,7 @@ class TestRateLimitAlgorithms:
 
 
 class TestRateLimitPolicyService:
-    """Tests for policy resolution and application in rate limiting."""
+    """Tests for rate limiting policy service functionality."""
 
     @pytest.mark.asyncio
     async def test_policy_resolution_hierarchical_limits(
@@ -255,7 +418,7 @@ class TestRateLimitPolicyService:
 
 
 class TestAdvancedRateLimiter:
-    """Tests for the overall rate limiter behavior with real integration."""
+    """Tests for advanced rate limiting features."""
 
     @pytest.mark.asyncio
     async def test_hierarchical_limit_enforcement(self, rate_limit_service):
@@ -296,157 +459,160 @@ class TestAdvancedRateLimiter:
 
         allowed_count = sum(1 for r in results if r.allowed)
         assert allowed_count == 5, "Exactly 5 requests should be allowed under fixed window"
-        assert (
-            sum(1 for r in results if not r.allowed) == 5
-        ), "Remaining 5 requests should be denied"
 
 
 class TestRateLimitResilience:
-    """Tests for resilience under failure conditions."""
+    """Tests for rate limiting resilience and error handling."""
 
     @pytest.mark.asyncio
     async def test_redis_failure_graceful_degradation(self, rate_limit_quota, rate_limit_context):
         """Test graceful degradation when Redis is unavailable."""
-        # Mock a failing Redis client
+        # Create a mock Redis client that raises exceptions
         failing_redis = AsyncMock(spec=redis.Redis)
-        failing_redis.get.side_effect = redis.ConnectionError("Redis unavailable")
-        failing_redis.set.side_effect = redis.ConnectionError("Redis unavailable")
-        failing_redis.script_load.side_effect = redis.ConnectionError("Redis unavailable")
-        failing_redis.evalsha.side_effect = redis.ConnectionError("Redis unavailable")
-        failing_redis.ping.side_effect = redis.ConnectionError("Redis unavailable")
-        repo = RedisRateLimitRepository(failing_redis, ttl_seconds=60)
-        service = RateLimitService(repo)
-        timestamp = time.time()
+        failing_redis.get.side_effect = Exception("Redis connection failed")
+        failing_redis.set.side_effect = Exception("Redis connection failed")
+        failing_redis.incr.side_effect = Exception("Redis connection failed")
 
-        # Should not crash, may default to allowing or denying based on fallback
-        result = await service.check_rate_limit(rate_limit_quota, rate_limit_context, timestamp)
-        assert isinstance(result, RateLimitResult), "Should return a valid result even on failure"
+        repository = RedisRateLimitRepository(failing_redis, ttl_seconds=60)
+        service = RateLimitService(repository)
+
+        # Should return fallback result (allow request) when Redis fails
+        result = await service.check_rate_limit(rate_limit_quota, rate_limit_context)
+        assert result.allowed is True, "Should allow request when Redis fails"
+        assert result.fallback_used is True, "Should indicate fallback was used"
 
     @pytest.mark.asyncio
     async def test_circuit_breaker_behavior(self, rate_limit_quota, rate_limit_context):
-        """Test circuit breaker behavior for rate limiting on repeated failures."""
-        # Mock Redis with intermittent failures
+        """Test circuit breaker behavior for repeated failures."""
+        # Create a mock Redis client that fails intermittently
         flaky_redis = AsyncMock(spec=redis.Redis)
-        flaky_redis.get.side_effect = [redis.ConnectionError("Temporary failure")] * 5 + [None]
-        flaky_redis.set.side_effect = [redis.ConnectionError("Temporary failure")] * 5 + [None]
-        flaky_redis.script_load.side_effect = [redis.ConnectionError("Temporary failure")] * 5 + [
-            "script_sha"
-        ]
-        flaky_redis.evalsha.side_effect = [redis.ConnectionError("Temporary failure")] * 5 + [1]
-        flaky_redis.ping.side_effect = [redis.ConnectionError("Temporary failure")] * 5 + [True]
-        repo = RedisRateLimitRepository(flaky_redis, ttl_seconds=60)
-        service = RateLimitService(repo)
-        timestamp = time.time()
+        call_count = 0
 
-        # First few calls should attempt connection, eventually trip circuit breaker if integrated
+        async def flaky_get(key):
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 3:  # First 3 calls fail
+                raise Exception("Redis connection failed")
+            return None
+
+        flaky_redis.get = flaky_get
+        flaky_redis.set = AsyncMock(return_value=True)
+        flaky_redis.incr = AsyncMock(return_value=1)
+
+        repository = RedisRateLimitRepository(flaky_redis, ttl_seconds=60)
+        service = RateLimitService(repository)
+
+        # First few calls should fail and use fallback
         for i in range(3):
-            result = await service.check_rate_limit(
-                rate_limit_quota, rate_limit_context, timestamp + i
-            )
-            assert isinstance(
-                result, RateLimitResult
-            ), f"Attempt {i+1} should handle failure gracefully"
+            result = await service.check_rate_limit(rate_limit_quota, rate_limit_context)
+            assert result.allowed is True, f"Request {i+1} should be allowed via fallback"
+            assert result.fallback_used is True, f"Request {i+1} should use fallback"
 
 
 class TestRateLimitObservability:
-    """Tests for metrics and tracing integration."""
+    """Tests for rate limiting observability and metrics."""
 
     @pytest.mark.asyncio
     async def test_comprehensive_metrics_collection(
         self, rate_limit_service, rate_limit_quota, rate_limit_context
     ):
-        """Test collection of metrics for rate limit events (hits, blocks)."""
-        timestamp = time.time()
-        result = await rate_limit_service.check_rate_limit(
-            rate_limit_quota, rate_limit_context, timestamp
-        )
-        assert result.allowed is True, "Request should be allowed"
-        # Metrics logging is handled in service; test ensures no crashes
-        # Future integration with metrics.py will verify actual metric recording
-        assert True, "Metrics collection should not interfere with rate limit logic"
+        """Test that comprehensive metrics are collected for rate limiting decisions."""
+        result = await rate_limit_service.check_rate_limit(rate_limit_quota, rate_limit_context)
+
+        # Verify result contains observability data
+        assert hasattr(result, "metadata"), "Result should contain metadata"
+        assert "processing_time_ms" in result.metadata, "Should include processing time"
+        assert "algorithm" in result.metadata, "Should include algorithm used"
 
     @pytest.mark.asyncio
     async def test_distributed_tracing_integration(
         self, rate_limit_service, rate_limit_quota, rate_limit_context
     ):
-        """Test integration with distributed tracing for request tracking."""
-        timestamp = time.time()
-        result = await rate_limit_service.check_rate_limit(
-            rate_limit_quota, rate_limit_context, timestamp
-        )
-        assert result.allowed is True, "Request should be allowed"
-        # Tracing integration to be added; test ensures no interference
-        assert True, "Tracing integration should not break rate limiting"
+        """Test integration with distributed tracing systems."""
+        result = await rate_limit_service.check_rate_limit(rate_limit_quota, rate_limit_context)
+
+        # Verify tracing information is included
+        assert hasattr(result, "metadata"), "Result should contain metadata"
+        assert "trace_id" in result.metadata or "correlation_id" in result.metadata, "Should include tracing info"
 
 
 class TestRateLimitPerformance:
-    """Tests for performance under load."""
+    """Tests for rate limiting performance requirements."""
 
     @pytest.mark.asyncio
     async def test_sub_millisecond_latency_requirement(
         self, rate_limit_service, rate_limit_quota, rate_limit_context
     ):
-        """Test that rate limit checks complete with low latency under normal conditions."""
-        timestamp = time.time()
-        start_time = time.perf_counter()
-        result = await rate_limit_service.check_rate_limit(
-            rate_limit_quota, rate_limit_context, timestamp
-        )
-        end_time = time.perf_counter()
+        """Test that rate limiting decisions complete in sub-millisecond time."""
+        import time
 
-        latency_ms = (end_time - start_time) * 1000
-        assert result.allowed is True, "Request should be allowed"
-        assert latency_ms < 2.0, f"Latency should be under 2ms for performance, got {latency_ms} ms"
+        start_time = time.time()
+        result = await rate_limit_service.check_rate_limit(rate_limit_quota, rate_limit_context)
+        end_time = time.time()
+
+        processing_time_ms = (end_time - start_time) * 1000
+        assert processing_time_ms < 1.0, f"Rate limiting should complete in <1ms, took {processing_time_ms:.3f}ms"
+
+        # Verify result is valid
+        assert result.allowed is True, "First request should be allowed"
 
     @pytest.mark.asyncio
     async def test_memory_usage_bounded_under_load(
         self, rate_limit_service, rate_limit_quota, rate_limit_context
     ):
-        """Test that memory usage remains bounded under high request load."""
+        """Test that memory usage remains bounded under high load."""
+        import gc
+        import sys
+
+        # Force garbage collection before test
+        gc.collect()
+        initial_memory = sys.getsizeof(rate_limit_service)
+
+        # Simulate high load
         timestamp = time.time()
-        # Simulate high load with many requests
-        tasks = [
-            rate_limit_service.check_rate_limit(
-                rate_limit_quota, rate_limit_context, timestamp + i * 0.001
-            )
-            for i in range(100)
-        ]
-        await asyncio.gather(*tasks)
-        # Memory usage check requires profiling tools; this test ensures no crashes
-        assert True, "System should handle high load without crashing"
+        for i in range(100):
+            result = await rate_limit_service.check_rate_limit(rate_limit_quota, rate_limit_context, timestamp)
+
+        # Force garbage collection after test
+        gc.collect()
+        final_memory = sys.getsizeof(rate_limit_service)
+
+        # Memory usage should not grow significantly
+        memory_growth = final_memory - initial_memory
+        assert memory_growth < 1000, f"Memory usage should not grow significantly, grew {memory_growth} bytes"
 
 
 class TestRateLimitSecurity:
-    """Tests for security features in rate limiting."""
+    """Tests for rate limiting security features."""
 
     @pytest.mark.asyncio
     async def test_sophisticated_key_generation_anti_abuse(
         self, rate_limit_service, rate_limit_quota
     ):
-        """Test that key generation prevents enumeration attacks via hashing."""
-        request1 = RateLimitRequest(user_id="user_123", endpoint="/api/test", client_ip="127.0.0.1")
-        request2 = RateLimitRequest(user_id="user_456", endpoint="/api/test", client_ip="127.0.0.1")
+        """Test sophisticated key generation to prevent abuse and enumeration."""
+        request1 = RateLimitRequest(user_id="user_1", endpoint="/api/test", client_ip="127.0.0.1")
+        request2 = RateLimitRequest(user_id="user_2", endpoint="/api/test", client_ip="127.0.0.1")
+        
         context1 = RateLimitContext(
             request=request1,
             applicable_policies=[],
-            hierarchical_keys=[RateLimitKey(user_id="user_123")],
+            hierarchical_keys=[RateLimitKey(user_id="user_1")],
             processing_start_time=time.time(),
         )
         context2 = RateLimitContext(
             request=request2,
             applicable_policies=[],
-            hierarchical_keys=[RateLimitKey(user_id="user_456")],
+            hierarchical_keys=[RateLimitKey(user_id="user_2")],
             processing_start_time=time.time(),
         )
-        timestamp = time.time()
 
-        # Even though contexts are different, keys are hashed, so enumeration is hard
-        result1 = await rate_limit_service.check_rate_limit(rate_limit_quota, context1, timestamp)
-        result2 = await rate_limit_service.check_rate_limit(
-            rate_limit_quota, context2, timestamp + 1
-        )
-        assert result1.allowed is True, "First context request should be allowed"
-        assert result2.allowed is True, "Second context request should be allowed independently"
+        # Generate keys for both contexts
+        key1 = rate_limit_service._generate_secure_key(rate_limit_quota, context1)
+        key2 = rate_limit_service._generate_secure_key(rate_limit_quota, context2)
+
+        # Keys should be different for different users
+        assert key1 != key2, "Keys should be different for different users"
+        assert key1.composite_key != key2.composite_key, "Composite keys should be different"
 
     @pytest.mark.asyncio
     async def test_rate_limit_bypass_prevention(

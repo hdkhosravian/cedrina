@@ -16,6 +16,7 @@ from structlog import get_logger
 from src.core.exceptions import (
     AuthenticationError,
     CedrinaError,
+    DatabaseError,
     DuplicateUserError,
     EmailServiceError,
     ForgotPasswordError,
@@ -45,6 +46,8 @@ __all__ = [
     "password_validation_error_handler",
     "invalid_old_password_error_handler",
     "password_reuse_error_handler",
+    "database_error_handler",
+    "register_exception_handlers",
 ]
 
 logger = get_logger(__name__)
@@ -202,3 +205,34 @@ async def cedrina_error_handler(request: Request, exc: CedrinaError) -> JSONResp
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": str(exc)},
     )
+
+
+async def database_error_handler(request: Request, exc: DatabaseError) -> JSONResponse:
+    """Handles DatabaseError exceptions, returning a 500 Internal Server Error response."""
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"detail": exc.message}
+    )
+
+
+def register_exception_handlers(app) -> None:
+    """Register all exception handlers with the FastAPI application.
+    
+    Args:
+        app: The FastAPI application instance
+    """
+    from slowapi.errors import RateLimitExceeded
+    
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exception_handler)
+    app.add_exception_handler(RateLimitExceededError, rate_limit_exceeded_error_handler)
+    app.add_exception_handler(AuthenticationError, authentication_error_handler)
+    app.add_exception_handler(PermissionError, permission_error_handler)
+    app.add_exception_handler(DuplicateUserError, duplicate_user_error_handler)
+    app.add_exception_handler(ForgotPasswordError, forgot_password_error_handler)
+    app.add_exception_handler(PasswordResetError, password_reset_error_handler)
+    app.add_exception_handler(PasswordPolicyError, password_policy_error_handler)
+    app.add_exception_handler(PasswordValidationError, password_validation_error_handler)
+    app.add_exception_handler(InvalidOldPasswordError, invalid_old_password_error_handler)
+    app.add_exception_handler(PasswordReuseError, password_reuse_error_handler)
+    app.add_exception_handler(EmailServiceError, email_service_error_handler)
+    app.add_exception_handler(UserNotFoundError, user_not_found_error_handler)
+    app.add_exception_handler(DatabaseError, database_error_handler)
