@@ -49,6 +49,9 @@ class User(SQLModel, table=True):
         updated_at: The timestamp of the last update to the user's record.
         password_reset_token: A secure token for verifying a password reset request.
         password_reset_token_expires_at: The expiration timestamp for the reset token.
+        email_confirmed: Indicates if the user's email address has been confirmed.
+        email_confirmation_token: A secure token for email confirmation.
+        email_confirmed_at: The timestamp when the email was confirmed.
     """
 
     __tablename__ = "users"  # Explicit table name for clarity
@@ -113,6 +116,23 @@ class User(SQLModel, table=True):
         ),
         default=None,
         description="The expiration timestamp for the password reset token.",
+    )
+    email_confirmed: bool = Field(
+        default=False,
+        description="Indicates if the user's email address has been confirmed.",
+    )
+    email_confirmation_token: Optional[str] = Field(
+        default=None,
+        max_length=64,  # 32 bytes hex encoded = 64 characters
+        description="A secure token for email confirmation.",
+    )
+    email_confirmed_at: Optional[datetime] = Field(
+        sa_column=Column(
+            DateTime,  # Explicit DateTime type for Alembic
+            nullable=True,
+        ),
+        default=None,
+        description="The timestamp when the email was confirmed.",
     )
 
     __table_args__ = (

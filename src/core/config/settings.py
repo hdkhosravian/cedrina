@@ -42,6 +42,9 @@ class Settings(AppSettings, DatabaseSettings, RedisSettings, AuthSettings, Email
         env_file=".env", env_file_encoding="utf-8", case_sensitive=True, extra="allow"
     )
 
+    # Feature flags
+    EMAIL_CONFIRMATION_ENABLED: bool = False
+
     def validate_required_fields(self) -> None:
         """Validates that all required environment variables are set.
         Raises ValueError if any critical field is missing or empty, unless in test mode.

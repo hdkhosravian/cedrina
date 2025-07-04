@@ -8,6 +8,7 @@ from typing import Optional
 
 import structlog
 
+from src.core.config.settings import settings
 from src.core.exceptions import DuplicateUserError, PasswordPolicyError
 from src.domain.entities.user import Role, User
 from src.domain.events.authentication_events import UserRegisteredEvent
@@ -15,6 +16,7 @@ from src.domain.interfaces.repositories import IUserRepository
 from src.domain.interfaces import (
     IEventPublisher,
     IUserRegistrationService,
+    IEmailConfirmationService,
 )
 from src.domain.value_objects.email import Email
 from src.domain.value_objects.password import HashedPassword, Password
@@ -35,27 +37,32 @@ class UserRegistrationService(IUserRegistrationService):
     - Check username and email availability
     - Publish registration events
     - Enforce business rules for registration
+    - Handle email confirmation workflow
     
     Security Features:
     - Strong password policy enforcement
     - Username and email validation
     - Duplicate prevention
     - Registration event logging
+    - Email confirmation support
     """
     
     def __init__(
         self,
         user_repository: IUserRepository,
         event_publisher: IEventPublisher,
+        email_confirmation_service: Optional[IEmailConfirmationService] = None,
     ):
         """Initialize registration service with dependencies.
         
         Args:
             user_repository: Repository for user data access
             event_publisher: Publisher for domain events
+            email_confirmation_service: Optional email confirmation service
         """
         self._user_repository = user_repository
         self._event_publisher = event_publisher
+        self._email_confirmation_service = email_confirmation_service
         
         logger.info("UserRegistrationService initialized")
     
@@ -124,17 +131,42 @@ class UserRegistrationService(IUserRegistrationService):
             # Create hashed password
             hashed_password = password.to_hashed()
             
+            # Determine if user should be active immediately or require email confirmation
+            is_active = not settings.EMAIL_CONFIRMATION_ENABLED
+            
             # Create user entity
             user = User(
                 username=str(username),
                 email=str(email),
                 hashed_password=str(hashed_password),
                 role=role,
-                is_active=True,
+                is_active=is_active,
             )
             
             # Save user to repository
             saved_user = await self._user_repository.save(user)
+            
+            # Send email confirmation if enabled
+            if settings.EMAIL_CONFIRMATION_ENABLED and self._email_confirmation_service:
+                try:
+                    await self._email_confirmation_service.send_confirmation_email(
+                        saved_user,
+                        language,
+                        correlation_id or "",
+                    )
+                    logger.info(
+                        "Email confirmation sent to new user",
+                        user_id=saved_user.id,
+                        correlation_id=correlation_id,
+                    )
+                except Exception as e:
+                    logger.error(
+                        "Failed to send email confirmation to new user",
+                        user_id=saved_user.id,
+                        error=str(e),
+                        correlation_id=correlation_id,
+                    )
+                    # Don't fail registration if email sending fails
             
             # Publish registration event
             await self._publish_registration_event(
@@ -149,6 +181,8 @@ class UserRegistrationService(IUserRegistrationService):
                 user_id=saved_user.id,
                 username=username.mask_for_logging(),
                 email=email.mask_for_logging(),
+                is_active=saved_user.is_active,
+                email_confirmation_required=settings.EMAIL_CONFIRMATION_ENABLED,
                 correlation_id=correlation_id,
             )
             

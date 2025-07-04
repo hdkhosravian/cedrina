@@ -599,4 +599,120 @@ class UserRepository(IUserRepository):
                 error_type=type(e).__name__,
                 operation="check_email_availability"
             )
+            raise
+    
+    async def get_by_email_confirmation_token(self, token: str) -> Optional[User]:
+        """Get user by email confirmation token for email confirmation operations.
+        
+        This method retrieves a user entity by their email confirmation token,
+        supporting the email confirmation domain workflow.
+        
+        Args:
+            token: Email confirmation token to search for
+            
+        Returns:
+            User entity if found, None otherwise
+            
+        Security Features:
+        - Secure logging without exposing token values
+        - Proper error handling for token-based queries
+        """
+        if not token or not token.strip():
+            logger.warning(
+                "Invalid email confirmation token provided",
+                token_provided=bool(token),
+                error_type="validation_error"
+            )
+            raise ValueError("Email confirmation token cannot be empty")
+        
+        try:
+            statement = select(User).where(User.email_confirmation_token == token.strip())
+            result = await self.db_session.execute(statement)
+            user = result.scalars().first()
+            
+            logger.debug(
+                "User lookup by email confirmation token completed",
+                token_length=len(token),
+                found=user is not None,
+                operation="get_by_email_confirmation_token"
+            )
+            
+            return user
+            
+        except Exception as e:
+            logger.error(
+                "Error retrieving user by email confirmation token",
+                token_length=len(token),
+                error=str(e),
+                error_type=type(e).__name__,
+                operation="get_by_email_confirmation_token"
+            )
+            raise
+
+    async def update(self, user: User) -> User:
+        """Update existing user entity with proper transaction management.
+        
+        This method updates an existing user entity in the database,
+        implementing proper transaction management and data consistency.
+        
+        Args:
+            user: User entity to update (must have valid ID)
+            
+        Returns:
+            Updated user entity with refreshed attributes
+            
+        Raises:
+            ValueError: If user is None or doesn't have an ID
+            
+        Transaction Management:
+        - Automatic transaction handling with commit/rollback
+        - Data consistency through proper session management
+        - Entity refresh after update to ensure data integrity
+        
+        Security Features:
+        - Input validation prevents invalid updates
+        - Secure logging with sensitive data masking
+        - Proper error handling with transaction rollback
+        """
+        # Validate input following fail-fast principle
+        if not user:
+            logger.warning(
+                "Attempted to update None user",
+                error_type="validation_error"
+            )
+            raise ValueError("User entity cannot be None")
+        
+        if not user.id:
+            logger.warning(
+                "Attempted to update user without ID",
+                error_type="validation_error"
+            )
+            raise ValueError("Cannot update user without ID")
+        
+        try:
+            # Merge changes into session for update
+            merged_user = await self.db_session.merge(user)
+            await self.db_session.commit()
+            await self.db_session.refresh(merged_user)
+            
+            logger.info(
+                "User updated successfully",
+                user_id=merged_user.id,
+                username=merged_user.username[:3] + "***" if merged_user.username and len(merged_user.username) > 3 else merged_user.username,
+                operation="update_completed"
+            )
+            
+            return merged_user
+            
+        except Exception as e:
+            # Rollback transaction on error
+            await self.db_session.rollback()
+            logger.error(
+                "Error updating user",
+                user_id=user.id,
+                username=user.username[:3] + "***" if user.username and len(user.username) > 3 else user.username,
+                error=str(e),
+                error_type=type(e).__name__,
+                operation="update_failed"
+            )
             raise 

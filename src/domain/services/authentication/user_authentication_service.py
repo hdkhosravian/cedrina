@@ -31,6 +31,7 @@ from src.domain.interfaces import (
 from src.domain.value_objects.password import HashedPassword, Password
 from src.domain.value_objects.username import Username
 from src.utils.i18n import get_translated_message
+from src.core.config.settings import settings
 
 logger = structlog.get_logger(__name__)
 
@@ -169,9 +170,16 @@ class UserAuthenticationService(IUserAuthenticationService):
                     user_agent=user_agent,
                     ip_address=client_ip,
                 )
-                raise AuthenticationError(
-                    get_translated_message("user_account_inactive", language)
-                )
+                
+                # Check if email confirmation is required
+                if settings.EMAIL_CONFIRMATION_ENABLED and not user.email_confirmed:
+                    raise AuthenticationError(
+                        get_translated_message("email_confirmation_required", language)
+                    )
+                else:
+                    raise AuthenticationError(
+                        get_translated_message("user_account_inactive", language)
+                    )
             
             # Authentication successful - publish domain event
             await self._publish_successful_login_event(

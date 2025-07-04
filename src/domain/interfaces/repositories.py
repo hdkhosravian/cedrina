@@ -134,6 +134,31 @@ class IUserRepository(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    async def get_by_email_confirmation_token(self, token: str) -> Optional[User]:
+        """Retrieves a user by their email confirmation token.
+
+        Args:
+            token: The email confirmation token to search for.
+
+        Returns:
+            An optional `User` entity. Returns `None` if the token is invalid
+            or does not correspond to any user.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def update(self, user: User) -> User:
+        """Updates an existing user.
+
+        Args:
+            user: The `User` entity to update.
+
+        Returns:
+            The updated `User` entity.
+        """
+        raise NotImplementedError
+
 class IOAuthProfileRepository(ABC):
     """An interface defining the contract for OAuth profile persistence.
 

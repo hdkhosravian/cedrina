@@ -36,6 +36,7 @@ from src.domain.interfaces import (
     IUserAuthenticationService,
     IUserLogoutService,
     IUserRegistrationService,
+    IEmailConfirmationService,
 )
 from src.infrastructure.services.authentication.token import TokenService as LegacyTokenService
 from src.domain.services.authentication.oauth_service import OAuthAuthenticationService
@@ -50,6 +51,9 @@ from src.domain.services.authentication.user_logout_service import (
 )
 from src.domain.services.authentication.user_registration_service import (
     UserRegistrationService,
+)
+from src.domain.services.email_confirmation.email_confirmation_service import (
+    EmailConfirmationService,
 )
 from src.domain.services.password_reset.password_reset_request_service import (
     PasswordResetRequestService,
@@ -71,6 +75,7 @@ from src.infrastructure.services.password_reset_token_service import (
     PasswordResetTokenService,
 )
 from src.infrastructure.services.token_service_adapter import TokenServiceAdapter
+from src.infrastructure.services.email.email_service import EmailService
 
 # ---------------------------------------------------------------------------
 # Type aliases for dependency injection
@@ -194,6 +199,7 @@ def get_user_authentication_service(
 def get_user_registration_service(
     user_repository: IUserRepository = Depends(get_user_repository),
     event_publisher: IEventPublisher = Depends(get_event_publisher),
+    email_confirmation_service: IEmailConfirmationService = Depends(get_email_confirmation_service),
 ) -> IUserRegistrationService:
     """Factory that returns clean user registration service.
     
@@ -203,6 +209,7 @@ def get_user_registration_service(
     Args:
         user_repository: User repository dependency for data access
         event_publisher: Event publisher dependency for domain events
+        email_confirmation_service: Email confirmation service for email verification
         
     Returns:
         IUserRegistrationService: Clean registration service
@@ -215,6 +222,7 @@ def get_user_registration_service(
     return UserRegistrationService(
         user_repository=user_repository,
         event_publisher=event_publisher,
+        email_confirmation_service=email_confirmation_service,
     )
 
 
@@ -384,6 +392,35 @@ def get_password_reset_email_service() -> IPasswordResetEmailService:
     return PasswordResetEmailService()
 
 
+def get_email_confirmation_service(
+    user_repository: IUserRepository = Depends(get_user_repository),
+    event_publisher: IEventPublisher = Depends(get_event_publisher),
+) -> IEmailConfirmationService:
+    """Factory that returns email confirmation service.
+    
+    This factory creates the domain service for handling email confirmation
+    operations with all required dependencies.
+    
+    Args:
+        user_repository: User repository dependency for data access
+        event_publisher: Event publisher dependency for domain events
+        
+    Returns:
+        IEmailConfirmationService: Service for email confirmation operations
+        
+    Note:
+        This service handles email confirmation token generation, validation,
+        and email sending with proper security and audit logging.
+    """
+    email_service = EmailService()
+    
+    return EmailConfirmationService(
+        user_repository=user_repository,
+        event_publisher=event_publisher,
+        email_service=email_service,
+    )
+
+
 def get_password_reset_request_service(
     user_repository: IUserRepository = Depends(get_user_repository),
     rate_limiting_service: IRateLimitingService = Depends(get_password_reset_rate_limiting_service),
@@ -462,5 +499,6 @@ CleanAuthService = Annotated[IUserAuthenticationService, Depends(get_user_authen
 CleanRegistrationService = Annotated[IUserRegistrationService, Depends(get_user_registration_service)]
 CleanOAuthService = Annotated[IOAuthService, Depends(get_oauth_service)]
 CleanPasswordChangeService = Annotated[IPasswordChangeService, Depends(get_password_change_service)]
+CleanEmailConfirmationService = Annotated[IEmailConfirmationService, Depends(get_email_confirmation_service)]
 CleanPasswordResetRequestService = Annotated[PasswordResetRequestService, Depends(get_password_reset_request_service)]
 CleanPasswordResetService = Annotated[PasswordResetService, Depends(get_password_reset_service)] 

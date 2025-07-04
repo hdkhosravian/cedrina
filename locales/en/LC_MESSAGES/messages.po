@@ -327,3 +327,32 @@ msgstr "Token expiry timestamp cannot be empty"
 msgid "token_expiry_must_be_timezone_aware"
 msgstr "Token expiry timestamp must be timezone-aware"
 
+# Email confirmation functionality (2025-01-27)
+
+msgid "email_confirmation_subject"
+msgstr "Confirm Your Email Address - Cedrina"
+
+msgid "email_confirmation_send_failed"
+msgstr "Failed to send email confirmation"
+
+msgid "email_confirmation_failed"
+msgstr "Email confirmation failed"
+
+msgid "email_confirmation_resend_failed"
+msgstr "Failed to resend email confirmation"
+
+msgid "invalid_email_confirmation_token"
+msgstr "Invalid or expired email confirmation token"
+
+msgid "email_confirmation_required"
+msgstr "Please confirm your email address before logging in"
+
+msgid "welcome_email_subject"
+msgstr "Welcome to Cedrina"
+
+msgid "email_confirmed_successfully"
+msgstr "Email address confirmed successfully"
+
+msgid "email_confirmation_already_confirmed"
+msgstr "Email address is already confirmed"
+
