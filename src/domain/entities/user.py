@@ -11,12 +11,14 @@ from src.utils.i18n import get_translated_message  # For translation in validati
 
 
 class Role(str, Enum):
-    """Enumeration for user roles to support role-based access control (RBAC).
+    """Represents the role of a user within the system (RBAC).
+
+    This value object defines the possible roles a user can have, ensuring that
+    role assignments are type-safe and constrained to a predefined set.
 
     Attributes:
-        ADMIN: Represents an administrative user with elevated privileges.
-        USER: Represents a standard user with basic access.
-
+        ADMIN: Confers administrative privileges for system management.
+        USER: Represents a standard user with regular access rights.
     """
 
     ADMIN = "admin"
@@ -24,28 +26,29 @@ class Role(str, Enum):
 
 
 class User(SQLModel, table=True):
-    """User model for storing core user data, supporting both username/password and OAuth authentication.
+    """Represents a User entity and acts as an Aggregate Root.
 
-    This model represents a user entity in the domain layer, encapsulating attributes for
-    authentication, authorization, and auditing. It integrates with PostgreSQL via SQLModel
-    and uses Pydantic for input validation.
+    This class models a user within the domain, encapsulating all properties
+    and business rules related to a user's identity, authentication, and
+    authorization. As an aggregate root, it is the primary object through which
+    all user-related operations should be performed.
+
+    The model supports both traditional password-based authentication and
+    external OAuth providers.
 
     Attributes:
-        id (Optional[int]): Primary key, auto-incremented by the database.
-        username (str): Unique username for login, indexed for performance.
-        email (EmailStr): Unique email address, validated by Pydantic.
-        hashed_password (Optional[str]): Bcrypt-hashed password, null for OAuth-only users.
-        role (Role): User role for RBAC, defaults to USER.
-        is_active (bool): Account status, defaults to True (active).
-        created_at (datetime): Timestamp of account creation, set by database.
-        updated_at (Optional[datetime]): Timestamp of last update, updated by database.
-        password_reset_token (Optional[str]): Secure token for password reset verification.
-        password_reset_token_expires_at (Optional[datetime]): Expiration timestamp for password reset token.
-
-    Table Arguments:
-        Indexes on lower(username) and lower(email) for case-insensitive searches.
-        Unique constraints on username and email to prevent duplicates.
-
+        id: The unique identifier for the user (primary key).
+        username: A unique, case-insensitive username for login.
+        email: A unique, case-insensitive email address.
+        hashed_password: The securely hashed password (using bcrypt). Null for
+            users who only authenticate via OAuth.
+        role: The user's role, determining their permissions within the system.
+        is_active: A flag indicating if the user's account is active. Inactive
+            users cannot log in.
+        created_at: The timestamp of when the user account was created.
+        updated_at: The timestamp of the last update to the user's record.
+        password_reset_token: A secure token for verifying a password reset request.
+        password_reset_token_expires_at: The expiration timestamp for the reset token.
     """
 
     __tablename__ = "users"  # Explicit table name for clarity
@@ -53,21 +56,21 @@ class User(SQLModel, table=True):
     id: Optional[int] = Field(
         default=None,  # Auto-incremented by database
         primary_key=True,  # Primary key constraint
-        description="Unique identifier for the user",
+        description="The unique identifier for the user.",
     )
     username: str = Field(
         sa_column=Column(String, unique=True, index=True, nullable=False),  # Unique, indexed column
         min_length=3,  # Minimum length for security
         max_length=50,  # Maximum length for storage efficiency
-        description="Unique username for login",
+        description="Unique, case-insensitive username for login.",
     )
     email: EmailStr = Field(
         sa_column=Column(String, unique=True, index=True, nullable=False),  # Unique, indexed column
-        description="Unique email address validated by Pydantic",
+        description="Unique, case-insensitive email address for communication and login.",
     )
     hashed_password: Optional[str] = Field(
         max_length=255,  # Sufficient for bcrypt hashes
-        description="Bcrypt-hashed password, null for OAuth-only users",
+        description="Bcrypt-hashed password. Null for users authenticating via OAuth.",
         default=None,  # Optional for OAuth users
     )
     role: Role = Field(
@@ -76,11 +79,11 @@ class User(SQLModel, table=True):
             default=Role.USER,  # Default to standard user
             nullable=False,
         ),
-        description="User role for RBAC",
+        description="The user's role, used for role-based access control (RBAC).",
     )
     is_active: bool = Field(
         default=True,  # Active by default
-        description="Account status (True for active, False for disabled)",
+        description="Indicates if the user's account is active. Inactive users cannot log in.",
     )
     created_at: datetime = Field(
         sa_column=Column(
@@ -88,7 +91,7 @@ class User(SQLModel, table=True):
             server_default=text("CURRENT_TIMESTAMP"),  # Database timestamp
             nullable=False,
         ),
-        description="Account creation timestamp",
+        description="The timestamp of when the user account was created.",
     )
     updated_at: Optional[datetime] = Field(
         sa_column=Column(
@@ -96,12 +99,12 @@ class User(SQLModel, table=True):
             server_onupdate=text("CURRENT_TIMESTAMP"),  # Update on modification
             nullable=True,
         ),
-        description="Last update timestamp",
+        description="The timestamp of the last update to the user's record.",
     )
     password_reset_token: Optional[str] = Field(
         default=None,
         max_length=64,  # 32 bytes hex encoded = 64 characters
-        description="Secure token for password reset verification",
+        description="A secure token for verifying a password reset request.",
     )
     password_reset_token_expires_at: Optional[datetime] = Field(
         sa_column=Column(
@@ -109,7 +112,7 @@ class User(SQLModel, table=True):
             nullable=True,
         ),
         default=None,
-        description="Expiration timestamp for password reset token",
+        description="The expiration timestamp for the password reset token.",
     )
 
     __table_args__ = (
@@ -121,13 +124,27 @@ class User(SQLModel, table=True):
     @field_validator("username")
     @classmethod
     def validate_username(cls, value: str) -> str:
-        """Ensures the username contains only allowed characters and normalizes to lowercase."""
+        """Validates and normalizes the username.
+
+        Ensures the username contains only alphanumeric characters, underscores,
+        or hyphens, and converts it to lowercase to enforce case-insensitivity.
+
+        Raises:
+            ValueError: If the username contains invalid characters.
+        """
         if not value.replace("_", "").replace("-", "").isalnum():
-            raise ValueError(get_translated_message("invalid_username_characters", "en"))
+            raise ValueError(
+                get_translated_message("invalid_username_characters", "en")
+            )
         return value.lower()
 
     @field_validator("email")
     @classmethod
-    def validate_email(cls, value: EmailStr) -> EmailStr:
-        """Normalizes email to lowercase for case-insensitive uniqueness."""
+    def validate_email(cls, value: EmailStr) -> str:
+        """Normalizes the email address to lowercase.
+
+        This ensures that email addresses are stored and compared in a
+        case-insensitive manner, preventing duplicate accounts with different
+        casing.
+        """
         return value.lower()

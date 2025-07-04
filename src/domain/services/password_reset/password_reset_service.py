@@ -20,7 +20,7 @@ from src.domain.events.password_reset_events import (
     PasswordResetFailedEvent,
 )
 from src.domain.interfaces.repositories import IUserRepository
-from src.domain.interfaces.services import (
+from src.domain.interfaces import (
     IEventPublisher,
     IPasswordResetTokenService,
 )

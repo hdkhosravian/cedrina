@@ -9,7 +9,7 @@ from typing import Optional
 
 import structlog
 
-from src.domain.interfaces.services import IRateLimitingService
+from src.domain.interfaces import IRateLimitingService
 from src.domain.value_objects.rate_limit import RateLimitState
 
 logger = structlog.get_logger(__name__)

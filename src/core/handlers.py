@@ -7,7 +7,7 @@ This module contains centralized handlers for custom application exceptions,
 translating them into appropriate HTTP responses.
 """
 
-from fastapi import Request
+from fastapi import Request, FastAPI
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from starlette import status
@@ -53,8 +53,25 @@ __all__ = [
 logger = get_logger(__name__)
 
 
-async def authentication_error_handler(request: Request, exc: AuthenticationError):
-    """Handles AuthenticationError exceptions, returning a 401 Unauthorized response."""
+async def authentication_error_handler(request: Request, exc: AuthenticationError) -> JSONResponse:
+    """Handles `AuthenticationError`, returning a `401 Unauthorized`.
+
+    This handler catches exceptions related to failed authentication, such as
+    invalid credentials, expired tokens, or inactive users.
+
+    Args:
+        request: The incoming `Request` object.
+        exc: The `AuthenticationError` instance.
+
+    Returns:
+        A `JSONResponse` with a 401 status code and error detail.
+    """
+    logger.warning(
+        "Authentication failure",
+        error=exc.code,
+        client_ip=request.client.host,
+        path=request.url.path,
+    )
     return JSONResponse(
         status_code=status.HTTP_401_UNAUTHORIZED,
         content={"detail": str(exc)},
@@ -62,7 +79,18 @@ async def authentication_error_handler(request: Request, exc: AuthenticationErro
 
 
 async def duplicate_user_error_handler(request: Request, exc: DuplicateUserError) -> JSONResponse:
-    """Handles DuplicateUserError exceptions, returning a 409 Conflict response."""
+    """Handles `DuplicateUserError`, returning a `409 Conflict`.
+
+    This is triggered when a registration attempt is made with a username or
+    email that already exists in the system.
+
+    Args:
+        request: The incoming `Request` object.
+        exc: The `DuplicateUserError` instance.
+
+    Returns:
+        A `JSONResponse` with a 409 status code and error detail.
+    """
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
         content={"detail": exc.message},
@@ -70,7 +98,18 @@ async def duplicate_user_error_handler(request: Request, exc: DuplicateUserError
 
 
 async def password_policy_error_handler(request: Request, exc: PasswordPolicyError) -> JSONResponse:
-    """Handles PasswordPolicyError exceptions, returning a 422 Unprocessable Entity response."""
+    """Handles `PasswordPolicyError`, returning a `422 Unprocessable Entity`.
+
+    This error occurs when a new password does not meet the application's
+    security requirements (e.g., length, complexity).
+
+    Args:
+        request: The incoming `Request` object.
+        exc: The `PasswordPolicyError` instance.
+
+    Returns:
+        A `JSONResponse` with a 422 status code and error detail.
+    """
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={"detail": exc.message},
@@ -80,7 +119,18 @@ async def password_policy_error_handler(request: Request, exc: PasswordPolicyErr
 async def password_validation_error_handler(
     request: Request, exc: PasswordValidationError
 ) -> JSONResponse:
-    """Handles PasswordValidationError exceptions, returning a 400 Bad Request response."""
+    """Handles `PasswordValidationError`, returning a `400 Bad Request`.
+
+    This handler catches validation errors during password change operations,
+    such as when the new password is the same as the old one.
+
+    Args:
+        request: The incoming `Request` object.
+        exc: The `PasswordValidationError` instance.
+
+    Returns:
+        A `JSONResponse` with a 400 status code and error detail.
+    """
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"detail": exc.message},
@@ -90,7 +140,18 @@ async def password_validation_error_handler(
 async def invalid_old_password_error_handler(
     request: Request, exc: InvalidOldPasswordError
 ) -> JSONResponse:
-    """Handles InvalidOldPasswordError exceptions, returning a 400 Bad Request response."""
+    """Handles `InvalidOldPasswordError`, returning a `400 Bad Request`.
+
+    This is triggered during a password change if the provided "old" password
+    does not match the user's current password.
+
+    Args:
+        request: The incoming `Request` object.
+        exc: The `InvalidOldPasswordError` instance.
+
+    Returns:
+        A `JSONResponse` with a 400 status code and error detail.
+    """
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"detail": exc.message},
@@ -98,15 +159,43 @@ async def invalid_old_password_error_handler(
 
 
 async def password_reuse_error_handler(request: Request, exc: PasswordReuseError) -> JSONResponse:
-    """Handles PasswordReuseError exceptions, returning a 400 Bad Request response."""
+    """Handles `PasswordReuseError`, returning a `400 Bad Request`.
+
+    This occurs when a user tries to change their password to one they have
+    used recently, violating the password history policy.
+
+    Args:
+        request: The incoming `Request` object.
+        exc: The `PasswordReuseError` instance.
+
+    Returns:
+        A `JSONResponse` with a 400 status code and error detail.
+    """
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"detail": exc.message},
     )
 
 
-async def permission_error_handler(request: Request, exc: PermissionError):
-    """Handles PermissionError exceptions, returning a 403 Forbidden response."""
+async def permission_error_handler(request: Request, exc: PermissionError) -> JSONResponse:
+    """Handles `PermissionError`, returning a `403 Forbidden`.
+
+    This handler is invoked when an authenticated user attempts to perform an
+    action for which they do not have sufficient privileges.
+
+    Args:
+        request: The incoming `Request` object.
+        exc: The `PermissionError` instance.
+
+    Returns:
+        A `JSONResponse` with a 403 status code and error detail.
+    """
+    logger.warning(
+        "Permission denied",
+        error=exc.code,
+        client_ip=request.client.host,
+        path=request.url.path,
+    )
     return JSONResponse(
         status_code=status.HTTP_403_FORBIDDEN,
         content={"detail": str(exc)},
@@ -147,7 +236,18 @@ async def rate_limit_exception_handler(request: Request, exc: RateLimitExceeded)
 
 
 async def rate_limit_exceeded_error_handler(request: Request, exc: RateLimitExceededError) -> JSONResponse:
-    """Handles RateLimitExceededError exceptions from domain services, returning a 429 Too Many Requests response."""
+    """Handles domain-specific `RateLimitExceededError`, returning a `429`.
+
+    This catches rate limit exceptions originating from within the domain logic,
+    as opposed to the middleware-level handler.
+
+    Args:
+        request: The incoming `Request` object.
+        exc: The `RateLimitExceededError` instance.
+
+    Returns:
+        A `JSONResponse` with a 429 status code and error detail.
+    """
     locale = get_request_language(request)
     logger.warning(
         "domain_rate_limit_exceeded",
@@ -162,7 +262,18 @@ async def rate_limit_exceeded_error_handler(request: Request, exc: RateLimitExce
 
 
 async def forgot_password_error_handler(request: Request, exc: ForgotPasswordError) -> JSONResponse:
-    """Handles ForgotPasswordError exceptions, returning a 400 Bad Request response."""
+    """Handles `ForgotPasswordError`, returning a `400 Bad Request`.
+
+    This catches errors during the initiation of a password reset, such as
+    an invalid email format or other validation failures.
+
+    Args:
+        request: The incoming `Request` object.
+        exc: The `ForgotPasswordError` instance.
+
+    Returns:
+        A `JSONResponse` with a 400 status code and error detail.
+    """
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"detail": exc.message},
@@ -170,7 +281,18 @@ async def forgot_password_error_handler(request: Request, exc: ForgotPasswordErr
 
 
 async def password_reset_error_handler(request: Request, exc: PasswordResetError) -> JSONResponse:
-    """Handles PasswordResetError exceptions, returning a 400 Bad Request response."""
+    """Handles `PasswordResetError`, returning a `400 Bad Request`.
+
+    This is for errors during the final step of a password reset, such as
+    using an invalid or expired token.
+
+    Args:
+        request: The incoming `Request` object.
+        exc: The `PasswordResetError` instance.
+
+    Returns:
+        A `JSONResponse` with a 400 status code and error detail.
+    """
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"detail": exc.message},
@@ -178,21 +300,43 @@ async def password_reset_error_handler(request: Request, exc: PasswordResetError
 
 
 async def email_service_error_handler(request: Request, exc: EmailServiceError) -> JSONResponse:
-    """Handles EmailServiceError exceptions, returning a 500 Internal Server Error response."""
+    """Handles `EmailServiceError`, returning a `503 Service Unavailable`.
+
+    This indicates a problem with the external email sending service, preventing
+    the application from sending emails.
+
+    Args:
+        request: The incoming `Request` object.
+        exc: The `EmailServiceError` instance.
+
+    Returns:
+        A `JSONResponse` with a 503 status code and error detail.
+    """
     logger.error(
-        "email_service_error",
+        "Email service interaction failed",
         error_message=str(exc),
         client_ip=request.client.host,
         path=request.url.path,
     )
     return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         content={"detail": exc.message},
     )
 
 
 async def user_not_found_error_handler(request: Request, exc: UserNotFoundError) -> JSONResponse:
-    """Handles UserNotFoundError exceptions, returning a 404 Not Found response."""
+    """Handles `UserNotFoundError`, returning a `404 Not Found`.
+
+    This is triggered when an operation targets a user that does not exist in
+    the database.
+
+    Args:
+        request: The incoming `Request` object.
+        exc: The `UserNotFoundError` instance.
+
+    Returns:
+        A `JSONResponse` with a 404 status code and error detail.
+    """
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
         content={"detail": exc.message},
@@ -200,39 +344,79 @@ async def user_not_found_error_handler(request: Request, exc: UserNotFoundError)
 
 
 async def cedrina_error_handler(request: Request, exc: CedrinaError) -> JSONResponse:
-    """Handles CedrinaError exceptions, returning a 500 Internal Server Error response."""
+    """Handles the base `CedrinaError`, returning a `500 Internal Server Error`.
+
+    This serves as a fallback for any custom application errors that do not
+    have a more specific handler.
+
+    Args:
+        request: The incoming `Request` object.
+        exc: The `CedrinaError` instance.
+
+    Returns:
+        A `JSONResponse` with a 500 status code and error detail.
+    """
+    logger.error(
+        "An unhandled application error occurred",
+        error_code=exc.code,
+        error_message=exc.message,
+        path=request.url.path,
+    )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": str(exc)},
+        content={"detail": "An unexpected error occurred."},
     )
 
 
 async def database_error_handler(request: Request, exc: DatabaseError) -> JSONResponse:
-    """Handles DatabaseError exceptions, returning a 500 Internal Server Error response."""
+    """Handles `DatabaseError`, returning a `500 Internal Server Error`.
+
+    This handler catches low-level database exceptions, abstracting the
+    specific database error from the client.
+
+    Args:
+        request: The incoming `Request` object.
+        exc: The `DatabaseError` instance.
+
+    Returns:
+        A `JSONResponse` with a 500 status code and a generic error message.
+    """
+    logger.critical(
+        "A critical database error occurred",
+        error_message=str(exc),
+        path=request.url.path,
+    )
     return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"detail": exc.message}
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "A database error occurred."},
     )
 
 
-def register_exception_handlers(app) -> None:
-    """Register all exception handlers with the FastAPI application.
-    
+def register_exception_handlers(app: FastAPI) -> None:
+    """Registers all custom exception handlers with the FastAPI application.
+
+    This function is called during application startup to ensure that all
+    custom exceptions are handled gracefully and consistently. The order of
+    registration matters, with more specific exceptions handled before
+    more general ones.
+
     Args:
-        app: The FastAPI application instance
+        app: The `FastAPI` application instance.
     """
-    from slowapi.errors import RateLimitExceeded
-    
     app.add_exception_handler(RateLimitExceeded, rate_limit_exception_handler)
-    app.add_exception_handler(RateLimitExceededError, rate_limit_exceeded_error_handler)
     app.add_exception_handler(AuthenticationError, authentication_error_handler)
     app.add_exception_handler(PermissionError, permission_error_handler)
     app.add_exception_handler(DuplicateUserError, duplicate_user_error_handler)
-    app.add_exception_handler(ForgotPasswordError, forgot_password_error_handler)
-    app.add_exception_handler(PasswordResetError, password_reset_error_handler)
     app.add_exception_handler(PasswordPolicyError, password_policy_error_handler)
-    app.add_exception_handler(PasswordValidationError, password_validation_error_handler)
     app.add_exception_handler(InvalidOldPasswordError, invalid_old_password_error_handler)
     app.add_exception_handler(PasswordReuseError, password_reuse_error_handler)
+    app.add_exception_handler(
+        PasswordValidationError, password_validation_error_handler
+    )
+    app.add_exception_handler(RateLimitExceededError, rate_limit_exceeded_error_handler)
+    app.add_exception_handler(ForgotPasswordError, forgot_password_error_handler)
+    app.add_exception_handler(PasswordResetError, password_reset_error_handler)
     app.add_exception_handler(EmailServiceError, email_service_error_handler)
     app.add_exception_handler(UserNotFoundError, user_not_found_error_handler)
     app.add_exception_handler(DatabaseError, database_error_handler)
+    app.add_exception_handler(CedrinaError, cedrina_error_handler)

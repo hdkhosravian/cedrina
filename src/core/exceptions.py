@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-"""Centralised, structured exception hierarchy for Cedrina.
+"""Centralized, structured exception hierarchy for Cedrina.
 
-This module defines *immutable* (slotted) dataclass–powered exceptions that carry a
-machine-readable ``code`` attribute in addition to the human-friendly ``message``.
+This module defines a clear and comprehensive hierarchy of custom exceptions
+for the application. Each exception is a slotted dataclass, ensuring they are
+lightweight and efficient. They carry a machine-readable `code` for programmatic
+error handling and a human-readable `message` for logging and user feedback.
 
-Rationale
----------
-•  Dataclass exceptions remove repetitive ``__init__`` boiler-plate while retaining
-   the ability to subclass easily.
-•  ``slots=True`` keeps the memory-footprint minimal (exceptions are raised often
-   on error paths).
-•  Implementing ``__str__`` provides uniform logging / JSON serialisation across
-   the entire application stack.
+The hierarchy is designed to:
+- Provide clear, specific errors for different failure scenarios.
+- Support internationalization (i18n) for user-facing messages.
+- Map cleanly to HTTP status codes in the API layer.
+- Offer a consistent structure for logging and monitoring.
 """
 
 from dataclasses import dataclass
@@ -46,14 +45,18 @@ __all__: Final = [
 ]
 
 
-@dataclass(slots=True)
 class CedrinaError(Exception):
     """Base exception class for all custom errors in the Cedrina application.
 
-    Attributes:
-        message (str): A human-readable error message.
-        code (str): A unique error code for identifying the type of error.
+    This class serves as the root for all application-specific exceptions.
+    It enforces the presence of a `message` and a `code`, ensuring that all
+    errors are structured and identifiable.
 
+    Attributes:
+        message (str): A human-readable error message, suitable for logging.
+                       This message can be translated.
+        code (str): A unique, machine-readable error code for identifying
+                    the type of error programmatically.
     """
 
     message: str
@@ -74,215 +77,272 @@ class CedrinaError(Exception):
 # ---------------------------------------------------------------------------
 
 
-@dataclass(slots=True)
 class AuthenticationError(CedrinaError):
-    """Exception raised when authentication fails.
+    """Raised for general authentication failures.
 
-    This can occur due to invalid credentials, inactive accounts, or expired tokens.
+    This exception is the base for more specific authentication-related
+    errors. It typically maps to a `401 Unauthorized` HTTP status code.
+
+    Attributes:
+        message (str): A descriptive error message.
+        code (str): An error code, defaults to "authentication_error".
     """
 
     def __init__(self, message: str, code: str = "authentication_error"):
-        CedrinaError.__init__(self, message, code)
+        super().__init__(message, code)
 
 
-@dataclass(slots=True)
 class InvalidCredentialsError(AuthenticationError):
-    """Raised when credentials supplied by the user are invalid."""
+    """Raised specifically when user-provided credentials are invalid.
 
-    code: str = "invalid_credentials"
+    This is a common error during login attempts. To prevent user enumeration,
+    the message should be generic. Maps to a `401 Unauthorized` HTTP status.
+    """
+
+    def __init__(self, message: str, code: str = "invalid_credentials"):
+        super().__init__(message, code)
 
 
-@dataclass(slots=True)
 class PermissionError(CedrinaError):
-    """Exception raised when a user is not authorized to perform an action."""
+    """Raised when a user is not authorized to perform a specific action.
+
+    This indicates that the user is authenticated but lacks the necessary
+    permissions or roles for the requested resource. It maps to a
+    `403 Forbidden` HTTP status code.
+    """
 
     def __init__(self, message: str, code: str = "permission_denied"):
-        CedrinaError.__init__(self, message, code)
+        super().__init__(message, code)
 
 
 # ---------------------------------------------------------------------------
-# Password validation errors (400 status code)
+# Validation errors (typically map to 400 Bad Request)
 # ---------------------------------------------------------------------------
 
 
-@dataclass(slots=True)
-class PasswordValidationError(CedrinaError):
-    """Exception raised when password validation fails during change password operations.
+class ValidationError(CedrinaError):
+    """Raised for general data validation failures.
 
-    This should return 400 status code, not 401, to avoid redirecting users to login.
+    This serves as a base for more specific validation errors and typically
+    maps to a `400 Bad Request` or `422 Unprocessable Entity`.
+    """
+
+    def __init__(self, message: str, code: str = "validation_error"):
+        super().__init__(message, code)
+
+
+# ---------------------------------------------------------------------------
+# Password validation errors (typically map to 400 Bad Request)
+# ---------------------------------------------------------------------------
+
+
+class PasswordValidationError(ValidationError):
+    """Base exception for password validation failures.
+
+    This is used for errors related to password rules that occur outside of the
+    initial authentication flow (e.g., password change). It typically maps to a
+    `400 Bad Request` HTTP status code.
     """
 
     def __init__(self, message: str, code: str = "password_validation_error"):
-        CedrinaError.__init__(self, message, code)
+        super().__init__(message, code)
 
 
-@dataclass(slots=True)
 class InvalidOldPasswordError(PasswordValidationError):
-    """Exception raised when the old password provided during password change is incorrect.
+    """Raised when the old password provided during a password change is incorrect.
 
-    This should return 400 status code, not 401, to avoid redirecting users to login.
+    This ensures that only the legitimate user can change their password.
+    It maps to a `400 Bad Request` status to avoid user enumeration.
     """
 
     def __init__(self, message: str, code: str = "invalid_old_password"):
-        PasswordValidationError.__init__(self, message, code)
+        super().__init__(message, code)
 
 
-@dataclass(slots=True)
 class PasswordReuseError(PasswordValidationError):
-    """Exception raised when the new password is the same as the old password.
+    """Raised when a user attempts to reuse a recent password.
 
-    This should return 400 status code, not 401, to avoid redirecting users to login.
+    This enforces a password history policy to improve security.
+    It maps to a `400 Bad Request` HTTP status.
     """
 
     def __init__(self, message: str, code: str = "password_reuse_error"):
-        PasswordValidationError.__init__(self, message, code)
+        super().__init__(message, code)
 
 
 # ---------------------------------------------------------------------------
-# Domain / persistence errors
+# Domain / persistence errors (typically map to 409 Conflict or 500 Server Error)
 # ---------------------------------------------------------------------------
 
 
-@dataclass(slots=True)
 class DatabaseError(CedrinaError):
-    """Raised for low-level database interaction errors."""
+    """Raised for low-level database interaction errors.
 
-    code: str = "database_error"
+    This exception wraps underlying database driver errors, abstracting away
+    implementation details. It typically maps to a `500 Internal Server Error`
+    HTTP status.
+    """
+
+    def __init__(self, message: str, code: str = "database_error"):
+        super().__init__(message, code)
 
 
-@dataclass(slots=True)
 class UserAlreadyExistsError(CedrinaError):
-    """Raised when attempting to create a user that already exists."""
+    """Raised when attempting to create a user that already exists.
 
-    code: str = "user_already_exists"
+    This is commonly used during registration to signal a conflict with an
+    existing username or email. It typically maps to a `409 Conflict` HTTP
+    status code.
+    """
+
+    def __init__(self, message: str, code: str = "user_already_exists"):
+        super().__init__(message, code)
 
 
-@dataclass(slots=True)
-class PasswordPolicyError(CedrinaError):
-    """Exception raised when a password does not meet the required security policy."""
+class PasswordPolicyError(ValidationError):
+    """Raised when a password does not meet the required security policy.
+
+    This can include length, complexity, or other business rules. It is a form
+    of validation error and typically maps to a `400 Bad Request`.
+    """
 
     def __init__(self, message: str, code: str = "password_policy_error"):
-        CedrinaError.__init__(self, message, code)
+        super().__init__(message, code)
 
 
 # ---------------------------------------------------------------------------
-# Operational errors
+# Operational errors (typically map to 429 Too Many Requests or 503 Service Unavailable)
 # ---------------------------------------------------------------------------
 
 
-@dataclass(slots=True)
 class RateLimitError(CedrinaError):
-    """Raised when a consumer exceeds the configured rate limits."""
+    """Base class for rate limiting related errors.
+
+    This exception and its subclasses map to a `429 Too Many Requests` HTTP
+    status code.
+    """
 
     def __init__(self, message: str | None = None, code: str = "rate_limit_exceeded"):
         if message is None:
             message = get_translated_message("rate_limit_exceeded", "en")
-        CedrinaError.__init__(self, message, code)
+        super().__init__(message, code)
 
 
-@dataclass(slots=True)
 class RateLimitExceededError(RateLimitError):
-    """Exception raised when a consumer exceeds the configured rate limits."""
+    """Raised specifically when a rate limit has been exceeded.
+
+    This indicates the user has made too many requests in a given time frame.
+    It maps to a `429 Too Many Requests` HTTP status.
+    """
 
     def __init__(self, message: str | None = None, code: str = "rate_limit_exceeded"):
-        if message is None:
-            message = get_translated_message("rate_limit_exceeded", "en")
-        CedrinaError.__init__(self, message, code)
+        super().__init__(message, code)
 
 
-@dataclass(slots=True)
-class DuplicateUserError(CedrinaError):
-    """Exception raised when attempting to register a user with a username or email that already exists."""
+class DuplicateUserError(UserAlreadyExistsError):
+    """Raised when attempting to register a user with a username or email that already exists.
+
+    This is a more specific version of `UserAlreadyExistsError` and maps to a
+    `409 Conflict` HTTP status code.
+    """
 
     def __init__(self, message: str, code: str = "duplicate_user_error"):
-        CedrinaError.__init__(self, message, code)
+        super().__init__(message, code)
 
 
-# ---------------------------------------------------------------------------
-# Email service errors
-# ---------------------------------------------------------------------------
-
-
-@dataclass(slots=True)
 class EmailServiceError(CedrinaError):
-    """Exception raised when email service operations fail."""
+    """Raised when there is an issue with the email sending service.
+
+    This could be due to configuration issues, network problems, or provider
+    outages. It typically maps to a `503 Service Unavailable` HTTP status.
+    """
 
     def __init__(self, message: str, code: str = "email_service_error"):
-        CedrinaError.__init__(self, message, code)
+        super().__init__(message, code)
 
 
-@dataclass(slots=True)
 class TemplateRenderError(EmailServiceError):
-    """Exception raised when email template rendering fails."""
+    """Raised when an email template fails to render.
+
+    This indicates a problem with the template file itself, such as syntax
+    errors or missing variables. It maps to a `500 Internal Server Error`.
+    """
 
     def __init__(self, message: str, code: str = "template_render_error"):
-        EmailServiceError.__init__(self, message, code)
+        super().__init__(message, code)
 
 
-@dataclass(slots=True)
 class PasswordResetError(CedrinaError):
-    """Exception raised when password reset operations fail."""
+    """Raised for general failures during the password reset process.
+
+    This serves as a base class for more specific password reset errors and
+    typically maps to a `400 Bad Request`.
+    """
 
     def __init__(self, message: str, code: str = "password_reset_error"):
-        CedrinaError.__init__(self, message, code)
+        super().__init__(message, code)
 
 
-@dataclass(slots=True)
-class ForgotPasswordError(CedrinaError):
-    """Exception raised when a forgot password operation fails."""
+class ForgotPasswordError(PasswordResetError):
+    """Raised for failures during the "forgot password" request phase.
+
+    This might occur if the user's email does not exist or if there are issues
+    generating a reset token. It maps to a `400 Bad Request` or `404 Not Found`.
+    """
 
     def __init__(self, message: str, code: str = "forgot_password_error"):
-        CedrinaError.__init__(self, message, code)
+        super().__init__(message, code)
 
 
-@dataclass(slots=True)
 class UserNotFoundError(CedrinaError):
-    """Exception raised when a requested user is not found."""
+    """Raised when a requested user is not found in the database.
 
-    def __init__(self, message: str, code: str = "user_not_found"):
-        CedrinaError.__init__(self, message, code)
+    This typically maps to a `404 Not Found` HTTP status code.
+    """
 
-
-@dataclass(slots=True)
-class ValidationError(CedrinaError):
-    """Exception raised when input validation fails."""
-
-    def __init__(self, message: str, code: str = "validation_error"):
-        CedrinaError.__init__(self, message, code)
+    def __init__(self, message: str = "User not found", code: str = "user_not_found"):
+        super().__init__(message, code)
 
 
-@dataclass(slots=True)
-class SessionLimitExceededError(CedrinaError):
-    """Exception raised when a session limit is exceeded."""
+class SessionLimitExceededError(AuthenticationError):
+    """Raised when a user exceeds the maximum number of allowed active sessions.
+
+    This is a security feature to prevent account abuse. It maps to a
+    `401 Unauthorized` or `403 Forbidden` HTTP status.
+    """
 
     def __init__(self, message: str, code: str = "session_limit_exceeded"):
-        CedrinaError.__init__(self, message, code)
+        super().__init__(message, code)
 
 
 # ---------------------------------------------------------------------------
-# Encryption service errors
+# Cryptography-related errors
 # ---------------------------------------------------------------------------
 
 
-@dataclass(slots=True)
 class EncryptionError(CedrinaError):
-    """Exception raised when password hash encryption operations fail.
-    
-    This error indicates a failure in the encryption-at-rest layer for password hashes.
-    It could be due to key issues, invalid input format, or cryptographic failures.
+    """Raised when an encryption operation fails.
+
+    This is a critical security failure and should be logged with high severity.
+    It maps to a `500 Internal Server Error`.
     """
 
-    def __init__(self, message: str, code: str = "encryption_error"):
-        CedrinaError.__init__(self, message, code)
+    message: str = "A critical error occurred during data encryption."
+    code: str = "encryption_error"
+
+    def __init__(self, message: str = "A critical error occurred during data encryption.", code: str = "encryption_error"):
+        super().__init__(message, code)
 
 
-@dataclass(slots=True)
 class DecryptionError(CedrinaError):
-    """Exception raised when password hash decryption operations fail.
-    
-    This error indicates a failure in decrypting password hashes from database storage.
-    Common causes include corrupted encrypted data, key rotation issues, or tampering.
+    """Raised when a decryption operation fails.
+
+    This could indicate data tampering or a key mismatch. It is a critical
+    security failure. It maps to a `500 Internal Server Error`.
     """
 
-    def __init__(self, message: str, code: str = "decryption_error"):
-        CedrinaError.__init__(self, message, code)
+    message: str = "A critical error occurred during data decryption."
+    code: str = "decryption_error"
+
+    def __init__(self, message: str = "A critical error occurred during data decryption.", code: str = "decryption_error"):
+        super().__init__(message, code)

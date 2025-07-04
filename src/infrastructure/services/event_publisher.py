@@ -10,7 +10,7 @@ from typing import List, Optional, Set
 import structlog
 
 from src.domain.events.password_reset_events import BaseDomainEvent
-from src.domain.interfaces.services import IEventPublisher
+from src.domain.interfaces import IEventPublisher
 
 logger = structlog.get_logger(__name__)
 

@@ -27,7 +27,7 @@ from cryptography.fernet import Fernet, InvalidToken
 
 from src.core.config.settings import settings
 from src.core.exceptions import DecryptionError, EncryptionError
-from src.domain.interfaces.services import IPasswordEncryptionService
+from src.domain.interfaces import IPasswordEncryptionService
 
 logger = structlog.get_logger(__name__)
 

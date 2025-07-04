@@ -254,7 +254,7 @@ class EncryptedPassword:
         Raises:
             EncryptionError: If encryption fails
         """
-        from src.domain.interfaces.services import IPasswordEncryptionService
+        from src.domain.interfaces import IPasswordEncryptionService
         
         # If already encrypted, return as-is
         if hashed_password.is_encrypted():

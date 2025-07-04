@@ -15,7 +15,7 @@ from src.adapters.api.v1.auth.schemas import LogoutRequest
 from src.core.config.settings import settings
 from src.core.exceptions import AuthenticationError
 from src.domain.entities.user import Role, User
-from src.domain.interfaces.services import IUserLogoutService
+from src.domain.interfaces import IUserLogoutService
 
 
 @pytest.fixture

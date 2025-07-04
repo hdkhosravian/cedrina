@@ -34,7 +34,7 @@ from src.core.config.settings import settings
 from src.core.dependencies.auth import get_current_user
 from src.core.exceptions import AuthenticationError
 from src.domain.entities.user import User
-from src.domain.interfaces.services import IUserLogoutService
+from src.domain.interfaces import IUserLogoutService
 from src.domain.security.error_standardization import error_standardization_service
 from src.domain.security.logging_service import secure_logging_service
 from src.domain.value_objects.jwt_token import AccessToken, RefreshToken

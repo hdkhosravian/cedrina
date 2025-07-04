@@ -12,7 +12,7 @@ from src.core.exceptions import DuplicateUserError, PasswordPolicyError
 from src.domain.entities.user import Role, User
 from src.domain.events.authentication_events import UserRegisteredEvent
 from src.domain.interfaces.repositories import IUserRepository
-from src.domain.interfaces.services import (
+from src.domain.interfaces import (
     IEventPublisher,
     IUserRegistrationService,
 )

@@ -26,7 +26,7 @@ from src.infrastructure.dependency_injection.auth_dependencies import (
 )
 from src.adapters.api.v1.auth.schemas import AuthResponse, RegisterRequest, UserOut
 from src.core.exceptions import AuthenticationError
-from src.domain.interfaces.services import ITokenService, IUserRegistrationService
+from src.domain.interfaces import ITokenService, IUserRegistrationService
 from src.domain.security.error_standardization import error_standardization_service
 from src.domain.security.logging_service import secure_logging_service
 from src.domain.value_objects.email import Email

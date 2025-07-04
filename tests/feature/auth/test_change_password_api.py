@@ -23,7 +23,7 @@ from src.core.config.settings import BCRYPT_WORK_FACTOR, settings
 from src.core.dependencies.auth import get_current_user
 from src.domain.entities.user import Role, User
 from src.domain.interfaces.repositories import IUserRepository
-from src.domain.interfaces.services import IEventPublisher, IPasswordChangeService
+from src.domain.interfaces import IEventPublisher, IPasswordChangeService
 from src.infrastructure.database.async_db import get_async_db
 from src.infrastructure.dependency_injection.auth_dependencies import (
     get_event_publisher,

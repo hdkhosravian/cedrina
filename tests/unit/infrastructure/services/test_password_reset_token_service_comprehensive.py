@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 from src.core.exceptions import RateLimitExceededError
 from src.domain.entities.user import User
-from src.domain.interfaces.services import IRateLimitingService
+from src.domain.interfaces import IRateLimitingService
 from src.domain.value_objects.reset_token import ResetToken
 from src.infrastructure.services.password_reset_token_service import PasswordResetTokenService
 

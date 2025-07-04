@@ -12,7 +12,7 @@ import structlog
 
 from src.core.exceptions import RateLimitExceededError
 from src.domain.entities.user import User
-from src.domain.interfaces.services import IPasswordResetTokenService, IRateLimitingService
+from src.domain.interfaces import IPasswordResetTokenService, IRateLimitingService
 from src.domain.value_objects.reset_token import ResetToken
 
 logger = structlog.get_logger(__name__)

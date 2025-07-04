@@ -19,7 +19,7 @@ from src.core.exceptions import (
 from src.domain.entities.user import User
 from src.domain.events.authentication_events import PasswordChangedEvent
 from src.domain.interfaces.repositories import IUserRepository
-from src.domain.interfaces.services import IEventPublisher, IPasswordChangeService
+from src.domain.interfaces import IEventPublisher, IPasswordChangeService
 from src.domain.value_objects.password import Password
 from src.utils.i18n import get_translated_message
 

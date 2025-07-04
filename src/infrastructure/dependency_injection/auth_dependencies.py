@@ -25,7 +25,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.interfaces.repositories import IUserRepository
-from src.domain.interfaces.services import (
+from src.domain.interfaces import (
     IEventPublisher,
     IOAuthService,
     IPasswordChangeService,

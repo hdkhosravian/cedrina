@@ -25,7 +25,7 @@ from src.adapters.api.v1.auth.schemas import ChangePasswordRequest, MessageRespo
 from src.core.dependencies.auth import get_current_user
 from src.core.exceptions import AuthenticationError, PasswordPolicyError, PasswordValidationError
 from src.domain.entities.user import User
-from src.domain.interfaces.services import IPasswordChangeService
+from src.domain.interfaces import IPasswordChangeService
 from src.domain.security.error_standardization import error_standardization_service
 from src.domain.security.logging_service import secure_logging_service
 from src.infrastructure.dependency_injection.auth_dependencies import (

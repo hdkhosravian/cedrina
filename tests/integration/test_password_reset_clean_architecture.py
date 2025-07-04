@@ -404,7 +404,7 @@ class TestArchitecturalBenefits:
     def test_interfaces_enable_dependency_inversion(self):
         """Test that interfaces properly enable dependency inversion."""
         # Services depend on abstractions, not concretions
-        from src.domain.interfaces.services import (
+        from src.domain.interfaces import (
             IRateLimitingService,
             IPasswordResetTokenService,
             IEventPublisher,

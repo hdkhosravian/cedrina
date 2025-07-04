@@ -23,7 +23,7 @@ from src.domain.events.authentication_events import (
     UserLoggedInEvent,
 )
 from src.domain.interfaces.repositories import IUserRepository
-from src.domain.interfaces.services import (
+from src.domain.interfaces import (
     IEventPublisher,
     IUserAuthenticationService,
 )

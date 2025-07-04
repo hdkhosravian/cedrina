@@ -36,7 +36,7 @@ from src.infrastructure.dependency_injection.auth_dependencies import (
 )
 from src.adapters.api.v1.auth.schemas import OAuthAuthResponse, OAuthAuthenticateRequest, UserOut
 from src.core.exceptions import AuthenticationError
-from src.domain.interfaces.services import IOAuthService, ITokenService
+from src.domain.interfaces import IOAuthService, ITokenService
 from src.domain.security.error_standardization import error_standardization_service
 from src.domain.security.logging_service import secure_logging_service
 from src.domain.value_objects.oauth_provider import OAuthProvider

@@ -10,7 +10,7 @@ import structlog
 
 from src.core.config.settings import settings
 from src.domain.entities.user import User
-from src.domain.interfaces.services import IPasswordResetEmailService
+from src.domain.interfaces import IPasswordResetEmailService
 from src.domain.value_objects.reset_token import ResetToken
 from src.utils.i18n import get_translated_message
 

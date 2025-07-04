@@ -33,7 +33,7 @@ from src.domain.events.authentication_events import (
     OAuthProfileLinkedEvent,
 )
 from src.domain.interfaces.repositories import IOAuthProfileRepository, IUserRepository
-from src.domain.interfaces.services import IEventPublisher, IOAuthService
+from src.domain.interfaces import IEventPublisher, IOAuthService
 from src.domain.value_objects.oauth_provider import OAuthProvider
 from src.domain.value_objects.oauth_token import OAuthToken
 from src.domain.value_objects.oauth_user_info import OAuthUserInfo

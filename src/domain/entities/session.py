@@ -8,33 +8,28 @@ from sqlmodel import Column, Field, Index, SQLModel  # For ORM and table definit
 
 
 class Session(SQLModel, table=True):
-    """Session model for tracking JWT refresh tokens and session state.
+    """Represents a user's session, acting as an entity within the Authentication Bounded Context.
 
-    This model stores session data for user authentication, including refresh token
-    hashes and JWT IDs (jti) for revocation. It supports token rotation and session
-    management, integrating with PostgreSQL for persistence and Redis for caching.
+    This entity tracks an authenticated user's session, identified by a unique
+    JWT ID (jti). It is fundamental for managing session lifecycle, including
+    token rotation, revocation, and tracking user activity.
 
-    Security Features:
-        - Tracks last activity time for inactivity-based expiration
-        - Supports session revocation with audit trail
-        - Enforces session limits per user
-        - Provides consistency between Redis and PostgreSQL storage
+    Each session is uniquely tied to a user and contains the necessary data to
+    validate refresh tokens securely.
 
     Attributes:
-        id (Optional[int]): Primary key, auto-incremented by the database.
-        jti (str): Unique JWT ID (UUID) for token revocation.
-        user_id (int): Foreign key referencing the User model.
-        refresh_token_hash (str): Hashed refresh token for validation.
-        created_at (datetime): Session creation timestamp.
-        expires_at (datetime): Refresh token expiration timestamp.
-        last_activity_at (datetime): Last activity timestamp for inactivity tracking.
-        revoked_at (Optional[datetime]): Revocation timestamp, null if active.
-
-    Table Arguments:
-        Unique index on jti for fast revocation checks.
-        Index on user_id and expires_at for efficient session queries.
-        Index on last_activity_at for inactivity-based cleanup.
-
+        id: The unique identifier for the session record.
+        jti: The unique JWT ID (claim 'jti'), used as the primary means of
+            revoking a specific token chain.
+        user_id: A foreign key linking the session to the `User` aggregate root.
+        refresh_token_hash: The securely hashed refresh token, preventing direct
+            token exposure in the database.
+        created_at: The timestamp when the session was initiated.
+        expires_at: The timestamp when the refresh token is no longer valid.
+        last_activity_at: The timestamp of the last authenticated action, used
+            to detect and expire inactive sessions.
+        revoked_at: The timestamp when the session was explicitly revoked. A null
+            value indicates the session is still active.
     """
 
     __tablename__ = "sessions"  # Explicit table name for clarity
@@ -42,24 +37,24 @@ class Session(SQLModel, table=True):
     id: Optional[int] = Field(
         default=None,  # Auto-incremented by database
         primary_key=True,  # Primary key constraint
-        description="Unique identifier for the session",
+        description="The unique identifier for the session record.",
     )
     jti: str = Field(
         default_factory=lambda: str(uuid4()),  # Generate UUID for JWT ID
         sa_column=Column(
             UUID(as_uuid=False), unique=True, index=True, nullable=False
         ),  # UUID column
-        description="Unique JWT ID for token revocation",
+        description="Unique JWT ID (jti) for token revocation.",
     )
     user_id: int = Field(
         foreign_key="users.id",  # References users table
         index=True,  # Index for performance
         nullable=False,  # Required field
-        description="Foreign key referencing the User",
+        description="Foreign key linking the session to the User.",
     )
     refresh_token_hash: str = Field(
         max_length=255,  # Sufficient for hashed tokens
-        description="Hashed refresh token for validation",
+        description="Hashed refresh token for secure validation.",
         nullable=False,  # Required for security
     )
     created_at: datetime = Field(
@@ -68,11 +63,11 @@ class Session(SQLModel, table=True):
             server_default=text("CURRENT_TIMESTAMP"),  # Database timestamp
             nullable=False,
         ),
-        description="Session creation timestamp",
+        description="The timestamp when the session was initiated.",
     )
     expires_at: datetime = Field(
         sa_column=Column(DateTime, nullable=False),  # Explicit DateTime type for Alembic
-        description="Refresh token expiration timestamp",
+        description="The timestamp when the refresh token expires.",
     )
     last_activity_at: datetime = Field(
         sa_column=Column(
@@ -80,11 +75,11 @@ class Session(SQLModel, table=True):
             server_default=text("CURRENT_TIMESTAMP"),  # Database timestamp
             nullable=False,
         ),
-        description="Last activity timestamp for inactivity tracking",
+        description="Timestamp of the last user activity, for inactivity tracking.",
     )
     revoked_at: Optional[datetime] = Field(
         sa_column=Column(DateTime, nullable=True),  # Explicit DateTime type for Alembic
-        description="Revocation timestamp, null if session is active",
+        description="Timestamp of when the session was revoked. Null if active.",
     )
 
     __table_args__ = (

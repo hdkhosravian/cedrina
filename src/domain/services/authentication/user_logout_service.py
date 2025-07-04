@@ -22,7 +22,7 @@ from src.core.exceptions import AuthenticationError
 from src.domain.entities.user import User
 from src.domain.events.authentication_events import UserLoggedOutEvent
 from src.domain.interfaces.repositories import IUserRepository
-from src.domain.interfaces.services import (
+from src.domain.interfaces import (
     IEventPublisher,
     ITokenService,
     IUserLogoutService,
