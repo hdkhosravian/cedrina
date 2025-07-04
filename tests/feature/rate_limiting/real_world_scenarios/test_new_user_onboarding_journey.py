@@ -35,8 +35,7 @@ from .conftest import (
 class TestNewUserOnboardingJourney:
     """Test complete new user onboarding with rate limiting scenarios."""
 
-    @pytest.mark.asyncio
-    async def test_complete_user_onboarding_journey(
+    def test_complete_user_onboarding_journey(
         self,
         scenario_client: ScenarioClient,
         scenario_state: ScenarioState,
@@ -60,7 +59,7 @@ class TestNewUserOnboardingJourney:
         register_endpoint = api_endpoints["auth"]["register"]
 
         # Configure rate limiter to block after 3 registration attempts
-        with patch("src.domain.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
+        with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
             mock_limiter = AsyncMock()
             mock_limiter_class.return_value = mock_limiter
 
@@ -105,7 +104,7 @@ class TestNewUserOnboardingJourney:
         print("\n⏳ Step 2: Waiting for rate limit reset and registering user...")
 
         # Reset the rate limiter for successful registration
-        with patch("src.domain.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
+        with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
             mock_limiter = AsyncMock()
             mock_limiter_class.return_value = mock_limiter
             mock_limiter.check_rate_limit.return_value = {
@@ -130,7 +129,7 @@ class TestNewUserOnboardingJourney:
 
         login_endpoint = api_endpoints["auth"]["login"]
 
-        with patch("src.domain.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
+        with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
             mock_limiter = AsyncMock()
             mock_limiter_class.return_value = mock_limiter
 
@@ -170,7 +169,7 @@ class TestNewUserOnboardingJourney:
         # Step 4: Successful login after rate limit reset
         print("\n🔑 Step 4: Successful login after rate limit reset...")
 
-        with patch("src.domain.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
+        with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
             mock_limiter = AsyncMock()
             mock_limiter_class.return_value = mock_limiter
             mock_limiter.check_rate_limit.return_value = {
@@ -203,7 +202,7 @@ class TestNewUserOnboardingJourney:
             }
 
             with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
+                "src.core.rate_limiting.services.AdvancedRateLimiter"
             ) as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter
@@ -268,7 +267,7 @@ class TestNewUserOnboardingJourney:
             }
 
             with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
+                "src.core.rate_limiting.services.AdvancedRateLimiter"
             ) as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter
@@ -309,8 +308,7 @@ class TestNewUserOnboardingJourney:
         print(f"   - Users affected: {rate_limit_summary['users_affected']}")
         print(f"   - Endpoints tested: {rate_limit_summary['endpoints_affected']}")
 
-    @pytest.mark.asyncio
-    async def test_concurrent_user_registration_scenario(
+    def test_concurrent_user_registration_scenario(
         self,
         scenario_client: ScenarioClient,
         user_scenarios: dict,
@@ -328,7 +326,7 @@ class TestNewUserOnboardingJourney:
         register_endpoint = api_endpoints["auth"]["register"]
         base_user = user_scenarios["new_user"]
 
-        with patch("src.domain.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
+        with patch("src.core.rate_limiting.services.AdvancedRateLimiter") as mock_limiter_class:
             mock_limiter = AsyncMock()
             mock_limiter_class.return_value = mock_limiter
 
@@ -379,8 +377,7 @@ class TestNewUserOnboardingJourney:
 
         print("✅ Concurrent registration rate limiting working correctly")
 
-    @pytest.mark.asyncio
-    async def test_user_behavior_adaptation_scenario(
+    def test_user_behavior_adaptation_scenario(
         self,
         scenario_client: ScenarioClient,
         scenario_state: ScenarioState,
@@ -409,7 +406,7 @@ class TestNewUserOnboardingJourney:
             }
 
             with patch(
-                "src.domain.rate_limiting.services.AdvancedRateLimiter"
+                "src.core.rate_limiting.services.AdvancedRateLimiter"
             ) as mock_limiter_class:
                 mock_limiter = AsyncMock()
                 mock_limiter_class.return_value = mock_limiter

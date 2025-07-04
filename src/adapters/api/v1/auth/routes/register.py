@@ -1,20 +1,40 @@
 from __future__ import annotations
 
-"""/auth/register route module.
+"""/auth/register route module with enhanced security logging and information disclosure prevention.
 
 This module handles the registration of new users in the Cedrina authentication
-system. It provides an endpoint for creating a new user account with a unique
-username and email, and issues JWT tokens on successful registration.
+system using clean architecture principles and Domain-Driven Design with enterprise-grade
+security features.
+
+Key Security Features:
+- Zero-trust data masking for audit trails
+- Consistent error responses to prevent enumeration attacks
+- Standardized timing to prevent timing attacks
+- Comprehensive security event logging with SIEM integration
+- Risk-based registration analysis and threat detection
+- Privacy-compliant data handling (GDPR)
 """
 
+import uuid
+
+import structlog
 from fastapi import APIRouter, Depends, Request, status
 
-from src.adapters.api.v1.auth.dependencies import get_token_service, get_user_auth_service
+from src.infrastructure.dependency_injection.auth_dependencies import (
+    CleanRegistrationService,
+    CleanTokenService,
+)
 from src.adapters.api.v1.auth.schemas import AuthResponse, RegisterRequest, UserOut
-from src.adapters.api.v1.auth.utils import create_token_pair
-from src.domain.services.auth.token import TokenService
-from src.domain.services.auth.user_authentication import UserAuthenticationService
+from src.core.exceptions import AuthenticationError
+from src.domain.interfaces import ITokenService, IUserRegistrationService
+from src.domain.security.error_standardization import error_standardization_service
+from src.domain.security.logging_service import secure_logging_service
+from src.domain.value_objects.email import Email
+from src.domain.value_objects.password import Password
+from src.domain.value_objects.username import Username
+from src.utils.i18n import get_request_language, get_translated_message
 
+logger = structlog.get_logger(__name__)
 router = APIRouter()
 
 
@@ -24,58 +44,178 @@ router = APIRouter()
     status_code=status.HTTP_201_CREATED,
     tags=["auth"],
     summary="Register a new user",
-    description="Creates a new user account with username, email, and password. Issues JWT tokens on success.",
+    description="Creates a new user account with username, email, and password using clean architecture principles.",
 )
 async def register_user(
     request: Request,
     payload: RegisterRequest,
-    user_service: UserAuthenticationService = Depends(get_user_auth_service),
-    token_service: TokenService = Depends(get_token_service),
+    registration_service: IUserRegistrationService = Depends(CleanRegistrationService),
+    token_service: ITokenService = Depends(CleanTokenService),
 ):
-    """Register a new user with the provided credentials.
+    """Register a new user with the provided credentials using clean architecture.
 
-    This endpoint creates a user account after validating data (username
-    uniqueness, email format, password strength). On success, it issues JWT
-    tokens for authentication. Rate limiting prevents abuse.
+    This endpoint creates a user account using clean architecture principles:
+    - Domain value objects for input validation
+    - Domain services for business logic
+    - Domain events for audit trails
+    - Proper separation of concerns
+    - Enhanced security patterns
 
     Args:
-        request (Request): FastAPI request object, used to get client IP for
-            rate limiting.
-        payload (RegisterRequest): Request payload with username, email, and
-            password.
-        user_service (UserAuthenticationService): Service for user creation and
-            validation.
-        token_service (TokenService): Service for generating JWT tokens.
+        request (Request): FastAPI request object for security context
+        payload (RegisterRequest): User registration data
+        registration_service (IUserRegistrationService): Clean registration service
+        token_service (ITokenService): Clean token service
 
     Returns:
-        AuthResponse: Response with registered user's details and JWT token
-            pair.
+        AuthResponse: User details and JWT tokens
 
     Raises:
-        HTTPException: If registration fails due to duplicate username/email
-            (409), weak password (400), or validation errors (400).
+        HTTPException: Registration failures with appropriate status codes
 
-    Security:
-        - Rate limiting by client IP prevents bulk registration attacks.
-        - Enforced via slowapi middleware (see app config).
-        - Passwords hashed securely in user service (not route logic).
-        - JWT tokens use RS256 signing for security (asymmetric keys).
-
+    Security Features:
+        - Value object validation for usernames, emails, and passwords
+        - Comprehensive audit trails via domain events
+        - Attack pattern detection
+        - Secure logging with data masking
+        - Rate limiting via middleware (slowapi)
     """
-    # Rate limiting by client IP to prevent bulk registration abuse. Enforcement
-    # by slowapi middleware. If disabled, endpoint is vulnerable to abuse.
+    # Generate correlation ID for request tracking
+    correlation_id = str(uuid.uuid4())
+    
+    # Extract security context
     client_ip = request.client.host or "unknown"
-    key = f"register:{client_ip}"
-    # Manual enforcement removed as it's handled by middleware.
-    # await enforce_rate_limit(token_service.redis_client, key)
-
-    # Register user. Raises exceptions if validation fails (e.g., duplicate user,
-    # weak password).
-    user = await user_service.register_user(
-        username=payload.username, email=payload.email, password=payload.password
+    user_agent = request.headers.get("user-agent", "unknown")
+    
+    # Create structured logger with correlation context and security information
+    request_logger = logger.bind(
+        correlation_id=correlation_id,
+        client_ip=secure_logging_service.mask_ip_address(client_ip),
+        user_agent=secure_logging_service.sanitize_user_agent(user_agent),
+        endpoint="register",
+        operation="user_registration"
     )
-
-    # Create token pair using shared utility for consistency across endpoints.
-    tokens = await create_token_pair(token_service, user)
-
-    return AuthResponse(tokens=tokens, user=UserOut.from_entity(user))
+    
+    request_logger.info(
+        "Registration attempt initiated",
+        username_masked=secure_logging_service.mask_username(payload.username),
+        email_masked=secure_logging_service.mask_email(payload.email),
+        has_password=bool(payload.password),
+        security_enhanced=True
+    )
+    
+    try:
+        # Create domain value objects with validation
+        username = Username.create_safe(payload.username)
+        email = Email.create_normalized(payload.email)
+        password = Password(payload.password)
+        
+        # Extract language from request for I18N
+        language = get_request_language(request)
+        
+        request_logger.debug(
+            "Domain value objects created",
+            username_masked=secure_logging_service.mask_username(str(username)),
+            email_masked=secure_logging_service.mask_email(str(email)),
+            security_enhanced=True
+        )
+        
+        # Register user using clean domain service
+        user = await registration_service.register_user(
+            username=username,
+            email=email,
+            password=password,
+            language=language,
+            client_ip=client_ip,
+            user_agent=user_agent,
+            correlation_id=correlation_id,
+        )
+        
+        request_logger.info(
+            "User registered successfully",
+            user_id=user.id,
+            username_masked=secure_logging_service.mask_username(user.username),
+            email_masked=secure_logging_service.mask_email(user.email),
+            security_enhanced=True
+        )
+        
+        # Create token pair using clean token service
+        # Use the adapter's create_token_pair method for convenience
+        if hasattr(token_service, 'create_token_pair'):
+            tokens = await token_service.create_token_pair(user)
+        else:
+            # Fallback to individual token creation
+            access_token = await token_service.create_access_token(user)
+            refresh_token = await token_service.create_refresh_token(user)
+            tokens = {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "token_type": "bearer",
+                "expires_in": 900,
+            }
+        
+        request_logger.info(
+            "Registration tokens created",
+            user_id=user.id,
+            token_type=tokens.get("token_type", "bearer"),
+            expires_in=tokens.get("expires_in", 900),
+            security_enhanced=True
+        )
+        
+        # Return clean response
+        return AuthResponse(
+            tokens=tokens,
+            user=UserOut.from_entity(user)
+        )
+        
+    except ValueError as e:
+        # Handle value object validation errors with standardized response
+        request_logger.warning(
+            "Registration failed - invalid input format",
+            error=str(e),
+            error_type="validation_error",
+            username_masked=secure_logging_service.mask_username(payload.username),
+            email_masked=secure_logging_service.mask_email(payload.email),
+            security_enhanced=True
+        )
+        
+        # Use error standardization service for consistent response
+        standardized_response = await error_standardization_service.create_standardized_response(
+            error_type="invalid_input",
+            actual_error=str(e),
+            correlation_id=correlation_id,
+            language=language
+        )
+        raise AuthenticationError(message=standardized_response["detail"])
+        
+    except AuthenticationError as e:
+        # Handle domain registration errors with enhanced logging
+        request_logger.warning(
+            "Registration failed - enhanced domain error",
+            error=str(e),
+            error_type="registration_error",
+            username_masked=secure_logging_service.mask_username(payload.username),
+            email_masked=secure_logging_service.mask_email(payload.email),
+            security_enhanced=True
+        )
+        raise  # Re-raise to maintain proper HTTP status codes
+        
+    except Exception as e:
+        # Handle unexpected errors with enhanced security logging
+        request_logger.error(
+            "Registration failed - unexpected error",
+            error=str(e),
+            error_type=type(e).__name__,
+            username_masked=secure_logging_service.mask_username(payload.username),
+            email_masked=secure_logging_service.mask_email(payload.email),
+            security_enhanced=True
+        )
+        
+        # Use error standardization service for consistent response
+        standardized_response = await error_standardization_service.create_standardized_response(
+            error_type="internal_error",
+            actual_error=str(e),
+            correlation_id=correlation_id,
+            language=language
+        )
+        raise AuthenticationError(message=standardized_response["detail"])

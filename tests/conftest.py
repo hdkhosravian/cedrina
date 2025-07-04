@@ -14,12 +14,12 @@ from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from infrastructure.database.database import (
+from src.infrastructure.database.database import (
     create_db_and_tables,
 )
 from src.core.config.settings import settings
 from src.domain.entities.user import User
-from src.domain.services.auth.token import TokenService
+from src.infrastructure.services.authentication.token import TokenService
 from src.main import app
 
 
@@ -136,20 +136,20 @@ def mock_enforce(mocker: MockerFixture):
 
 @pytest_asyncio.fixture(scope="function")
 async def mock_token_service():
-    with patch("src.domain.services.auth.token.TokenService", autospec=True) as mock:
+    with patch("src.infrastructure.services.authentication.token.TokenService", autospec=True) as mock:
         yield mock
 
 
 @pytest_asyncio.fixture(scope="function")
 async def mock_async_session():
-    with patch("infrastructure.database.database.AsyncSessionLocal", autospec=True) as mock:
+    with patch("src.infrastructure.database.database.AsyncSessionLocal", autospec=True) as mock:
         yield mock
 
 
 @pytest_asyncio.fixture(scope="function")
 async def mock_user_service():
     with patch(
-        "src.domain.services.auth.user_authentication.UserAuthenticationService", autospec=True
+        "src.domain.services.authentication.user_authentication_service.UserAuthenticationService", autospec=True
     ) as mock:
         yield mock
 

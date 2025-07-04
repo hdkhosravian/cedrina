@@ -12,7 +12,7 @@ from src.core.exceptions import AuthenticationError, PermissionError
 
 # Project imports
 from src.domain.entities.user import Role, User
-from src.domain.services.auth.token import TokenService
+from src.infrastructure.services.authentication.token import TokenService
 from src.infrastructure.database import get_db
 from src.infrastructure.redis import get_redis
 from src.utils.i18n import get_translated_message

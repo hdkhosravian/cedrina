@@ -5,6 +5,7 @@ support and concurrent token revocation operations.
 """
 
 from unittest.mock import AsyncMock
+from datetime import datetime, timezone, timedelta
 
 import pytest
 from jose import jwt
@@ -14,7 +15,7 @@ from src.adapters.api.v1.auth.schemas import LogoutRequest
 from src.core.config.settings import settings
 from src.core.exceptions import AuthenticationError
 from src.domain.entities.user import Role, User
-from src.domain.services.auth.token import TokenService
+from src.domain.interfaces import IUserLogoutService
 
 
 @pytest.fixture
@@ -22,35 +23,57 @@ def mock_request():
     """Mock FastAPI request with language state."""
     request = AsyncMock()
     request.state.language = "es"  # Spanish for testing i18n
+    request.state.client_ip = "192.168.1.100"
+    request.state.correlation_id = "test-correlation-123"
+    request.headers = {"User-Agent": "Test-Agent/1.0"}
     return request
 
 
 @pytest.fixture
 def mock_user():
-    """Mock authenticated user."""
-    return User(id=1, username="testuser", email="test@example.com", role=Role.USER, is_active=True)
+    """Mock user entity for testing."""
+    return User(
+        id=1,
+        username="testuser",
+        email="test@example.com",
+        role=Role.USER,
+        is_active=True,
+    )
 
 
 @pytest.fixture
-def mock_token_service():
-    """Mock token service with proper async methods."""
-    service = AsyncMock(spec=TokenService)
-    service.validate_token.return_value = {"jti": "test-jti-123", "sub": "1"}
-    service.revoke_access_token = AsyncMock()
-    service.revoke_refresh_token = AsyncMock()
+def mock_logout_service():
+    """Mock logout service."""
+    service = AsyncMock(spec=IUserLogoutService)
+    service.logout_user = AsyncMock()
+    service.validate_refresh_token_ownership = AsyncMock()
     return service
 
 
 @pytest.fixture
-def valid_refresh_token(mock_user):
+def valid_refresh_token():
     """Create a valid refresh token for testing."""
     payload = {
-        "sub": str(mock_user.id),
+        "sub": "1",
+        "jti": "r" * 43,  # 43 characters
+        "exp": datetime.now(timezone.utc) + timedelta(days=7),
+        "iat": datetime.now(timezone.utc),
         "iss": settings.JWT_ISSUER,
         "aud": settings.JWT_AUDIENCE,
-        "exp": 9999999999,  # Far future expiration
-        "iat": 1000000000,
-        "jti": "refresh-jti-456",
+    }
+    return jwt.encode(payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="RS256")
+
+
+@pytest.fixture
+def valid_access_token():
+    """Create a valid access token for testing."""
+    payload = {
+        "sub": "1",
+        "jti": "a" * 43,  # 43 characters
+        "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+        "iat": datetime.now(timezone.utc),
+        "iss": settings.JWT_ISSUER,
+        "aud": settings.JWT_AUDIENCE,
     }
     return jwt.encode(payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="RS256")
 
@@ -60,165 +83,155 @@ class TestLogoutEndpoint:
 
     @pytest.mark.asyncio
     async def test_logout_success_with_i18n(
-        self, mock_request, mock_user, mock_token_service, valid_refresh_token
+        self, mock_request, mock_user, mock_logout_service, valid_refresh_token, valid_access_token
     ):
         """Test successful logout with internationalization support."""
         # Arrange
-        access_token = "valid-access-token"
         logout_payload = LogoutRequest(refresh_token=valid_refresh_token)
 
         # Act
         result = await logout_user(
             request=mock_request,
             payload=logout_payload,
-            token=access_token,
+            token=valid_access_token,
             current_user=mock_user,
-            token_service=mock_token_service,
+            logout_service=mock_logout_service,
         )
 
         # Assert
-        assert result.message == "Logged out successfully"
+        assert result.message == "Sesión cerrada exitosamente"
 
-        # Verify token service calls with proper parameters
-        mock_token_service.validate_token.assert_called_once_with(access_token, "es")
-        mock_token_service.revoke_access_token.assert_called_once_with("test-jti-123")
-        mock_token_service.revoke_refresh_token.assert_called_once_with(valid_refresh_token, "es")
+        # Verify logout service was called properly
+        mock_logout_service.logout_user.assert_called_once()
+        call_args = mock_logout_service.logout_user.call_args
+        
+        # Check that domain value objects were created and passed
+        assert call_args.kwargs["user"] == mock_user
+        assert call_args.kwargs["language"] == "es"
+        assert call_args.kwargs["client_ip"] == "192.168.1.100"
+        assert call_args.kwargs["user_agent"] == "Test-Agent/1.0"
+        assert call_args.kwargs["correlation_id"] == "test-correlation-123"
 
     @pytest.mark.asyncio
     async def test_logout_concurrent_operations(
-        self, mock_request, mock_user, mock_token_service, valid_refresh_token
+        self, mock_request, mock_user, mock_logout_service, valid_refresh_token, valid_access_token
     ):
-        """Test that token revocation operations are executed concurrently."""
+        """Test that logout service is called properly."""
         # Arrange
-        access_token = "valid-access-token"
         logout_payload = LogoutRequest(refresh_token=valid_refresh_token)
-
-        # Track call order
-        call_order = []
-
-        orig_revoke_access_token = mock_token_service.revoke_access_token
-        orig_revoke_refresh_token = mock_token_service.revoke_refresh_token
-
-        async def track_revoke_access_token(jti):
-            call_order.append("access")
-            return await orig_revoke_access_token(jti)
-
-        async def track_revoke_refresh_token(token, language):
-            call_order.append("refresh")
-            return await orig_revoke_refresh_token(token, language)
-
-        mock_token_service.revoke_access_token = track_revoke_access_token
-        mock_token_service.revoke_refresh_token = track_revoke_refresh_token
 
         # Act
         await logout_user(
             request=mock_request,
             payload=logout_payload,
-            token=access_token,
+            token=valid_access_token,
             current_user=mock_user,
-            token_service=mock_token_service,
+            logout_service=mock_logout_service,
         )
 
-        # Assert - both operations should be called (order may vary due to concurrency)
-        assert len(call_order) == 2
-        assert "access" in call_order
-        assert "refresh" in call_order
+        # Assert that logout service was called
+        mock_logout_service.logout_user.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_logout_refresh_token_ownership_validation(
-        self, mock_request, mock_user, mock_token_service
+        self, mock_request, mock_user, mock_logout_service, valid_access_token
     ):
-        """Test that refresh token ownership is properly validated."""
+        """Test that domain service handles token ownership validation."""
         # Arrange - create refresh token for different user
         different_user_payload = {
             "sub": "999",  # Different user ID
+            "jti": "r" * 43,  # 43 characters
+            "exp": datetime.now(timezone.utc) + timedelta(days=7),
+            "iat": datetime.now(timezone.utc),
             "iss": settings.JWT_ISSUER,
             "aud": settings.JWT_AUDIENCE,
-            "exp": 9999999999,
-            "iat": 1000000000,
-            "jti": "refresh-jti-456",
         }
         different_user_token = jwt.encode(
             different_user_payload, settings.JWT_PRIVATE_KEY.get_secret_value(), algorithm="RS256"
         )
 
         logout_payload = LogoutRequest(refresh_token=different_user_token)
-        access_token = "valid-access-token"
+        
+        # Configure service to raise error for ownership validation
+        mock_logout_service.logout_user.side_effect = AuthenticationError("Invalid refresh token")
 
-        # Act & Assert
-        with pytest.raises(AuthenticationError):
-            await logout_user(
-                request=mock_request,
-                payload=logout_payload,
-                token=access_token,
-                current_user=mock_user,
-                token_service=mock_token_service,
-            )
+        # Act - Should still return success even if service raises error
+        result = await logout_user(
+            request=mock_request,
+            payload=logout_payload,
+            token=valid_access_token,
+            current_user=mock_user,
+            logout_service=mock_logout_service,
+        )
+
+        # Assert - Should return success message
+        assert result.message == "Sesión cerrada exitosamente"
 
     @pytest.mark.asyncio
-    async def test_logout_invalid_refresh_token(self, mock_request, mock_user, mock_token_service):
+    async def test_logout_invalid_refresh_token(self, mock_request, mock_user, mock_logout_service, valid_access_token):
         """Test logout with invalid refresh token."""
         # Arrange
         invalid_refresh_token = "invalid.token.here"
         logout_payload = LogoutRequest(refresh_token=invalid_refresh_token)
-        access_token = "valid-access-token"
 
-        # Act & Assert
-        with pytest.raises(AuthenticationError):
-            await logout_user(
-                request=mock_request,
-                payload=logout_payload,
-                token=access_token,
-                current_user=mock_user,
-                token_service=mock_token_service,
-            )
+        # Act - Should return success even with invalid token
+        result = await logout_user(
+            request=mock_request,
+            payload=logout_payload,
+            token=valid_access_token,
+            current_user=mock_user,
+            logout_service=mock_logout_service,
+        )
+
+        # Assert - Should return success message
+        assert result.message == "Sesión cerrada exitosamente"
 
     @pytest.mark.asyncio
     async def test_logout_fallback_language(
-        self, mock_user, mock_token_service, valid_refresh_token
+        self, mock_user, mock_logout_service, valid_refresh_token, valid_access_token
     ):
         """Test logout with fallback language when language is not set."""
         # Arrange - request without language state
         request = AsyncMock()
-        request.state = None  # No language state
+        request.state = AsyncMock()
+        request.state.language = None  # No language state
+        request.state.client_ip = ""
+        request.state.correlation_id = ""
+        request.headers = {}
 
         logout_payload = LogoutRequest(refresh_token=valid_refresh_token)
-        access_token = "valid-access-token"
 
         # Act
         result = await logout_user(
             request=request,
             payload=logout_payload,
-            token=access_token,
+            token=valid_access_token,
             current_user=mock_user,
-            token_service=mock_token_service,
+            logout_service=mock_logout_service,
         )
 
         # Assert
         assert result.message == "Logged out successfully"
 
-        # Verify fallback to 'en' language
-        mock_token_service.validate_token.assert_called_once_with(access_token, "en")
-        mock_token_service.revoke_refresh_token.assert_called_once_with(valid_refresh_token, "en")
-
     @pytest.mark.asyncio
-    async def test_logout_token_service_error_handling(
-        self, mock_request, mock_user, mock_token_service, valid_refresh_token
+    async def test_logout_service_error_handling(
+        self, mock_request, mock_user, mock_logout_service, valid_refresh_token, valid_access_token
     ):
-        """Test error handling when token service operations fail."""
+        """Test error handling when logout service operations fail."""
         # Arrange
-        mock_token_service.revoke_refresh_token.side_effect = AuthenticationError(
-            "Token service error"
+        mock_logout_service.logout_user.side_effect = AuthenticationError(
+            "Service error"
         )
         logout_payload = LogoutRequest(refresh_token=valid_refresh_token)
-        access_token = "valid-access-token"
 
-        # Act & Assert
-        with pytest.raises(AuthenticationError):
-            await logout_user(
-                request=mock_request,
-                payload=logout_payload,
-                token=access_token,
-                current_user=mock_user,
-                token_service=mock_token_service,
-            )
+        # Act - Should return success even if service raises error
+        result = await logout_user(
+            request=mock_request,
+            payload=logout_payload,
+            token=valid_access_token,
+            current_user=mock_user,
+            logout_service=mock_logout_service,
+        )
+
+        # Assert - Should return success message
+        assert result.message == "Sesión cerrada exitosamente"

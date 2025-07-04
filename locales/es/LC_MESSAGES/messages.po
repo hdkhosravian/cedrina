@@ -118,7 +118,10 @@ msgid "session_already_revoked_or_invalid"
 msgstr "La sesión ya fue revocada o es inválida"
 
 msgid "logout_failed_internal_error"
-msgstr "El cierre de sesión falló debido a un error interno"
+msgstr "Error interno durante el cierre de sesión"
+
+msgid "logout_successful"
+msgstr "Sesión cerrada exitosamente"
 
 #: src/domain/services/auth/policy.py:59
 msgid "policy_params_empty"
@@ -176,4 +179,115 @@ msgstr "Contraseña cambiada exitosamente"
 
 msgid "password_change_failed"
 msgstr "El cambio de contraseña falló debido a un error interno"
+
+msgid "password_change_service_unavailable"
+msgstr "El servicio de cambio de contraseña no está disponible temporalmente"
+
+# Email functionality (2025-06-28)
+
+msgid "password_reset_email_subject"
+msgstr "Solicitud de Restablecimiento de Contraseña - Cedrina"
+
+msgid "password_reset_email_sent"
+msgstr "Si la dirección de correo está registrada, recibirás un enlace de restablecimiento de contraseña en breve"
+
+msgid "password_reset_email_failed"
+msgstr "Error al enviar el correo de restablecimiento de contraseña"
+
+msgid "password_reset_token_invalid"
+msgstr "El token de restablecimiento de contraseña es inválido o ha expirado"
+
+msgid "password_reset_success"
+msgstr "La contraseña ha sido restablecida exitosamente"
+
+# Enhanced security logging and error standardization (2025-01-27)
+
+msgid "password_reset_service_unavailable"
+msgstr "El servicio de restablecimiento de contraseña no está disponible temporalmente"
+
+msgid "logout_service_unavailable"
+msgstr "El servicio de cierre de sesión no está disponible temporalmente"
+
+msgid "security_enhanced_logging_enabled"
+msgstr "El registro de seguridad mejorado está habilitado"
+
+msgid "security_event_logged"
+msgstr "El evento de seguridad ha sido registrado"
+
+msgid "risk_assessment_completed"
+msgstr "La evaluación de riesgo ha sido completada"
+
+msgid "threat_detection_triggered"
+msgstr "La detección de amenazas ha sido activada"
+
+msgid "data_masking_applied"
+msgstr "El enmascaramiento de datos ha sido aplicado"
+
+msgid "privacy_compliance_verified"
+msgstr "El cumplimiento de privacidad ha sido verificado"
+
+msgid "siem_integration_active"
+msgstr "La integración SIEM está activa"
+
+msgid "audit_trail_generated"
+msgstr "La pista de auditoría ha sido generada"
+
+msgid "correlation_id_tracked"
+msgstr "El ID de correlación está siendo rastreado"
+
+msgid "timing_attack_prevention_active"
+msgstr "La prevención de ataques de temporización está activa"
+
+msgid "enumeration_attack_prevention_active"
+msgstr "La prevención de ataques de enumeración está activa"
+
+msgid "zero_trust_data_handling_active"
+msgstr "El manejo de datos de confianza cero está activo"
+
+msgid "security_context_captured"
+msgstr "El contexto de seguridad ha sido capturado"
+
+msgid "enhanced_authentication_active"
+msgstr "La autenticación mejorada está activa"
+
+msgid "enhanced_registration_active"
+msgstr "El registro mejorado está activo"
+
+msgid "enhanced_oauth_active"
+msgstr "La autenticación OAuth mejorada está activa"
+
+msgid "enhanced_password_change_active"
+msgstr "El cambio de contraseña mejorado está activo"
+
+msgid "enhanced_password_reset_active"
+msgstr "El restablecimiento de contraseña mejorado está activo"
+
+msgid "enhanced_logout_active"
+msgstr "El cierre de sesión mejorado está activo"
+
+# Enhanced Token Security (2025-06-30)
+
+msgid "token_cannot_be_empty"
+msgstr "El token no puede estar vacío"
+
+msgid "token_must_contain_uppercase"
+msgstr "El token debe contener al menos una letra mayúscula"
+
+msgid "token_must_contain_lowercase"
+msgstr "El token debe contener al menos una letra minúscula"
+
+msgid "token_must_contain_digits"
+msgstr "El token debe contener al menos un dígito"
+
+msgid "token_must_contain_special_chars"
+msgstr "El token debe contener al menos un carácter especial"
+
+msgid "token_length_invalid"
+msgstr "El token debe tener entre {min_length} y {max_length} caracteres"
+
+msgid "token_expiry_cannot_be_empty"
+msgstr "La fecha de expiración del token no puede estar vacía"
+
+msgid "token_expiry_must_be_timezone_aware"
+msgstr "La fecha de expiración del token debe incluir zona horaria"
 

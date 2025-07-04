@@ -1,0 +1,368 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Cedrina 0.1.0\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2025-05-14 18:50+0330\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: en\n"
+"Language-Team: en <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+msgid "health_status_ok"
+msgstr "System is operational"
+
+msgid "invalid_token_subject"
+msgstr "Invalid token: Subject missing"
+
+msgid "user_not_found_or_inactive"
+msgstr "User not found or inactive"
+
+msgid "admin_privileges_required"
+msgstr "The user does not have administrative privileges."
+
+msgid "user_has_no_role"
+msgstr "User has no assigned role, access denied."
+
+msgid "permission_denied_for_action"
+msgstr "User with role '{role}' does not have permission to {action} {resource}"
+
+msgid "invalid_username_characters"
+msgstr "Username must contain only letters, numbers, underscores, or hyphens"
+
+msgid "username_security_violation"
+msgstr "Username contains potentially dangerous content and has been blocked for security reasons"
+
+msgid "username_invalid_format"
+msgstr "Username format is invalid"
+
+msgid "username_too_short"
+msgstr "Username must be at least 3 characters long"
+
+msgid "username_too_long"
+msgstr "Username must be no more than 30 characters long"
+
+msgid "username_reserved_for_system"
+msgstr "Username is reserved for system use"
+
+msgid "username_validation_system_error"
+msgstr "Username validation system is temporarily unavailable"
+
+msgid "invalid_username_or_password"
+msgstr "Invalid username or password"
+
+msgid "user_account_inactive"
+msgstr "User account is inactive"
+
+msgid "username_already_registered"
+msgstr "Username already registered"
+
+msgid "email_already_registered"
+msgstr "Email already registered"
+
+msgid "password_too_short"
+msgstr "Password must be at least {length} characters long"
+
+msgid "password_no_uppercase"
+msgstr "Password must contain at least one uppercase letter"
+
+msgid "password_no_lowercase"
+msgstr "Password must contain at least one lowercase letter"
+
+msgid "password_no_digit"
+msgstr "Password must contain at least one digit"
+
+msgid "token_expired"
+msgstr "Token has expired"
+
+msgid "invalid_oauth_user_info"
+msgstr "Invalid OAuth user info"
+
+msgid "invalid_credentials"
+msgstr "Invalid credentials"
+
+msgid "too_many_requests"
+msgstr "Too many requests"
+
+msgid "rate_limit_exceeded"
+msgstr "Rate limit exceeded"
+
+msgid "metrics_endpoint_debug_only"
+msgstr "Metrics endpoint is only available in debug mode"
+
+msgid "error_prefix"
+msgstr "Error: {message}"
+
+msgid "successful_response"
+msgstr "Successful Response"
+
+msgid "system_operational"
+msgstr "System is operational"
+
+msgid "invalid_id_token"
+msgstr "Invalid ID token"
+
+msgid "invalid_id_token_issuer"
+msgstr "Invalid ID token issuer"
+
+# Newly added keys (2025-06-23)
+
+msgid "password_no_special_char"
+msgstr "Password must contain at least one special character"
+
+msgid "invalid_refresh_token"
+msgstr "Invalid refresh token"
+
+msgid "session_revoked_or_invalid"
+msgstr "Session revoked or invalid"
+
+msgid "token_revoked_or_blacklisted"
+msgstr "Token revoked or blacklisted"
+
+msgid "user_is_invalid_or_inactive"
+msgstr "User is invalid or inactive"
+
+msgid "invalid_token"
+msgstr "Invalid token"
+
+msgid "session_already_revoked_or_invalid"
+msgstr "Session already revoked or invalid"
+
+msgid "logout_failed_internal_error"
+msgstr "Logout failed due to internal error"
+
+msgid "logout_successful"
+msgstr "Logged out successfully"
+
+# Change password functionality (2025-06-28)
+
+msgid "user_not_found"
+msgstr "User not found"
+
+msgid "invalid_old_password"
+msgstr "Invalid old password"
+
+msgid "new_password_must_be_different"
+msgstr "New password must be different from the old password"
+
+msgid "password_changed_successfully"
+msgstr "Password changed successfully"
+
+msgid "password_change_failed"
+msgstr "Password change failed due to an internal error"
+
+msgid "password_change_service_unavailable"
+msgstr "Password change service is temporarily unavailable"
+
+# Email functionality (2025-06-28)
+
+msgid "password_reset_email_subject"
+msgstr "Password Reset Request - Cedrina"
+
+msgid "password_reset_email_sent"
+msgstr "If the email address is registered, you will receive a password reset link shortly"
+
+msgid "password_reset_email_failed"
+msgstr "Failed to send password reset email"
+
+msgid "password_reset_token_invalid"
+msgstr "Password reset token is invalid or expired"
+
+msgid "password_reset_success"
+msgstr "Password has been reset successfully"
+
+msgid "password_reset_request_failed"
+msgstr "Password reset request failed"
+
+msgid "password_reset_failed"
+msgstr "Password reset failed"
+
+msgid "password_too_weak"
+msgstr "Password does not meet security requirements"
+
+# Session management security (2025-01-27)
+
+msgid "session_creation_timeout"
+msgstr "Session creation timed out due to consistency issues"
+
+msgid "session_creation_failed"
+msgstr "Session creation failed due to an internal error"
+
+msgid "session_limit_exceeded"
+msgstr "Maximum number of concurrent sessions exceeded"
+
+msgid "session_inactivity_timeout"
+msgstr "Session expired due to inactivity"
+
+msgid "session_consistency_error"
+msgstr "Session data consistency error detected"
+
+msgid "access_token_blacklisted"
+msgstr "Access token has been revoked"
+
+msgid "token_revoked_or_blacklisted"
+msgstr "Token has been revoked or blacklisted"
+
+msgid "user_is_invalid_or_inactive"
+msgstr "User account is invalid or inactive"
+
+msgid "invalid_token"
+msgstr "Invalid or expired token"
+
+msgid "session_revoked_or_invalid"
+msgstr "Session has been revoked or is invalid"
+
+msgid "invalid_refresh_token"
+msgstr "Invalid or expired refresh token"
+
+msgid "user_account_inactive"
+msgstr "User account is inactive"
+
+msgid "user_not_found"
+msgstr "User not found"
+
+msgid "invalid_old_password"
+msgstr "Invalid old password"
+
+msgid "new_password_must_be_different"
+msgstr "New password must be different from the old password"
+
+msgid "rate_limit_exceeded"
+msgstr "Rate limit exceeded"
+
+# Generic error messages for preventing information disclosure (2025-01-27)
+
+msgid "invalid_credentials_generic"
+msgstr "Invalid credentials provided"
+
+msgid "access_denied_generic"
+msgstr "Access denied"
+
+msgid "invalid_input_generic"
+msgstr "The provided input is not valid"
+
+msgid "service_temporarily_unavailable"
+msgstr "Service is temporarily unavailable"
+
+msgid "too_many_requests_generic"
+msgstr "Too many requests. Please try again later"
+
+msgid "resource_not_accessible"
+msgstr "The requested resource is not accessible"
+
+msgid "authentication_service_unavailable"
+msgstr "Authentication service is temporarily unavailable"
+
+msgid "oauth_authentication_system_error"
+msgstr "OAuth authentication is temporarily unavailable"
+
+msgid "invalid_oauth_token"
+msgstr "Invalid OAuth token provided"
+
+msgid "invalid_oauth_credentials"
+msgstr "Invalid OAuth credentials provided"
+
+msgid "oauth_service_unavailable"
+msgstr "OAuth service is temporarily unavailable"
+
+msgid "invalid_registration_data_format"
+msgstr "Registration data format is invalid"
+
+msgid "registration_service_unavailable"
+msgstr "Registration service is temporarily unavailable"
+
+# Enhanced security logging and error standardization (2025-01-27)
+
+msgid "password_reset_service_unavailable"
+msgstr "Password reset service is temporarily unavailable"
+
+msgid "logout_service_unavailable"
+msgstr "Logout service is temporarily unavailable"
+
+msgid "security_enhanced_logging_enabled"
+msgstr "Enhanced security logging is enabled"
+
+msgid "security_event_logged"
+msgstr "Security event has been logged"
+
+msgid "risk_assessment_completed"
+msgstr "Risk assessment completed"
+
+msgid "threat_detection_triggered"
+msgstr "Threat detection has been triggered"
+
+msgid "data_masking_applied"
+msgstr "Data masking has been applied"
+
+msgid "privacy_compliance_verified"
+msgstr "Privacy compliance has been verified"
+
+msgid "siem_integration_active"
+msgstr "SIEM integration is active"
+
+msgid "audit_trail_generated"
+msgstr "Audit trail has been generated"
+
+msgid "correlation_id_tracked"
+msgstr "Correlation ID is being tracked"
+
+msgid "timing_attack_prevention_active"
+msgstr "Timing attack prevention is active"
+
+msgid "enumeration_attack_prevention_active"
+msgstr "Enumeration attack prevention is active"
+
+msgid "zero_trust_data_handling_active"
+msgstr "Zero-trust data handling is active"
+
+msgid "security_context_captured"
+msgstr "Security context has been captured"
+
+msgid "enhanced_authentication_active"
+msgstr "Enhanced authentication is active"
+
+msgid "enhanced_registration_active"
+msgstr "Enhanced registration is active"
+
+msgid "enhanced_oauth_active"
+msgstr "Enhanced OAuth authentication is active"
+
+msgid "enhanced_password_change_active"
+msgstr "Enhanced password change is active"
+
+msgid "enhanced_password_reset_active"
+msgstr "Enhanced password reset is active"
+
+msgid "enhanced_logout_active"
+msgstr "Enhanced logout is active"
+
+# Enhanced Token Security (2025-06-30)
+
+msgid "token_cannot_be_empty"
+msgstr "Token cannot be empty"
+
+msgid "token_must_contain_uppercase"
+msgstr "Token must contain at least one uppercase letter"
+
+msgid "token_must_contain_lowercase"
+msgstr "Token must contain at least one lowercase letter"
+
+msgid "token_must_contain_digits"
+msgstr "Token must contain at least one digit"
+
+msgid "token_must_contain_special_chars"
+msgstr "Token must contain at least one special character"
+
+msgid "token_length_invalid"
+msgstr "Token must be between {min_length} and {max_length} characters"
+
+msgid "token_expiry_cannot_be_empty"
+msgstr "Token expiry timestamp cannot be empty"
+
+msgid "token_expiry_must_be_timezone_aware"
+msgstr "Token expiry timestamp must be timezone-aware"
+

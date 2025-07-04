@@ -107,7 +107,10 @@ msgid "session_already_revoked_or_invalid"
 msgstr "نشست قبلاً لغو شده یا نامعتبر است"
 
 msgid "logout_failed_internal_error"
-msgstr "خروج ناموفق به دلیل خطای داخلی"
+msgstr "خروج به دلیل خطای داخلی ناموفق بود"
+
+msgid "logout_successful"
+msgstr "خروج با موفقیت انجام شد"
 
 # Change password functionality (2025-06-28)
 
@@ -125,4 +128,115 @@ msgstr "رمز عبور با موفقیت تغییر کرد"
 
 msgid "password_change_failed"
 msgstr "تغییر رمز عبور به دلیل خطای داخلی ناموفق بود"
+
+msgid "password_change_service_unavailable"
+msgstr "سرویس تغییر رمز عبور موقتاً در دسترس نیست"
+
+# Email functionality (2025-06-28)
+
+msgid "password_reset_email_subject"
+msgstr "درخواست بازیابی رمز عبور - سدرینا"
+
+msgid "password_reset_email_sent"
+msgstr "اگر آدرس ایمیل ثبت شده باشد، لینک بازیابی رمز عبور به زودی دریافت خواهید کرد"
+
+msgid "password_reset_email_failed"
+msgstr "ارسال ایمیل بازیابی رمز عبور با شکست مواجه شد"
+
+msgid "password_reset_token_invalid"
+msgstr "توکن بازیابی رمز عبور نامعتبر یا منقضی شده است"
+
+msgid "password_reset_success"
+msgstr "رمز عبور با موفقیت بازیابی شد"
+
+# Enhanced security logging and error standardization (2025-01-27)
+
+msgid "password_reset_service_unavailable"
+msgstr "سرویس بازیابی رمز عبور موقتاً در دسترس نیست"
+
+msgid "logout_service_unavailable"
+msgstr "سرویس خروج موقتاً در دسترس نیست"
+
+msgid "security_enhanced_logging_enabled"
+msgstr "ثبت امنیتی پیشرفته فعال شده است"
+
+msgid "security_event_logged"
+msgstr "رویداد امنیتی ثبت شده است"
+
+msgid "risk_assessment_completed"
+msgstr "ارزیابی ریسک تکمیل شده است"
+
+msgid "threat_detection_triggered"
+msgstr "تشخیص تهدید فعال شده است"
+
+msgid "data_masking_applied"
+msgstr "پنهان‌سازی داده‌ها اعمال شده است"
+
+msgid "privacy_compliance_verified"
+msgstr "انطباق حریم خصوصی تأیید شده است"
+
+msgid "siem_integration_active"
+msgstr "ادغام SIEM فعال است"
+
+msgid "audit_trail_generated"
+msgstr "ردیابی حسابرسی ایجاد شده است"
+
+msgid "correlation_id_tracked"
+msgstr "شناسه همبستگی در حال ردیابی است"
+
+msgid "timing_attack_prevention_active"
+msgstr "جلوگیری از حمله زمان‌بندی فعال است"
+
+msgid "enumeration_attack_prevention_active"
+msgstr "جلوگیری از حمله شمارش فعال است"
+
+msgid "zero_trust_data_handling_active"
+msgstr "مدیریت داده‌ها با اعتماد صفر فعال است"
+
+msgid "security_context_captured"
+msgstr "زمینه امنیتی ثبت شده است"
+
+msgid "enhanced_authentication_active"
+msgstr "احراز هویت پیشرفته فعال است"
+
+msgid "enhanced_registration_active"
+msgstr "ثبت‌نام پیشرفته فعال است"
+
+msgid "enhanced_oauth_active"
+msgstr "احراز هویت OAuth پیشرفته فعال است"
+
+msgid "enhanced_password_change_active"
+msgstr "تغییر رمز عبور پیشرفته فعال است"
+
+msgid "enhanced_password_reset_active"
+msgstr "بازیابی رمز عبور پیشرفته فعال است"
+
+msgid "enhanced_logout_active"
+msgstr "خروج پیشرفته فعال است"
+
+# Enhanced Token Security (2025-06-30)
+
+msgid "token_cannot_be_empty"
+msgstr "توکن نمی‌تواند خالی باشد"
+
+msgid "token_must_contain_uppercase"
+msgstr "توکن باید حداقل یک حرف بزرگ داشته باشد"
+
+msgid "token_must_contain_lowercase"
+msgstr "توکن باید حداقل یک حرف کوچک داشته باشد"
+
+msgid "token_must_contain_digits"
+msgstr "توکن باید حداقل یک رقم داشته باشد"
+
+msgid "token_must_contain_special_chars"
+msgstr "توکن باید حداقل یک کاراکتر ویژه داشته باشد"
+
+msgid "token_length_invalid"
+msgstr "توکن باید بین {min_length} تا {max_length} کاراکتر باشد"
+
+msgid "token_expiry_cannot_be_empty"
+msgstr "زمان انقضای توکن نمی‌تواند خالی باشد"
+
+msgid "token_expiry_must_be_timezone_aware"
+msgstr "زمان انقضای توکن باید از منطقه زمانی آگاه باشد"
 

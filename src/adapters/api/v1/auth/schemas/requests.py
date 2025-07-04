@@ -58,3 +58,30 @@ class ChangePasswordRequest(BaseModel):
         examples=["NewPass456!"],
         description="New password that meets security policy requirements",
     )
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Payload expected by ``POST /auth/forgot-password``."""
+
+    email: EmailStr = Field(
+        ..., 
+        examples=["john@example.com"],
+        description="Email address to send password reset instructions to"
+    )
+
+
+class ResetPasswordRequest(BaseModel):
+    """Payload expected by ``POST /auth/reset-password``."""
+
+    token: str = Field(
+        ...,
+        examples=["a1b2c3d4e5f6..."],
+        description="Password reset token received via email",
+        min_length=64,
+        max_length=64
+    )
+    new_password: str = Field(
+        ...,
+        examples=["NewSecurePass123!"],
+        description="New password that meets security policy requirements"
+    )
