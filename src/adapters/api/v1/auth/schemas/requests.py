@@ -85,3 +85,7 @@ class ResetPasswordRequest(BaseModel):
         examples=["NewSecurePass123!"],
         description="New password that meets security policy requirements"
     )
+
+
+class ResendConfirmationRequest(BaseModel):
+    email: EmailStr

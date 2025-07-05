@@ -75,6 +75,11 @@ class IUserRepository(ABC):
             or does not correspond to any user.
         """
         raise NotImplementedError
+
+    @abstractmethod
+    async def get_by_confirmation_token(self, token: str) -> Optional[User]:
+        """Retrieve a user by email confirmation token."""
+        raise NotImplementedError
     
     @abstractmethod
     async def get_users_with_reset_tokens(self) -> List[User]:

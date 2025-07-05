@@ -291,3 +291,15 @@ msgstr "La fecha de expiración del token no puede estar vacía"
 msgid "token_expiry_must_be_timezone_aware"
 msgstr "La fecha de expiración del token debe incluir zona horaria"
 
+msgid "email_confirmation_subject"
+msgstr "Confirma tu cuenta de Cedrina"
+
+msgid "confirmation_email_sent"
+msgstr "Si el correo electrónico está registrado, se ha enviado un enlace de confirmación"
+
+msgid "email_confirmation_required"
+msgstr "Por favor confirma tu correo electrónico antes de iniciar sesión"
+
+msgid "email_confirmed_success"
+msgstr "Correo electrónico confirmado exitosamente"
+

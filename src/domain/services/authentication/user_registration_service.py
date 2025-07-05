@@ -8,6 +8,8 @@ from typing import Optional
 
 import structlog
 
+from src.core.config.settings import settings
+
 from src.core.exceptions import DuplicateUserError, PasswordPolicyError
 from src.domain.entities.user import Role, User
 from src.domain.events.authentication_events import UserRegisteredEvent
@@ -15,11 +17,16 @@ from src.domain.interfaces.repositories import IUserRepository
 from src.domain.interfaces import (
     IEventPublisher,
     IUserRegistrationService,
+    IEmailConfirmationTokenService,
+    IEmailConfirmationEmailService,
 )
 from src.domain.value_objects.email import Email
 from src.domain.value_objects.password import HashedPassword, Password
 from src.domain.value_objects.username import Username
 from src.utils.i18n import get_translated_message
+from src.domain.services.email_confirmation.email_confirmation_request_service import (
+    EmailConfirmationRequestService,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -47,6 +54,8 @@ class UserRegistrationService(IUserRegistrationService):
         self,
         user_repository: IUserRepository,
         event_publisher: IEventPublisher,
+        confirmation_token_service: IEmailConfirmationTokenService | None = None,
+        confirmation_email_service: IEmailConfirmationEmailService | None = None,
     ):
         """Initialize registration service with dependencies.
         
@@ -56,6 +65,8 @@ class UserRegistrationService(IUserRegistrationService):
         """
         self._user_repository = user_repository
         self._event_publisher = event_publisher
+        self._confirmation_token_service = confirmation_token_service
+        self._confirmation_email_service = confirmation_email_service
         
         logger.info("UserRegistrationService initialized")
     
@@ -130,11 +141,19 @@ class UserRegistrationService(IUserRegistrationService):
                 email=str(email),
                 hashed_password=str(hashed_password),
                 role=role,
-                is_active=True,
+                is_active=not settings.EMAIL_CONFIRMATION_ENABLED,
+                email_confirmed=not settings.EMAIL_CONFIRMATION_ENABLED,
             )
             
             # Save user to repository
             saved_user = await self._user_repository.save(user)
+
+            if settings.EMAIL_CONFIRMATION_ENABLED and self._confirmation_token_service and self._confirmation_email_service:
+                await EmailConfirmationRequestService(
+                    self._user_repository,
+                    self._confirmation_token_service,
+                    self._confirmation_email_service,
+                ).send_confirmation_email(saved_user, language)
             
             # Publish registration event
             await self._publish_registration_event(

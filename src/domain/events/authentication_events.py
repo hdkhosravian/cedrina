@@ -385,6 +385,27 @@ class PasswordChangedEvent(BaseDomainEvent):
         )
 
 
+@dataclass(frozen=True)
+class EmailConfirmedEvent(BaseDomainEvent):
+    """Event published when a user confirms their email."""
+
+    username: str
+
+    @classmethod
+    def create(
+        cls,
+        user_id: int,
+        username: str,
+        correlation_id: Optional[str] = None,
+    ) -> "EmailConfirmedEvent":
+        return cls(
+            occurred_at=datetime.now(timezone.utc),
+            user_id=user_id,
+            correlation_id=correlation_id,
+            username=username,
+        )
+
+
 class OAuthAuthenticationSuccessEvent(BaseDomainEvent):
     """Domain event for successful OAuth authentication.
     

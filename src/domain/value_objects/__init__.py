@@ -6,11 +6,13 @@ rather than their identity. They are essential building blocks in Domain-Driven 
 
 from .password import Password, HashedPassword
 from .reset_token import ResetToken
+from .confirmation_token import ConfirmationToken
 from .rate_limit import RateLimitWindow
 
 __all__ = [
     "Password",
     "HashedPassword", 
     "ResetToken",
+    "ConfirmationToken",
     "RateLimitWindow",
 ] 

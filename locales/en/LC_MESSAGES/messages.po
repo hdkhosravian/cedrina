@@ -327,3 +327,15 @@ msgstr "Token expiry timestamp cannot be empty"
 msgid "token_expiry_must_be_timezone_aware"
 msgstr "Token expiry timestamp must be timezone-aware"
 
+
+msgid "email_confirmation_subject"
+msgstr "Confirm your Cedrina account"
+
+msgid "confirmation_email_sent"
+msgstr "If the email is registered, a confirmation link has been sent"
+
+msgid "email_confirmation_required"
+msgstr "Please confirm your email before logging in"
+
+msgid "email_confirmed_success"
+msgstr "Email confirmed successfully"

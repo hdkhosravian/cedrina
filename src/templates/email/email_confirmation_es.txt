@@ -1,0 +1,14 @@
+CEDRINA - CONFIRMACIÓN DE CORREO
+
+Hola {{ user.username }},
+
+Gracias por registrarte. Confirma tu correo electrónico usando el siguiente enlace:
+
+{{ confirm_url }}
+
+Si no creaste una cuenta, puedes ignorar este correo.
+
+--
+Este es un mensaje automático de Cedrina. Por favor no respondas a este correo.
+
+© {{ "now"|format_datetime("%Y") }} Cedrina. Todos los derechos reservados.

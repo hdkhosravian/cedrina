@@ -84,6 +84,7 @@ def valid_user():
         email="test@example.com",
         hashed_password="$2b$12$hash",
         is_active=True,
+        email_confirmed=True,
         created_at=datetime.now(timezone.utc),
     )
     return user

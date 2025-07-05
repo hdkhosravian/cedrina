@@ -38,6 +38,9 @@ class AuthSettings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # Email confirmation feature flag
+    EMAIL_CONFIRMATION_ENABLED: bool = False
+
     # Session management security settings
     SESSION_INACTIVITY_TIMEOUT_MINUTES: int = 30  # Session expires after 30 minutes of inactivity
     MAX_CONCURRENT_SESSIONS_PER_USER: int = 5  # Maximum active sessions per user

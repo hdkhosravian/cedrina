@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تأكيد البريد الإلكتروني</title>
+</head>
+<body>
+    <p>مرحباً {{ user.username }},</p>
+    <p>شكراً لتسجيلك. يرجى تأكيد بريدك الإلكتروني بالنقر على الرابط أدناه:</p>
+    <p><a href="{{ confirm_url }}">تأكيد البريد الإلكتروني</a></p>
+    <p>إذا لم تقم بإنشاء حساب، فيمكنك تجاهل هذه الرسالة.</p>
+    <p>هذه رسالة آلية من سيدرينا، الرجاء عدم الرد.</p>
+    <p>&copy; {{ "now"|format_datetime("%Y") }} سيدرينا. جميع الحقوق محفوظة.</p>
+</body>
+</html>
