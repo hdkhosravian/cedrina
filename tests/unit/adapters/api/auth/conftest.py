@@ -103,3 +103,22 @@ async def mock_email_confirmation_service():
 
     if get_email_confirmation_service in app.dependency_overrides:
         del app.dependency_overrides[get_email_confirmation_service]
+
+
+@pytest_asyncio.fixture
+async def mock_email_confirmation_request_service():
+    """Provides a mocked email confirmation request service."""
+    from src.infrastructure.dependency_injection.auth_dependencies import (
+        get_email_confirmation_request_service,
+    )
+
+    mock_service = AsyncMock()
+
+    app.dependency_overrides[get_email_confirmation_request_service] = (
+        lambda: mock_service
+    )
+
+    yield mock_service
+
+    if get_email_confirmation_request_service in app.dependency_overrides:
+        del app.dependency_overrides[get_email_confirmation_request_service]

@@ -13,6 +13,8 @@ logger = structlog.get_logger(__name__)
 
 
 class EmailConfirmationEmailService(IEmailConfirmationEmailService):
+    """Render and deliver email confirmation messages."""
+
     def __init__(self) -> None:
         self._test_mode = getattr(settings, "EMAIL_TEST_MODE", True)
         template_dir = Path(settings.EMAIL_TEMPLATES_DIR)
@@ -21,6 +23,17 @@ class EmailConfirmationEmailService(IEmailConfirmationEmailService):
     async def send_confirmation_email(
         self, user: User, token: ConfirmationToken, language: str = "en"
     ) -> bool:
+        """Send a confirmation email to the user.
+
+        Args:
+            user: Recipient of the confirmation email.
+            token: Confirmation token to embed in the message.
+            language: Preferred language for the email template.
+
+        Returns:
+            ``True`` if the email was sent or queued successfully.
+        """
+
         base_url = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
         confirm_url = f"{base_url}/confirm-email?token={token.value}"
         subject = get_translated_message("email_confirmation_subject", language)

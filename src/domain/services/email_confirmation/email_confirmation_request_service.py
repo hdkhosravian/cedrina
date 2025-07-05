@@ -1,3 +1,5 @@
+"""Domain service for sending and resending email confirmation messages."""
+
 from typing import Optional
 
 import structlog
@@ -15,6 +17,7 @@ logger = structlog.get_logger(__name__)
 
 
 class EmailConfirmationRequestService:
+    """Coordinate generation and delivery of email confirmation tokens."""
     def __init__(
         self,
         user_repository: IUserRepository,
@@ -28,6 +31,16 @@ class EmailConfirmationRequestService:
     async def send_confirmation_email(
         self, user: User, language: str = "en"
     ) -> bool:
+        """Generate a confirmation token and send a confirmation email.
+
+        Args:
+            user: The user requiring confirmation.
+            language: Preferred language for email content.
+
+        Returns:
+            ``True`` if the email was queued successfully, ``False`` otherwise.
+        """
+
         token = await self._token_service.generate_token(user)
         await self._user_repository.save(user)
         try:
@@ -40,6 +53,8 @@ class EmailConfirmationRequestService:
     async def resend_confirmation_email(
         self, email: str, language: str = "en"
     ) -> None:
+        """Resend a confirmation email if the user is still inactive."""
+
         user = await self._user_repository.get_by_email(email)
         if user and not user.is_active:
             await self.send_confirmation_email(user, language)

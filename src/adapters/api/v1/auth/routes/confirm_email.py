@@ -1,3 +1,5 @@
+"""HTTP endpoint for confirming user email addresses."""
+
 from fastapi import APIRouter, Depends, Query, Request, status
 
 from src.infrastructure.dependency_injection.auth_dependencies import (
@@ -16,6 +18,8 @@ async def confirm_email(
     token: str = Query(...),
     service=Depends(CleanEmailConfirmationService),
 ):
+    """Validate the token and activate the user's account."""
+
     language = get_request_language(request)
     try:
         await service.confirm_email(token, language)

@@ -5,6 +5,7 @@ from src.domain.entities.user import User
 from src.domain.services.email_confirmation.email_confirmation_request_service import (
     EmailConfirmationRequestService,
 )
+from src.core.exceptions import EmailServiceError
 from src.domain.value_objects.confirmation_token import ConfirmationToken
 
 
@@ -58,3 +59,15 @@ async def test_resend_confirmation_email_active_user_no_email(service, user):
     service._user_repository.get_by_email.return_value = None
     await service.resend_confirmation_email("nobody@example.com", "en")
     service._email_service.send_confirmation_email.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_send_confirmation_email_failure_logged(service, user):
+    """Return False when the email service raises an error."""
+    service._token_service.generate_token.return_value = ConfirmationToken("abc")
+    service._user_repository.save.return_value = user
+    service._email_service.send_confirmation_email.side_effect = EmailServiceError("smtp")
+
+    result = await service.send_confirmation_email(user, "en")
+
+    assert result is False
