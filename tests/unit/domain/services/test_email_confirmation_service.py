@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 from src.core.exceptions import UserNotFoundError
 from src.domain.entities.user import User
@@ -59,7 +59,7 @@ async def test_confirm_email_token_mismatch():
     )
     repo = AsyncMock()
     repo.get_by_confirmation_token.return_value = user
-    token_service = AsyncMock()
+    token_service = Mock()
     token_service.validate_token.return_value = False
 
     service = EmailConfirmationService(repo, token_service)

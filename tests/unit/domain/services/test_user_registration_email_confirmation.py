@@ -28,7 +28,7 @@ async def test_register_user_email_confirmation_flow():
         user = await service.register_user(
             Username("john"),
             Email("john@example.com"),
-            Password("StrongPass123!"),
+            Password("My$tr0ngPwd!"),
             language="en",
         )
 
@@ -56,7 +56,7 @@ async def test_register_user_without_email_confirmation():
         user = await service.register_user(
             Username("jane"),
             Email("jane@example.com"),
-            Password("StrongPass123!"),
+            Password("My$tr0ngPwd!"),
             language="en",
         )
 

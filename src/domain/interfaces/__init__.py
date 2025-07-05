@@ -32,6 +32,10 @@ from .authentication import (
     IPasswordResetEmailService,
     IOAuthService,
 )
+from .authentication.email_confirmation import (
+    IEmailConfirmationTokenService,
+    IEmailConfirmationEmailService,
+)
 
 # Token management interfaces
 from .token_management import ITokenService, ISessionService
@@ -55,6 +59,8 @@ __all__ = [
     "IPasswordResetTokenService",
     "IPasswordResetEmailService",
     "IOAuthService",
+    "IEmailConfirmationTokenService",
+    "IEmailConfirmationEmailService",
     
     # Token management interfaces
     "ITokenService",
