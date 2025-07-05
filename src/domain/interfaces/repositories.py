@@ -77,6 +77,19 @@ class IUserRepository(ABC):
         raise NotImplementedError
     
     @abstractmethod
+    async def get_by_email_confirmation_token(self, token: str) -> Optional[User]:
+        """Retrieves a user by a valid email confirmation token.
+
+        Args:
+            token: The email confirmation token to search for.
+
+        Returns:
+            An optional `User` entity. Returns `None` if the token is invalid
+            or does not correspond to any user.
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
     async def get_users_with_reset_tokens(self) -> List[User]:
         """Retrieves all users who have an active password reset token.
 

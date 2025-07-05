@@ -327,3 +327,59 @@ msgstr "Token expiry timestamp cannot be empty"
 msgid "token_expiry_must_be_timezone_aware"
 msgstr "Token expiry timestamp must be timezone-aware"
 
+# Email Confirmation (2025-01-27)
+
+msgid "email_confirmation_enabled"
+msgstr "Email confirmation is enabled"
+
+msgid "email_confirmation_disabled"
+msgstr "Email confirmation is disabled"
+
+msgid "email_confirmation_subject"
+msgstr "Confirm your email address"
+
+msgid "email_confirmation_send_failed"
+msgstr "Failed to send email confirmation"
+
+msgid "email_confirmation_email_failed"
+msgstr "Failed to send confirmation email"
+
+msgid "email_confirmation_token_invalid"
+msgstr "Invalid or expired confirmation token"
+
+msgid "email_confirmation_token_cannot_be_empty"
+msgstr "Email confirmation token cannot be empty"
+
+msgid "email_confirmation_token_must_be_string"
+msgstr "Email confirmation token must be a string"
+
+msgid "email_confirmation_token_length_invalid"
+msgstr "Email confirmation token length is invalid"
+
+msgid "email_confirmation_token_format_invalid"
+msgstr "Email confirmation token format is invalid"
+
+msgid "email_confirmation_required"
+msgstr "Email confirmation required. Please check your email and click the confirmation link."
+
+msgid "email_confirmation_system_error"
+msgstr "Email confirmation system error"
+
+msgid "email_confirmation_resend_failed"
+msgstr "Failed to resend email confirmation"
+
+msgid "email_confirmation_resent"
+msgstr "Email confirmation has been resent"
+
+msgid "email_confirmation_completed"
+msgstr "Email confirmed successfully"
+
+msgid "email_confirmation_already_confirmed"
+msgstr "Email is already confirmed"
+
+msgid "email_confirmation_user_not_found"
+msgstr "User not found for email confirmation"
+
+msgid "email_confirmation_rate_limit_exceeded"
+msgstr "Too many email confirmation requests. Please try again later."
+

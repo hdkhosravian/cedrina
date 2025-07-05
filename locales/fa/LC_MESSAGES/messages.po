@@ -209,7 +209,7 @@ msgid "enhanced_password_change_active"
 msgstr "تغییر رمز عبور پیشرفته فعال است"
 
 msgid "enhanced_password_reset_active"
-msgstr "بازیابی رمز عبور پیشرفته فعال است"
+msgstr "بازنشانی رمز عبور پیشرفته فعال است"
 
 msgid "enhanced_logout_active"
 msgstr "خروج پیشرفته فعال است"
@@ -239,4 +239,60 @@ msgstr "زمان انقضای توکن نمی‌تواند خالی باشد"
 
 msgid "token_expiry_must_be_timezone_aware"
 msgstr "زمان انقضای توکن باید از منطقه زمانی آگاه باشد"
+
+# Email Confirmation (2025-01-27)
+
+msgid "email_confirmation_enabled"
+msgstr "تأیید ایمیل فعال است"
+
+msgid "email_confirmation_disabled"
+msgstr "تأیید ایمیل غیرفعال است"
+
+msgid "email_confirmation_subject"
+msgstr "آدرس ایمیل خود را تأیید کنید"
+
+msgid "email_confirmation_send_failed"
+msgstr "ارسال تأیید ایمیل ناموفق بود"
+
+msgid "email_confirmation_email_failed"
+msgstr "ارسال ایمیل تأیید ناموفق بود"
+
+msgid "email_confirmation_token_invalid"
+msgstr "توکن تأیید نامعتبر یا منقضی شده است"
+
+msgid "email_confirmation_token_cannot_be_empty"
+msgstr "توکن تأیید ایمیل نمی‌تواند خالی باشد"
+
+msgid "email_confirmation_token_must_be_string"
+msgstr "توکن تأیید ایمیل باید رشته باشد"
+
+msgid "email_confirmation_token_length_invalid"
+msgstr "طول توکن تأیید ایمیل نامعتبر است"
+
+msgid "email_confirmation_token_format_invalid"
+msgstr "فرمت توکن تأیید ایمیل نامعتبر است"
+
+msgid "email_confirmation_required"
+msgstr "تأیید ایمیل الزامی است. لطفاً ایمیل خود را بررسی کرده و روی لینک تأیید کلیک کنید."
+
+msgid "email_confirmation_system_error"
+msgstr "خطای سیستم تأیید ایمیل"
+
+msgid "email_confirmation_resend_failed"
+msgstr "ارسال مجدد تأیید ایمیل ناموفق بود"
+
+msgid "email_confirmation_resent"
+msgstr "تأیید ایمیل مجدداً ارسال شد"
+
+msgid "email_confirmation_completed"
+msgstr "ایمیل با موفقیت تأیید شد"
+
+msgid "email_confirmation_already_confirmed"
+msgstr "ایمیل قبلاً تأیید شده است"
+
+msgid "email_confirmation_user_not_found"
+msgstr "کاربر برای تأیید ایمیل یافت نشد"
+
+msgid "email_confirmation_rate_limit_exceeded"
+msgstr "درخواست‌های زیادی برای تأیید ایمیل. لطفاً بعداً دوباره تلاش کنید."
 

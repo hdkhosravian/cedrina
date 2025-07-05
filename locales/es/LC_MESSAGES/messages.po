@@ -291,3 +291,59 @@ msgstr "La fecha de expiración del token no puede estar vacía"
 msgid "token_expiry_must_be_timezone_aware"
 msgstr "La fecha de expiración del token debe incluir zona horaria"
 
+# Email Confirmation (2025-01-27)
+
+msgid "email_confirmation_enabled"
+msgstr "La confirmación de email está habilitada"
+
+msgid "email_confirmation_disabled"
+msgstr "La confirmación de email está deshabilitada"
+
+msgid "email_confirmation_subject"
+msgstr "Confirma tu dirección de email"
+
+msgid "email_confirmation_send_failed"
+msgstr "Error al enviar la confirmación de email"
+
+msgid "email_confirmation_email_failed"
+msgstr "Error al enviar el email de confirmación"
+
+msgid "email_confirmation_token_invalid"
+msgstr "Token de confirmación inválido o expirado"
+
+msgid "email_confirmation_token_cannot_be_empty"
+msgstr "El token de confirmación de email no puede estar vacío"
+
+msgid "email_confirmation_token_must_be_string"
+msgstr "El token de confirmación de email debe ser una cadena"
+
+msgid "email_confirmation_token_length_invalid"
+msgstr "La longitud del token de confirmación de email es inválida"
+
+msgid "email_confirmation_token_format_invalid"
+msgstr "El formato del token de confirmación de email es inválido"
+
+msgid "email_confirmation_required"
+msgstr "Confirmación de email requerida. Por favor revisa tu email y haz clic en el enlace de confirmación."
+
+msgid "email_confirmation_system_error"
+msgstr "Error del sistema de confirmación de email"
+
+msgid "email_confirmation_resend_failed"
+msgstr "Error al reenviar la confirmación de email"
+
+msgid "email_confirmation_resent"
+msgstr "La confirmación de email ha sido reenviada"
+
+msgid "email_confirmation_completed"
+msgstr "Email confirmado exitosamente"
+
+msgid "email_confirmation_already_confirmed"
+msgstr "El email ya está confirmado"
+
+msgid "email_confirmation_user_not_found"
+msgstr "Usuario no encontrado para la confirmación de email"
+
+msgid "email_confirmation_rate_limit_exceeded"
+msgstr "Demasiadas solicitudes de confirmación de email. Por favor intenta de nuevo más tarde."
+

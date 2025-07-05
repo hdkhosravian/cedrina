@@ -42,6 +42,7 @@ __all__: Final = [
     "SessionLimitExceededError",
     "EncryptionError",
     "DecryptionError",
+    "EmailConfirmationError",
 ]
 
 
@@ -272,18 +273,17 @@ class TemplateRenderError(EmailServiceError):
         super().__init__(message, code)
 
 
-class PasswordResetError(CedrinaError):
-    """Raised for general failures during the password reset process.
-
-    This serves as a base class for more specific password reset errors and
-    typically maps to a `400 Bad Request`.
-    """
-
-    def __init__(self, message: str, code: str = "password_reset_error"):
-        super().__init__(message, code)
+class PasswordResetError(AuthenticationError):
+    """Raised when password reset operations fail."""
+    pass
 
 
-class ForgotPasswordError(PasswordResetError):
+class EmailConfirmationError(AuthenticationError):
+    """Raised when email confirmation operations fail."""
+    pass
+
+
+class ForgotPasswordError(AuthenticationError):
     """Raised for failures during the "forgot password" request phase.
 
     This might occur if the user's email does not exist or if there are issues

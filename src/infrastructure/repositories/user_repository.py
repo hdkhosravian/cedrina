@@ -266,10 +266,10 @@ class UserRepository(IUserRepository):
             raise
     
     async def get_by_reset_token(self, token: str) -> Optional[User]:
-        """Get user by password reset token for password reset operations.
+        """Get user by password reset token with proper validation.
         
         This method retrieves a user entity by their password reset token,
-        supporting the password reset domain workflow.
+        implementing proper validation and secure logging.
         
         Args:
             token: Password reset token to search for
@@ -277,26 +277,35 @@ class UserRepository(IUserRepository):
         Returns:
             User entity if found, None otherwise
             
+        Raises:
+            ValueError: If token is invalid (empty or whitespace-only)
+            
         Security Features:
-        - Secure logging without exposing token values
-        - Proper error handling for token-based queries
+        - Input validation prevents invalid queries
+        - Secure logging with token masking
+        - Proper error handling without information leakage
         """
+        # Validate input following fail-fast principle
         if not token or not token.strip():
             logger.warning(
                 "Invalid reset token provided",
                 token_provided=bool(token),
                 error_type="validation_error"
             )
-            raise ValueError("Reset token cannot be empty")
+            raise ValueError("Reset token cannot be empty or whitespace-only")
+        
+        token_value = token.strip()
         
         try:
-            statement = select(User).where(User.reset_token == token.strip())
+            # Execute database query for reset token
+            statement = select(User).where(User.password_reset_token == token_value)
             result = await self.db_session.execute(statement)
             user = result.scalars().first()
             
+            # Log operation with secure data masking
             logger.debug(
                 "User lookup by reset token completed",
-                token_length=len(token),
+                token_prefix=token_value[:8] if len(token_value) >= 8 else "short",
                 found=user is not None,
                 operation="get_by_reset_token"
             )
@@ -304,12 +313,71 @@ class UserRepository(IUserRepository):
             return user
             
         except Exception as e:
+            # Log error with secure data masking
             logger.error(
                 "Error retrieving user by reset token",
-                token_length=len(token),
+                token_prefix=token_value[:8] if len(token_value) >= 8 else "short",
                 error=str(e),
                 error_type=type(e).__name__,
                 operation="get_by_reset_token"
+            )
+            raise
+    
+    async def get_by_email_confirmation_token(self, token: str) -> Optional[User]:
+        """Get user by email confirmation token with proper validation.
+        
+        This method retrieves a user entity by their email confirmation token,
+        implementing proper validation and secure logging.
+        
+        Args:
+            token: Email confirmation token to search for
+            
+        Returns:
+            User entity if found, None otherwise
+            
+        Raises:
+            ValueError: If token is invalid (empty or whitespace-only)
+            
+        Security Features:
+        - Input validation prevents invalid queries
+        - Secure logging with token masking
+        - Proper error handling without information leakage
+        """
+        # Validate input following fail-fast principle
+        if not token or not token.strip():
+            logger.warning(
+                "Invalid email confirmation token provided",
+                token_provided=bool(token),
+                error_type="validation_error"
+            )
+            raise ValueError("Email confirmation token cannot be empty or whitespace-only")
+        
+        token_value = token.strip()
+        
+        try:
+            # Execute database query for email confirmation token
+            statement = select(User).where(User.email_confirmation_token == token_value)
+            result = await self.db_session.execute(statement)
+            user = result.scalars().first()
+            
+            # Log operation with secure data masking
+            logger.debug(
+                "User lookup by email confirmation token completed",
+                token_prefix=token_value[:8] if len(token_value) >= 8 else "short",
+                found=user is not None,
+                operation="get_by_email_confirmation_token"
+            )
+            
+            return user
+            
+        except Exception as e:
+            # Log error with secure data masking
+            logger.error(
+                "Error retrieving user by email confirmation token",
+                token_prefix=token_value[:8] if len(token_value) >= 8 else "short",
+                error=str(e),
+                error_type=type(e).__name__,
+                operation="get_by_email_confirmation_token"
             )
             raise
     

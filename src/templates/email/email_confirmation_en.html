@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Confirmation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .confirm-button {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: #28a745;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .confirm-button:hover {
+            background-color: #218838;
+        }
+        .security-notice {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+        .welcome-message {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">Cedrina</div>
+            <h1>Email Confirmation</h1>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">
+                Hello {{ user_name }},
+            </div>
+            
+            <div class="welcome-message">
+                <strong>Welcome to Cedrina!</strong>
+                <p>We're excited to have you on board. To complete your registration, please confirm your email address.</p>
+            </div>
+            
+            <p>Click the button below to confirm your email address:</p>
+            
+            <div style="text-align: center;">
+                <a href="{{ confirmation_url }}" class="confirm-button">Confirm Email Address</a>
+            </div>
+            
+            <div class="security-notice">
+                <strong>Security Notice:</strong>
+                <ul>
+                    <li>This confirmation link does not expire.</li>
+                    <li>If you didn't create this account, please ignore this email.</li>
+                    <li>Never share this link with anyone.</li>
+                    <li>For security, this link can only be used once.</li>
+                </ul>
+            </div>
+            
+            <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; color: #28a745;">{{ confirmation_url }}</p>
+            
+            <p>Once you confirm your email, your account will be activated and you'll be able to log in.</p>
+            
+            <p>If you didn't create this account, you can safely ignore this email.</p>
+        </div>
+        
+        <div class="footer">
+            <p>This is an automated message from Cedrina. Please do not reply to this email.</p>
+            <p>© {{ created_at|format_datetime("%Y") }} Cedrina. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html> 

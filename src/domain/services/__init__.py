@@ -11,6 +11,7 @@ Authentication Domain Services:
 - Password Management: Password change and reset operations
 - OAuth Integration: Third-party authentication providers
 - Token Management: JWT token lifecycle management
+- Email Confirmation: Email confirmation workflow management
 
 Security Domain Services:
 - Password Policy: Business rules for password strength and validation
@@ -19,6 +20,7 @@ Security Domain Services:
 Email and Reset Services:
 - Email Service: Template rendering and email delivery
 - Password Reset: Request and completion workflows
+- Email Confirmation: Request and completion workflows
 """
 
 # Authentication Services (DDD-compliant implementations)
@@ -36,6 +38,9 @@ from .security.policy import PolicyService
 # Password Reset Services
 from .password_reset.password_reset_request_service import PasswordResetRequestService
 from .password_reset.password_reset_service import PasswordResetService
+
+# Email Confirmation Services
+from .email_confirmation.email_confirmation_service import EmailConfirmationService
 
 # Email Services
 from .email.email_service import EmailService
@@ -56,6 +61,9 @@ __all__ = [
     # Password Reset Services
     "PasswordResetRequestService",
     "PasswordResetService",
+    
+    # Email Confirmation Services
+    "EmailConfirmationService",
     
     # Email Services
     "EmailService",

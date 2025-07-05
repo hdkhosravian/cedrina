@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تأكيد البريد الإلكتروني</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+            direction: rtl;
+            text-align: right;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .confirm-button {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: #28a745;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .confirm-button:hover {
+            background-color: #218838;
+        }
+        .security-notice {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+        .welcome-message {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        ul {
+            padding-right: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">سيدرينا</div>
+            <h1>تأكيد البريد الإلكتروني</h1>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">
+                مرحباً {{ user_name }}،
+            </div>
+            
+            <div class="welcome-message">
+                <strong>مرحباً بك في سيدرينا!</strong>
+                <p>نحن متحمسون لوجودك معنا. لإكمال تسجيلك، يرجى تأكيد عنوان بريدك الإلكتروني.</p>
+            </div>
+            
+            <p>انقر على الزر أدناه لتأكيد عنوان بريدك الإلكتروني:</p>
+            
+            <div style="text-align: center;">
+                <a href="{{ confirmation_url }}" class="confirm-button">تأكيد البريد الإلكتروني</a>
+            </div>
+            
+            <div class="security-notice">
+                <strong>تنبيه أمني:</strong>
+                <ul>
+                    <li>رابط التأكيد هذا لا ينتهي صلاحيته.</li>
+                    <li>إذا لم تنشئ هذا الحساب، يرجى تجاهل هذا البريد الإلكتروني.</li>
+                    <li>لا تشارك هذا الرابط مع أي شخص أبداً.</li>
+                    <li>للأمان، يمكن استخدام هذا الرابط مرة واحدة فقط.</li>
+                </ul>
+            </div>
+            
+            <p>إذا لم يعمل الزر، يمكنك نسخ ولصق هذا الرابط في متصفحك:</p>
+            <p style="word-break: break-all; color: #28a745;">{{ confirmation_url }}</p>
+            
+            <p>بمجرد تأكيد بريدك الإلكتروني، سيتم تفعيل حسابك وستتمكن من تسجيل الدخول.</p>
+            
+            <p>إذا لم تنشئ هذا الحساب، يمكنك تجاهل هذا البريد الإلكتروني بأمان.</p>
+        </div>
+        
+        <div class="footer">
+            <p>هذه رسالة تلقائية من سيدرينا. يرجى عدم الرد على هذا البريد الإلكتروني.</p>
+            <p>© {{ created_at|format_datetime("%Y") }} سيدرينا. جميع الحقوق محفوظة.</p>
+        </div>
+    </div>
+</body>
+</html> 

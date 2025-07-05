@@ -9,4 +9,5 @@ __all__ = [
     "logout",
     "forgot_password",
     "reset_password",
+    "confirm_email",
 ]

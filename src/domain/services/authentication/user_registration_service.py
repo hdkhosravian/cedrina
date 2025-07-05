@@ -8,6 +8,7 @@ from typing import Optional
 
 import structlog
 
+from src.core.config.settings import settings
 from src.core.exceptions import DuplicateUserError, PasswordPolicyError
 from src.domain.entities.user import Role, User
 from src.domain.events.authentication_events import UserRegisteredEvent
@@ -15,6 +16,7 @@ from src.domain.interfaces.repositories import IUserRepository
 from src.domain.interfaces import (
     IEventPublisher,
     IUserRegistrationService,
+    IEmailConfirmationService,
 )
 from src.domain.value_objects.email import Email
 from src.domain.value_objects.password import HashedPassword, Password
@@ -33,6 +35,7 @@ class UserRegistrationService(IUserRegistrationService):
     Responsibilities:
     - Register new users with validation
     - Check username and email availability
+    - Handle email confirmation based on settings
     - Publish registration events
     - Enforce business rules for registration
     
@@ -41,21 +44,25 @@ class UserRegistrationService(IUserRegistrationService):
     - Username and email validation
     - Duplicate prevention
     - Registration event logging
+    - Email confirmation integration
     """
     
     def __init__(
         self,
         user_repository: IUserRepository,
         event_publisher: IEventPublisher,
+        email_confirmation_service: Optional[IEmailConfirmationService] = None,
     ):
         """Initialize registration service with dependencies.
         
         Args:
             user_repository: Repository for user data access
             event_publisher: Publisher for domain events
+            email_confirmation_service: Optional service for email confirmation
         """
         self._user_repository = user_repository
         self._event_publisher = event_publisher
+        self._email_confirmation_service = email_confirmation_service
         
         logger.info("UserRegistrationService initialized")
     
@@ -124,17 +131,45 @@ class UserRegistrationService(IUserRegistrationService):
             # Create hashed password
             hashed_password = password.to_hashed()
             
+            # Determine user activation status based on email confirmation setting
+            is_active = not getattr(settings, 'EMAIL_CONFIRMATION_ENABLED', False)
+            email_confirmed = not getattr(settings, 'EMAIL_CONFIRMATION_ENABLED', False)
+            
             # Create user entity
             user = User(
                 username=str(username),
                 email=str(email),
                 hashed_password=str(hashed_password),
                 role=role,
-                is_active=True,
+                is_active=is_active,
+                email_confirmed=email_confirmed,
             )
             
             # Save user to repository
             saved_user = await self._user_repository.save(user)
+            
+            # Send confirmation email if enabled
+            if getattr(settings, 'EMAIL_CONFIRMATION_ENABLED', False) and self._email_confirmation_service:
+                try:
+                    await self._email_confirmation_service.send_confirmation_email(
+                        saved_user, language
+                    )
+                    logger.info(
+                        "Email confirmation sent for new user",
+                        user_id=saved_user.id,
+                        email=email.mask_for_logging(),
+                        language=language
+                    )
+                except Exception as e:
+                    logger.error(
+                        "Failed to send email confirmation for new user",
+                        user_id=saved_user.id,
+                        email=email.mask_for_logging(),
+                        error=str(e),
+                        language=language
+                    )
+                    # Don't fail registration if email confirmation fails
+                    # User can request resend later
             
             # Publish registration event
             await self._publish_registration_event(
@@ -149,6 +184,8 @@ class UserRegistrationService(IUserRegistrationService):
                 user_id=saved_user.id,
                 username=username.mask_for_logging(),
                 email=email.mask_for_logging(),
+                is_active=is_active,
+                email_confirmed=email_confirmed,
                 correlation_id=correlation_id,
             )
             

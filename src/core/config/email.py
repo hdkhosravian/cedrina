@@ -33,6 +33,8 @@ class EmailSettings(BaseSettings):
         PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: Token expiration time
         PASSWORD_RESET_URL_BASE: Base URL for password reset links
         EMAIL_RATE_LIMIT_PER_HOUR: Rate limit for email sending per hour
+        EMAIL_CONFIRMATION_ENABLED: Enable email confirmation requirement for new user registrations
+        EMAIL_CONFIRMATION_URL_BASE: Base URL for email confirmation links in frontend
     """
     
     model_config = SettingsConfigDict(
@@ -78,6 +80,16 @@ class EmailSettings(BaseSettings):
         description="Default sender name"
     )
     
+    # Email Confirmation Configuration
+    EMAIL_CONFIRMATION_ENABLED: bool = Field(
+        default=False,
+        description="Enable email confirmation requirement for new user registrations"
+    )
+    EMAIL_CONFIRMATION_URL_BASE: str = Field(
+        default="http://localhost:3000/confirm-email",
+        description="Base URL for email confirmation links in frontend"
+    )
+    
     # Template Configuration
     EMAIL_TEMPLATES_DIR: str = Field(
         default="src/templates/email",
@@ -116,13 +128,20 @@ class EmailSettings(BaseSettings):
         Raises:
             ValueError: If SMTP configuration is invalid or insecure
         """
-        # Skip validation in test mode
+        import os
+        
+        # Skip validation in test mode or non-production environments
         if self.EMAIL_TEST_MODE:
+            return
+        
+        # Only require SMTP credentials in production and staging
+        env = os.getenv("APP_ENV", "development")
+        if env not in ("production", "staging"):
             return
             
         if not self.SMTP_USERNAME or not self.SMTP_PASSWORD:
             raise ValueError(
-                "SMTP_USERNAME and SMTP_PASSWORD are required in production"
+                f"SMTP_USERNAME and SMTP_PASSWORD are required in {env} environment"
             )
         
         if not (self.SMTP_USE_TLS or self.SMTP_USE_SSL):

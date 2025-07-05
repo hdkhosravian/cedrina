@@ -19,6 +19,8 @@ Authentication Domain Services:
 - Password Change: Secure password modification with validation
 - Password Reset: Password reset workflows and token management
 - OAuth Integration: Third-party authentication providers
+- Token Management: JWT token lifecycle management
+- Email Confirmation: Email confirmation workflow management
 """
 
 # Core authentication interfaces
@@ -36,6 +38,16 @@ from .password_reset import (
 # OAuth interfaces
 from .oauth import IOAuthService
 
+# Token management interfaces
+from .token_management import ITokenService
+
+# Email confirmation interfaces
+from .email_confirmation import (
+    IEmailConfirmationService,
+    IEmailConfirmationTokenService,
+    IEmailConfirmationEmailService,
+)
+
 __all__ = [
     # Core authentication interfaces
     "IUserAuthenticationService",
@@ -49,4 +61,12 @@ __all__ = [
     
     # OAuth interfaces
     "IOAuthService",
+    
+    # Token management interfaces
+    "ITokenService",
+    
+    # Email confirmation interfaces
+    "IEmailConfirmationService",
+    "IEmailConfirmationTokenService",
+    "IEmailConfirmationEmailService",
 ] 

@@ -61,7 +61,7 @@ class SecureUsername:
     """
     
     value: str
-    _validation_result: ValidationResult
+    _validation_result: Optional[ValidationResult] = None
     
     # Business rule constants
     MIN_LENGTH: ClassVar[int] = 3

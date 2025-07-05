@@ -240,3 +240,59 @@ msgstr "لا يمكن أن تكون فترة انتهاء صلاحية الرم�
 msgid "token_expiry_must_be_timezone_aware"
 msgstr "يجب أن تكون فترة انتهاء صلاحية الرمز المميز مدركة للمنطقة الزمنية"
 
+# Email Confirmation (2025-01-27)
+
+msgid "email_confirmation_enabled"
+msgstr "تأكيد البريد الإلكتروني مفعل"
+
+msgid "email_confirmation_disabled"
+msgstr "تأكيد البريد الإلكتروني معطل"
+
+msgid "email_confirmation_subject"
+msgstr "أكد عنوان بريدك الإلكتروني"
+
+msgid "email_confirmation_send_failed"
+msgstr "فشل في إرسال تأكيد البريد الإلكتروني"
+
+msgid "email_confirmation_email_failed"
+msgstr "فشل في إرسال بريد التأكيد"
+
+msgid "email_confirmation_token_invalid"
+msgstr "رمز التأكيد غير صالح أو منتهي الصلاحية"
+
+msgid "email_confirmation_token_cannot_be_empty"
+msgstr "رمز تأكيد البريد الإلكتروني لا يمكن أن يكون فارغًا"
+
+msgid "email_confirmation_token_must_be_string"
+msgstr "رمز تأكيد البريد الإلكتروني يجب أن يكون نصًا"
+
+msgid "email_confirmation_token_length_invalid"
+msgstr "طول رمز تأكيد البريد الإلكتروني غير صالح"
+
+msgid "email_confirmation_token_format_invalid"
+msgstr "تنسيق رمز تأكيد البريد الإلكتروني غير صالح"
+
+msgid "email_confirmation_required"
+msgstr "تأكيد البريد الإلكتروني مطلوب. يرجى التحقق من بريدك الإلكتروني والنقر على رابط التأكيد."
+
+msgid "email_confirmation_system_error"
+msgstr "خطأ في نظام تأكيد البريد الإلكتروني"
+
+msgid "email_confirmation_resend_failed"
+msgstr "فشل في إعادة إرسال تأكيد البريد الإلكتروني"
+
+msgid "email_confirmation_resent"
+msgstr "تم إعادة إرسال تأكيد البريد الإلكتروني"
+
+msgid "email_confirmation_completed"
+msgstr "تم تأكيد البريد الإلكتروني بنجاح"
+
+msgid "email_confirmation_already_confirmed"
+msgstr "البريد الإلكتروني مؤكد بالفعل"
+
+msgid "email_confirmation_user_not_found"
+msgstr "لم يتم العثور على المستخدم لتأكيد البريد الإلكتروني"
+
+msgid "email_confirmation_rate_limit_exceeded"
+msgstr "طلبات كثيرة لتأكيد البريد الإلكتروني. يرجى المحاولة مرة أخرى لاحقًا."
+

@@ -18,7 +18,7 @@ The dependency injection follows clean architecture by:
 5. Maintaining separation between infrastructure and domain layers
 """
 
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import Depends
 from redis.asyncio import Redis
@@ -36,6 +36,9 @@ from src.domain.interfaces import (
     IUserAuthenticationService,
     IUserLogoutService,
     IUserRegistrationService,
+    IEmailConfirmationTokenService,
+    IEmailConfirmationEmailService,
+    IEmailConfirmationService,
 )
 from src.infrastructure.services.authentication.token import TokenService as LegacyTokenService
 from src.domain.services.authentication.oauth_service import OAuthAuthenticationService
@@ -71,6 +74,13 @@ from src.infrastructure.services.password_reset_token_service import (
     PasswordResetTokenService,
 )
 from src.infrastructure.services.token_service_adapter import TokenServiceAdapter
+from src.domain.services.email_confirmation.email_confirmation_service import EmailConfirmationService
+from src.infrastructure.services.authentication.oauth import OAuthService
+from src.infrastructure.services.authentication.password_encryption import PasswordEncryptionService
+from src.infrastructure.services.authentication.token import TokenService
+from src.infrastructure.services.email_confirmation_email_service import EmailConfirmationEmailService
+from src.infrastructure.services.email_confirmation_token_service import EmailConfirmationTokenService
+from src.infrastructure.services.event_publisher import InMemoryEventPublisher
 
 # ---------------------------------------------------------------------------
 # Type aliases for dependency injection
@@ -191,9 +201,112 @@ def get_user_authentication_service(
     )
 
 
+def get_email_confirmation_rate_limiting_service() -> IRateLimitingService:
+    """Factory that returns rate limiting service for email confirmation.
+    
+    This factory creates the rate limiting service to prevent abuse
+    of email confirmation functionality.
+    
+    Returns:
+        IRateLimitingService: Rate limiting service for email confirmation
+        
+    Note:
+        The rate limiting service prevents brute force attacks on
+        email confirmation functionality with configurable limits.
+    """
+    return RateLimitingService()
+
+
+def get_email_confirmation_token_service(
+    rate_limiting_service: IRateLimitingService = Depends(get_email_confirmation_rate_limiting_service),
+) -> IEmailConfirmationTokenService:
+    """Factory that returns email confirmation token service.
+    
+    This factory creates the infrastructure service for email confirmation
+    token operations with rate limiting.
+    
+    Args:
+        rate_limiting_service: Rate limiting service dependency
+        
+    Returns:
+        IEmailConfirmationTokenService: Service for email confirmation token management
+        
+    Note:
+        This service handles token generation, validation, and lifecycle
+        management for email confirmation workflows.
+    """
+    return EmailConfirmationTokenService(
+        rate_limiting_service=rate_limiting_service,
+    )
+
+
+def get_email_confirmation_email_service() -> IEmailConfirmationEmailService:
+    """Factory that returns email confirmation email service.
+    
+    This factory creates the infrastructure service for email confirmation
+    email operations.
+    
+    Returns:
+        IEmailConfirmationEmailService: Service for email confirmation email sending
+        
+    Note:
+        This service handles email template rendering and delivery
+        for email confirmation workflows.
+    """
+    return EmailConfirmationEmailService(test_mode=getattr(settings, 'EMAIL_TEST_MODE', False))
+
+
+def get_unified_email_service():
+    """Factory that returns unified email service.
+    
+    This factory creates the unified email service for general email operations.
+    
+    Returns:
+        UnifiedEmailService: Service for general email operations
+        
+    Note:
+        This service handles general email sending operations.
+    """
+    from src.infrastructure.services.email.unified_email_service import UnifiedEmailService
+    return UnifiedEmailService(test_mode=getattr(settings, 'EMAIL_TEST_MODE', False))
+
+
+def get_email_confirmation_service(
+    user_repository: IUserRepository = Depends(get_user_repository),
+    token_service: IEmailConfirmationTokenService = Depends(get_email_confirmation_token_service),
+    email_service: IEmailConfirmationEmailService = Depends(get_email_confirmation_email_service),
+    event_publisher: IEventPublisher = Depends(get_event_publisher),
+) -> IEmailConfirmationService:
+    """Factory that returns email confirmation service.
+    
+    This factory creates the domain service for email confirmation
+    workflow management.
+    
+    Args:
+        user_repository: User repository dependency for data access
+        token_service: Token service for generation and validation
+        email_service: Email service for sending confirmation emails
+        event_publisher: Event publisher dependency for domain events
+        
+    Returns:
+        IEmailConfirmationService: Service for email confirmation workflow
+        
+    Note:
+        This service orchestrates the complete email confirmation workflow
+        including token generation, email sending, and confirmation validation.
+    """
+    return EmailConfirmationService(
+        user_repository=user_repository,
+        token_service=token_service,
+        email_service=email_service,
+        event_publisher=event_publisher,
+    )
+
+
 def get_user_registration_service(
     user_repository: IUserRepository = Depends(get_user_repository),
     event_publisher: IEventPublisher = Depends(get_event_publisher),
+    email_confirmation_service: Optional[IEmailConfirmationService] = Depends(get_email_confirmation_service),
 ) -> IUserRegistrationService:
     """Factory that returns clean user registration service.
     
@@ -203,6 +316,7 @@ def get_user_registration_service(
     Args:
         user_repository: User repository dependency for data access
         event_publisher: Event publisher dependency for domain events
+        email_confirmation_service: Optional email confirmation service dependency
         
     Returns:
         IUserRegistrationService: Clean registration service
@@ -215,6 +329,7 @@ def get_user_registration_service(
     return UserRegistrationService(
         user_repository=user_repository,
         event_publisher=event_publisher,
+        email_confirmation_service=email_confirmation_service,
     )
 
 

@@ -1,0 +1,22 @@
+CEDRINA - CONFIRMACIÓN DE CORREO ELECTRÓNICO
+
+Hola {{ user_name }},
+
+¡Bienvenido a Cedrina! Por favor confirma tu dirección de correo electrónico haciendo clic en el enlace de abajo:
+
+{{ confirmation_url }}
+
+AVISO DE SEGURIDAD:
+• Este enlace de confirmación no expira.
+• Si no creaste esta cuenta, ignora este correo.
+• Nunca compartas este enlace con nadie.
+• Por seguridad, este enlace solo puede usarse una vez.
+
+Una vez que confirmes tu correo electrónico, tu cuenta será activada y podrás iniciar sesión.
+
+Si no creaste esta cuenta, puedes ignorar este correo con tranquilidad.
+
+--
+Este es un mensaje automatizado de Cedrina. Por favor, no respondas a este correo.
+
+© {{ created_at|format_datetime("%Y") }} Cedrina. Todos los derechos reservados. 
