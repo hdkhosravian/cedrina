@@ -8,6 +8,7 @@ from sqlalchemy.dialects import postgresql  # Import PostgreSQL dialect
 from sqlmodel import Column, Field, Index, SQLModel, String  # For ORM and table definition
 
 from src.utils.i18n import get_translated_message  # For translation in validation
+from src.core.config.settings import settings
 
 
 class Role(str, Enum):
@@ -85,6 +86,10 @@ class User(SQLModel, table=True):
         default=True,  # Active by default
         description="Indicates if the user's account is active. Inactive users cannot log in.",
     )
+    email_confirmed: bool = Field(
+        default_factory=lambda: not settings.EMAIL_CONFIRMATION_ENABLED,
+        description="Indicates if the user's email has been confirmed.",
+    )
     created_at: datetime = Field(
         sa_column=Column(
             DateTime,  # Explicit DateTime type for Alembic
@@ -113,6 +118,11 @@ class User(SQLModel, table=True):
         ),
         default=None,
         description="The expiration timestamp for the password reset token.",
+    )
+    email_confirmation_token: Optional[str] = Field(
+        default=None,
+        max_length=64,
+        description="Token used for confirming user email address.",
     )
 
     __table_args__ = (

@@ -163,3 +163,14 @@ msgstr ""
 msgid "token_expiry_must_be_timezone_aware"
 msgstr ""
 
+msgid "email_confirmation_subject"
+msgstr ""
+
+msgid "confirmation_email_sent"
+msgstr ""
+
+msgid "email_confirmation_required"
+msgstr ""
+
+msgid "email_confirmed_success"
+msgstr ""

@@ -31,6 +31,8 @@ from src.domain.interfaces import (
     IPasswordChangeService,
     IPasswordResetEmailService,
     IPasswordResetTokenService,
+    IEmailConfirmationTokenService,
+    IEmailConfirmationEmailService,
     IRateLimitingService,
     ITokenService,
     IUserAuthenticationService,
@@ -69,6 +71,18 @@ from src.infrastructure.services.password_reset_email_service import (
 )
 from src.infrastructure.services.password_reset_token_service import (
     PasswordResetTokenService,
+)
+from src.infrastructure.services.email_confirmation_token_service import (
+    EmailConfirmationTokenService,
+)
+from src.infrastructure.services.email_confirmation_email_service import (
+    EmailConfirmationEmailService,
+)
+from src.domain.services.email_confirmation.email_confirmation_request_service import (
+    EmailConfirmationRequestService,
+)
+from src.domain.services.email_confirmation.email_confirmation_service import (
+    EmailConfirmationService,
 )
 from src.infrastructure.services.token_service_adapter import TokenServiceAdapter
 
@@ -419,6 +433,38 @@ def get_password_reset_request_service(
     )
 
 
+def get_email_confirmation_token_service() -> IEmailConfirmationTokenService:
+    return EmailConfirmationTokenService()
+
+
+def get_email_confirmation_email_service() -> IEmailConfirmationEmailService:
+    return EmailConfirmationEmailService()
+
+
+def get_email_confirmation_request_service(
+    user_repository: IUserRepository = Depends(get_user_repository),
+    token_service: IEmailConfirmationTokenService = Depends(get_email_confirmation_token_service),
+    email_service: IEmailConfirmationEmailService = Depends(get_email_confirmation_email_service),
+) -> EmailConfirmationRequestService:
+    return EmailConfirmationRequestService(
+        user_repository=user_repository,
+        token_service=token_service,
+        email_service=email_service,
+    )
+
+
+def get_email_confirmation_service(
+    user_repository: IUserRepository = Depends(get_user_repository),
+    token_service: IEmailConfirmationTokenService = Depends(get_email_confirmation_token_service),
+    event_publisher: IEventPublisher = Depends(get_event_publisher),
+) -> EmailConfirmationService:
+    return EmailConfirmationService(
+        user_repository=user_repository,
+        token_service=token_service,
+        event_publisher=event_publisher,
+    )
+
+
 def get_password_reset_service(
     user_repository: IUserRepository = Depends(get_user_repository),
     token_service: IPasswordResetTokenService = Depends(get_password_reset_token_service),
@@ -463,4 +509,6 @@ CleanRegistrationService = Annotated[IUserRegistrationService, Depends(get_user_
 CleanOAuthService = Annotated[IOAuthService, Depends(get_oauth_service)]
 CleanPasswordChangeService = Annotated[IPasswordChangeService, Depends(get_password_change_service)]
 CleanPasswordResetRequestService = Annotated[PasswordResetRequestService, Depends(get_password_reset_request_service)]
-CleanPasswordResetService = Annotated[PasswordResetService, Depends(get_password_reset_service)] 
+CleanPasswordResetService = Annotated[PasswordResetService, Depends(get_password_reset_service)]
+CleanEmailConfirmationRequestService = Annotated[EmailConfirmationRequestService, Depends(get_email_confirmation_request_service)]
+CleanEmailConfirmationService = Annotated[EmailConfirmationService, Depends(get_email_confirmation_service)]

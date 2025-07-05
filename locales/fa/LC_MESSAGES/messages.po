@@ -240,3 +240,15 @@ msgstr "زمان انقضای توکن نمی‌تواند خالی باشد"
 msgid "token_expiry_must_be_timezone_aware"
 msgstr "زمان انقضای توکن باید از منطقه زمانی آگاه باشد"
 
+
+msgid "email_confirmation_subject"
+msgstr "حساب سدرینا خود را تایید کنید"
+
+msgid "confirmation_email_sent"
+msgstr "اگر ایمیل ثبت شده باشد، لینک تایید ارسال شد"
+
+msgid "email_confirmation_required"
+msgstr "لطفا قبل از ورود ایمیل خود را تایید کنید"
+
+msgid "email_confirmed_success"
+msgstr "ایمیل با موفقیت تایید شد"

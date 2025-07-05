@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تایید ایمیل</title>
+</head>
+<body>
+    <p>{{ user.username }} عزیز،</p>
+    <p>از ثبت‌نام شما متشکریم. لطفاً برای تایید ایمیل خود روی لینک زیر کلیک کنید:</p>
+    <p><a href="{{ confirm_url }}">تایید ایمیل</a></p>
+    <p>اگر شما حسابی ایجاد نکرده‌اید، این ایمیل را نادیده بگیرید.</p>
+    <p>این یک پیام خودکار از سدرینا است. لطفاً به این ایمیل پاسخ ندهید.</p>
+    <p>&copy; {{ "now"|format_datetime("%Y") }} سدرینا. کلیه حقوق محفوظ است.</p>
+</body>
+</html>

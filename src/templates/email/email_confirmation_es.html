@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmación de correo</title>
+</head>
+<body>
+    <p>Hola {{ user.username }},</p>
+    <p>Gracias por registrarte. Confirma tu correo electrónico haciendo clic en el enlace abajo:</p>
+    <p><a href="{{ confirm_url }}">Confirmar correo</a></p>
+    <p>Si no creaste una cuenta, puedes ignorar este mensaje.</p>
+    <p>Este es un mensaje automático de Cedrina. No respondas.</p>
+    <p>&copy; {{ "now"|format_datetime("%Y") }} Cedrina. Todos los derechos reservados.</p>
+</body>
+</html>

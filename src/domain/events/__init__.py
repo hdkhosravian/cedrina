@@ -8,12 +8,14 @@ from .password_reset_events import (
     PasswordResetRequestedEvent,
     PasswordResetCompletedEvent,
     PasswordResetFailedEvent,
-    PasswordResetTokenExpiredEvent
+    PasswordResetTokenExpiredEvent,
 )
+from .authentication_events import EmailConfirmedEvent
 
 __all__ = [
     "PasswordResetRequestedEvent",
     "PasswordResetCompletedEvent", 
     "PasswordResetFailedEvent",
     "PasswordResetTokenExpiredEvent",
-] 
+    "EmailConfirmedEvent",
+]
