@@ -293,7 +293,9 @@ class UserRepository(IUserRepository):
             raise ValueError("Reset token cannot be empty")
 
         try:
-            statement = select(User).where(User.reset_token == token.strip())
+            statement = select(User).where(
+                User.password_reset_token == token.strip()
+            )
             result = await self.db_session.execute(statement)
             user = result.scalars().first()
 
@@ -346,7 +348,7 @@ class UserRepository(IUserRepository):
         - System maintenance operations
         """
         try:
-            statement = select(User).where(User.reset_token.isnot(None))
+            statement = select(User).where(User.password_reset_token.isnot(None))
             result = await self.db_session.execute(statement)
             users = result.scalars().all()
 

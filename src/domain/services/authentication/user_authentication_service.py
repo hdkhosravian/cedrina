@@ -161,7 +161,18 @@ class UserAuthenticationService(IUserAuthenticationService):
                     get_translated_message("invalid_username_or_password", language)
                 )
 
-            # Verify user account is active (business rule)
+            if settings.EMAIL_CONFIRMATION_ENABLED and not user.email_confirmed:
+                await self._handle_authentication_failure(
+                    attempted_username=username,
+                    failure_reason="email_confirmation_required",
+                    correlation_id=correlation_id,
+                    user_agent=user_agent,
+                    ip_address=client_ip,
+                )
+                raise AuthenticationError(
+                    get_translated_message("email_confirmation_required", language)
+                )
+
             if not user.is_active:
                 await self._handle_authentication_failure(
                     attempted_username=username,
@@ -170,12 +181,9 @@ class UserAuthenticationService(IUserAuthenticationService):
                     user_agent=user_agent,
                     ip_address=client_ip,
                 )
-                message_key = (
-                    "email_confirmation_required"
-                    if settings.EMAIL_CONFIRMATION_ENABLED and not user.email_confirmed
-                    else "user_account_inactive"
+                raise AuthenticationError(
+                    get_translated_message("user_account_inactive", language)
                 )
-                raise AuthenticationError(get_translated_message(message_key, language))
 
             # Authentication successful - publish domain event
             await self._publish_successful_login_event(

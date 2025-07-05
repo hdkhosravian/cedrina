@@ -32,3 +32,27 @@ async def test_login_requires_email_confirmation():
                 await service.authenticate_user(Username("john"), Password("pass"), language="en")
 
     assert "confirm" in str(exc.value).lower()
+
+
+@pytest.mark.asyncio
+async def test_login_fails_when_unconfirmed_but_active():
+    repo = AsyncMock()
+    event_publisher = AsyncMock()
+    user = User(
+        id=2,
+        username="mary",
+        email="mary@example.com",
+        hashed_password="hash",
+        is_active=True,
+        email_confirmed=False,
+    )
+    repo.get_by_username.return_value = user
+
+    service = UserAuthenticationService(repo, event_publisher)
+
+    with patch.object(UserAuthenticationService, "verify_password", AsyncMock(return_value=True)):
+        with patch("src.core.config.settings.settings.EMAIL_CONFIRMATION_ENABLED", True):
+            with pytest.raises(AuthenticationError) as exc:
+                await service.authenticate_user(Username("mary"), Password("pass"), language="en")
+
+    assert "confirm" in str(exc.value).lower()
